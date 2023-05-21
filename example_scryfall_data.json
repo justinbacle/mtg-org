@@ -1,0 +1,114 @@
+{
+    "object": "card",
+    "id": "7f3dd06a-a085-4157-a90d-b0ed4974d756",
+    "oracle_id": "26640648-6400-4b80-a78b-f519ab9cd09e",
+    "multiverse_ids": [],
+    "tcgplayer_id": 204529,
+    "cardmarket_id": 420001,
+    "name": "Flameshot",
+    "lang": "en",
+    "released_at": "2019-11-07",
+    "uri": "https://api.scryfall.com/cards/7f3dd06a-a085-4157-a90d-b0ed4974d756",
+    "scryfall_uri": "https://scryfall.com/card/mb1/931/flameshot?utm_source=api",
+    "layout": "normal",
+    "highres_image": true,
+    "image_status": "highres_scan",
+    "image_uris": {
+        "small": "https://cards.scryfall.io/small/front/7/f/7f3dd06a-a085-4157-a90d-b0ed4974d756.jpg?1573511660",
+        "normal": "https://cards.scryfall.io/normal/front/7/f/7f3dd06a-a085-4157-a90d-b0ed4974d756.jpg?1573511660",
+        "large": "https://cards.scryfall.io/large/front/7/f/7f3dd06a-a085-4157-a90d-b0ed4974d756.jpg?1573511660",
+        "png": "https://cards.scryfall.io/png/front/7/f/7f3dd06a-a085-4157-a90d-b0ed4974d756.png?1573511660",
+        "art_crop": "https://cards.scryfall.io/art_crop/front/7/f/7f3dd06a-a085-4157-a90d-b0ed4974d756.jpg?1573511660",
+        "border_crop": "https://cards.scryfall.io/border_crop/front/7/f/7f3dd06a-a085-4157-a90d-b0ed4974d756.jpg?1573511660"
+    },
+    "mana_cost": "{3}{R}",
+    "cmc": 4,
+    "type_line": "Sorcery",
+    "oracle_text": "You may discard a Mountain card rather than pay this spell's mana cost.\nFlameshot deals 3 damage divided as you choose among one, two, or three target creatures.",
+    "colors": [
+        "R"
+    ],
+    "color_identity": [
+        "R"
+    ],
+    "keywords": [],
+    "legalities": {
+        "standard": "not_legal",
+        "future": "not_legal",
+        "historic": "not_legal",
+        "gladiator": "not_legal",
+        "pioneer": "not_legal",
+        "explorer": "not_legal",
+        "modern": "not_legal",
+        "legacy": "legal",
+        "pauper": "not_legal",
+        "vintage": "legal",
+        "penny": "not_legal",
+        "commander": "legal",
+        "oathbreaker": "legal",
+        "brawl": "not_legal",
+        "historicbrawl": "not_legal",
+        "alchemy": "not_legal",
+        "paupercommander": "not_legal",
+        "duel": "legal",
+        "oldschool": "not_legal",
+        "premodern": "legal",
+        "predh": "legal"
+    },
+    "games": [
+        "paper"
+    ],
+    "reserved": false,
+    "foil": false,
+    "nonfoil": true,
+    "finishes": [
+        "nonfoil"
+    ],
+    "oversized": false,
+    "promo": false,
+    "reprint": true,
+    "variation": false,
+    "set_id": "d13bfc70-6137-4179-aa96-da30fd84de29",
+    "set": "mb1",
+    "set_name": "Mystery Booster",
+    "set_type": "masters",
+    "set_uri": "https://api.scryfall.com/sets/d13bfc70-6137-4179-aa96-da30fd84de29",
+    "set_search_uri": "https://api.scryfall.com/cards/search?order=set&q=e%3Amb1&unique=prints",
+    "scryfall_set_uri": "https://scryfall.com/sets/mb1?utm_source=api",
+    "rulings_uri": "https://api.scryfall.com/cards/7f3dd06a-a085-4157-a90d-b0ed4974d756/rulings",
+    "prints_search_uri": "https://api.scryfall.com/cards/search?order=released&q=oracleid%3A26640648-6400-4b80-a78b-f519ab9cd09e&unique=prints",
+    "collector_number": "931",
+    "digital": false,
+    "rarity": "uncommon",
+    "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+    "artist": "Mark Brill",
+    "artist_ids": [
+        "46dc4b5e-e42c-4d65-a4f3-ad75b0f6f6dd"
+    ],
+    "illustration_id": "fcd4d7b3-5e99-4bea-931c-aedb19568310",
+    "border_color": "black",
+    "frame": "1997",
+    "full_art": false,
+    "textless": false,
+    "booster": true,
+    "story_spotlight": false,
+    "edhrec_rank": 20129,
+    "prices": {
+        "usd": "0.09",
+        "usd_foil": null,
+        "usd_etched": null,
+        "eur": "0.02",
+        "eur_foil": null,
+        "tix": null
+    },
+    "related_uris": {
+        "tcgplayer_infinite_articles": "https://infinite.tcgplayer.com/search?contentMode=article&game=magic&partner=scryfall&q=Flameshot&utm_campaign=affiliate&utm_medium=api&utm_source=scryfall",
+        "tcgplayer_infinite_decks": "https://infinite.tcgplayer.com/search?contentMode=deck&game=magic&partner=scryfall&q=Flameshot&utm_campaign=affiliate&utm_medium=api&utm_source=scryfall",
+        "edhrec": "https://edhrec.com/route/?cc=Flameshot"
+    },
+    "purchase_uris": {
+        "tcgplayer": "https://www.tcgplayer.com/product/204529?page=1&utm_campaign=affiliate&utm_medium=api&utm_source=scryfall",
+        "cardmarket": "https://www.cardmarket.com/en/Magic/Products/Search?referrer=scryfall&searchString=Flameshot&utm_campaign=card_prices&utm_medium=text&utm_source=scryfall",
+        "cardhoarder": "https://www.cardhoarder.com/cards?affiliate_id=scryfall&data%5Bsearch%5D=Flameshot&ref=card-profile&utm_campaign=affiliate&utm_medium=card&utm_source=scryfall"
+    }
+}

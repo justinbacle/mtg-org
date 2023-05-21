@@ -60,23 +60,14 @@ class DeckSelector(QtWidgets.QWidget):
             self.deckSelectionChanged.emit(deck)
 
     def initData(self):
-        # TODO get data from db
-
         # Collections
-        # ! Fake Data
-        collectionsList = [
-            {
-                "name": "collection1",
-                "cardList": []
-            }
-        ]
+        collectionsList = connector.getCollectionsList()
 
         for collection in collectionsList:
             self.collectionsListWidget.addItem(collectionItem(collection["name"]))
 
         # Decks
-        # ! Fake Data
-        decksList = connector.getDeckList()
+        decksList = connector.getDecksList()
 
         for deck in decksList:
             self.decksListWidget.addItem(collectionItem(deck["name"]))

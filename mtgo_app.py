@@ -1,6 +1,6 @@
 import sys
 
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtCore, QtGui
 
 from widgets.cardviewer import CardViewer
 from widgets.deckselector import DeckSelector
@@ -18,6 +18,10 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         super().__init__(parent)
 
         self.setTheme()
+
+        # Set Fonts
+        font_id = QtGui.QFontDatabase.addApplicationFont("resources/mana_font/mana.ttf")
+        # font_families = QtGui.QFontDatabase.applicationFontFamilies(font_id)
 
         # Load frontend
         self.setupUi()

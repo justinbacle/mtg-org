@@ -24,6 +24,11 @@ def getDB(location: Path = constants.DEFAULT_DB_LOCATION) -> TinyDB:
         return TinyDB(location.as_posix())
 
 
-def getDeckList() -> list:
+def getDecksList() -> list:
     decks = getDB().table(constants.DECKS_TABLE_NAME).all()
     return decks
+
+
+def getCollectionsList() -> list:
+    collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).all()
+    return collections

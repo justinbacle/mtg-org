@@ -16,7 +16,7 @@ db.table(constants.DECKS_TABLE_NAME).insert(
     }
 )
 
-db.table(constants.COLLECTION_TABLE_NAME).insert(
+db.table(constants.COLLECTIONS_TABLE_NAME).insert(
     {
         "name": "collection1",
         "cardList": [
