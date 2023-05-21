@@ -1,5 +1,8 @@
+import os
 import platform
 import logging
+
+from pathlib import Path
 
 
 def isWin() -> bool:
@@ -44,3 +47,7 @@ def isWin10Dark() -> bool:
         isDarkTheme = True
 
     return isDarkTheme  # True if dark theme, False if light theme
+
+
+def isFileEditable(path: Path):
+    os.access(path, os.R_OK)

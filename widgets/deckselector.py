@@ -1,6 +1,6 @@
 from PySide6 import QtWidgets, QtCore
 
-from connector import Collection, Deck
+import connector
 
 import constants
 
@@ -9,8 +9,8 @@ class DeckSelector(QtWidgets.QWidget):
     # To Build
 
     # Signals
-    deckSelectionChanged: QtCore.Signal = QtCore.Signal(Deck)
-    collectionSelectionChanged: QtCore.Signal = QtCore.Signal(Collection)
+    deckSelectionChanged: QtCore.Signal = QtCore.Signal(connector.Deck)
+    collectionSelectionChanged: QtCore.Signal = QtCore.Signal(connector.Collection)
 
     def __init__(self, parent=None, **kwargs):
         super(DeckSelector, self).__init__(parent=parent, **kwargs)
@@ -49,11 +49,15 @@ class DeckSelector(QtWidgets.QWidget):
         self.collectionsListWidget.itemSelectionChanged.connect(self.on_collectionSelectChanged)
         self.decksListWidget.itemSelectionChanged.connect(self.on_deckSelectChanged)
 
-    def on_collectionSelectChanged(self, collection: Collection):
-        self.collectionSelectionChanged.emit(collection)
+    def on_collectionSelectChanged(self):
+        if len(self.collectionsListWidget.selectedItems()) == 1:
+            collection = self.collectionsListWidget.selectedItems()[0]
+            self.collectionSelectionChanged.emit(collection)
 
-    def on_deckSelectChanged(self, deck: Deck):
-        self.deckSelectionChanged.emit(deck)
+    def on_deckSelectChanged(self):
+        if len(self.decksListWidget.selectedItems()) == 1:
+            deck = self.decksListWidget.selectedItems()[0]
+            self.deckSelectionChanged.emit(deck)
 
     def initData(self):
         # TODO get data from db
@@ -61,21 +65,22 @@ class DeckSelector(QtWidgets.QWidget):
         # Collections
         # ! Fake Data
         collectionsList = [
-            Collection()
+            {
+                "name": "collection1",
+                "cardList": []
+            }
         ]
 
         for collection in collectionsList:
-            self.collectionsListWidget.addItem(collectionItem(collection))
+            self.collectionsListWidget.addItem(collectionItem(collection["name"]))
 
         # Decks
         # ! Fake Data
-        decksList = [
-            Deck()
-        ]
+        decksList = connector.getDeckList()
 
         for deck in decksList:
-            self.decksListWidget.addItem(collectionItem(deck))
+            self.decksListWidget.addItem(collectionItem(deck["name"]))
 
 
-def collectionItem(Collection):
-    return QtWidgets.QListWidgetItem(Collection["Name"])
+def collectionItem(collectionName) -> QtWidgets.QListWidgetItem:
+    return QtWidgets.QListWidgetItem(collectionName)

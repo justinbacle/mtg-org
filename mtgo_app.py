@@ -48,6 +48,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         # Bottom one is DB browser
         self.dbBrowser = DbBrowser()
+        self.dbBrowser.cardSelected.connect(self.cardViewer.display)
         self.cardBrowsersSplitter.addWidget(self.dbBrowser)
 
         # Right pane is deck/collection selector
@@ -60,5 +61,6 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     window = MTGORG_GUI()
-    window.showMaximized()
+    # window.showMaximized()
+    window.show()
     sys.exit(window.app.exec())
