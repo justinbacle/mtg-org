@@ -1,0 +1,43 @@
+/* Style sheet custom example
+https://doc.qt.io/qtforpython/overviews/stylesheet-examples.html
+
+Style sheet reference
+https://doc.qt.io/qt-6/stylesheet-reference.html */
+
+QTreeWidget {{
+  alternate-background-color: #333333;
+}}
+
+QScrollBar:vertical {{
+  width: 0.75em;
+}}
+
+QScrollBar:horizontal {{
+  height: 0.75em;
+}}
+
+QListView::item::selected,
+QTreeWidget::item::selected {{
+  background-color: {QTMATERIAL_PRIMARYCOLOR};
+}}
+
+QTreeView::item:focus, QListView::item:focus, QListWidget::item:focus,
+QPushButton:focus, QLineEdit:focus, QTextEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus, QCheckBox:focus
+{{
+  background-color: #003467;
+}}
+
+
+QTreeView::item, QListView::item, QListWidget::item {{
+  padding: 2px;
+  min-height: 16px;
+}}
+
+QHeaderView::section {{
+  padding: 4px;
+}}
+
+QTreeView::item,
+QListView::item {{
+  border-bottom: 1px solid #000000;
+}}
