@@ -15,13 +15,15 @@ from lib import utils  # noqa E402
 
 @klepto.lru_cache(maxsize=1000)
 def getCardByName(name: str):
+    cards = []
     try:
-        scryfallReq = scrython.cards.Named(fuzzy=name)
-        card = Card(scryfallReq.scryfallJson)
+        scryfallReq = scrython.cards.Search(q=name)
     except ScryfallError as e:
         logging.warning(e)
-        card = {}
-    return card
+    else:
+        for cardJson in scryfallReq.scryfallJson["data"]:
+            cards.append(Card(cardJson))
+    return cards
 
 
 @klepto.lru_cache(maxsize=1000)

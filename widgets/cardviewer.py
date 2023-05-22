@@ -37,6 +37,15 @@ class CardViewer(QtWidgets.QWidget):
         self.cardImgGraphicsView = QtWidgets.QGraphicsView()
         self.mainLayout.addWidget(self.cardImgGraphicsView, 2, 0, 1, 2)
 
+        # Card Link
+        self.scryfallUriLabel = QtWidgets.QLabel("uri")
+        self.scryfallUriLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
+        self.mainLayout.addWidget(self.scryfallUriLabel, 3, 0)
+
+    def on_scryfallLinkClicked(self):
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.card['related_uris']['gatherer']))
+
     def handle_finished(self, image):
         self.cardImgPixMap = QtGui.QPixmap.fromImage(image)
         if self.cardImgGraphicsView.scene() is None:
@@ -73,6 +82,10 @@ class CardViewer(QtWidgets.QWidget):
         # TODO handle cache of images ?
         # TODO handle image resize when ui resize
         self.imgDownloader.start_download(url)
+
+        # scrifall uri
+        self.scryfallUriLabel.setText(f"<a href={self.card['related_uris']['gatherer']}>Scryfall Link</a>")
+        self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
 
 
 class ImageDownloader(QtCore.QObject):

@@ -53,11 +53,13 @@ class DeckSelector(QtWidgets.QWidget):
         if len(self.collectionsListWidget.selectedItems()) == 1:
             collection = self.collectionsListWidget.selectedItems()[0]
             self.collectionSelectionChanged.emit(collection)
+            self.decksListWidget.clearSelection()
 
     def on_deckSelectChanged(self):
         if len(self.decksListWidget.selectedItems()) == 1:
             deck = self.decksListWidget.selectedItems()[0]
             self.deckSelectionChanged.emit(deck)
+            self.collectionsListWidget.clearSelection()
 
     def initData(self):
         # Collections
