@@ -5,15 +5,14 @@ import connector
 import constants
 
 
-class DeckSelector(QtWidgets.QWidget):
-    # To Build
+class CardStackSelector(QtWidgets.QWidget):
 
     # Signals
     deckSelectionChanged: QtCore.Signal = QtCore.Signal(connector.Deck)
     collectionSelectionChanged: QtCore.Signal = QtCore.Signal(connector.Collection)
 
     def __init__(self, parent=None, **kwargs):
-        super(DeckSelector, self).__init__(parent=parent, **kwargs)
+        super(CardStackSelector, self).__init__(parent=parent, **kwargs)
 
         self.initUi()
         self.initData()
@@ -51,13 +50,15 @@ class DeckSelector(QtWidgets.QWidget):
 
     def on_collectionSelectChanged(self):
         if len(self.collectionsListWidget.selectedItems()) == 1:
-            collection = self.collectionsListWidget.selectedItems()[0]
+            collectionName = self.collectionsListWidget.selectedItems()[0].text()
+            collection = connector.getCollection(collectionName)
             self.collectionSelectionChanged.emit(collection)
             self.decksListWidget.clearSelection()
 
     def on_deckSelectChanged(self):
         if len(self.decksListWidget.selectedItems()) == 1:
-            deck = self.decksListWidget.selectedItems()[0]
+            deckName = self.decksListWidget.selectedItems()[0].text()
+            deck = connector.getDeck(deckName)
             self.deckSelectionChanged.emit(deck)
             self.collectionsListWidget.clearSelection()
 
@@ -66,6 +67,7 @@ class DeckSelector(QtWidgets.QWidget):
         collectionsList = connector.getCollectionsList()
 
         for collection in collectionsList:
+            # TODO add more data ?
             self.collectionsListWidget.addItem(collectionItem(collection["name"]))
 
         # Decks

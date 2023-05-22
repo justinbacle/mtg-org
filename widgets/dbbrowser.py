@@ -33,14 +33,14 @@ class DbBrowser(QtWidgets.QWidget):
         # TODO update list with results
         req = scryfall.getCardByName(searchDict["name"])
         self.dbResultsList.clear()
-        self.dbResultsList.setData(req)
+        self.dbResultsList.setCards(req)
 
     def on_dbSelectChanged(self):
         if len(self.dbResultsList.selectedItems()) == 1:
             selectedItem = self.dbResultsList.selectedItems()[0]
+            self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["id"])
         else:
             selectedItem = None
-        self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["id"])
 
 
 class SearchForm(QtWidgets.QWidget):

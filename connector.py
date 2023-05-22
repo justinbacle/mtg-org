@@ -1,4 +1,4 @@
-from tinydb import TinyDB
+from tinydb import TinyDB, Query
 from pathlib import Path
 
 from lib import system
@@ -29,6 +29,18 @@ def getDecksList() -> list:
     return decks
 
 
+def getDeck(deckName) -> Deck:
+    decks = getDB().table(constants.DECKS_TABLE_NAME).search(Query().name == deckName)
+    if len(decks) == 1:
+        return decks[0]
+
+
 def getCollectionsList() -> list:
     collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).all()
     return collections
+
+
+def getCollection(collectionName) -> Deck:
+    collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).search(Query().name == collectionName)
+    if len(collections) == 1:
+        return collections[0]

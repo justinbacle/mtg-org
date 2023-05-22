@@ -3,9 +3,11 @@ import sys
 from PySide6 import QtWidgets, QtCore, QtGui
 
 from widgets.cardviewer import CardViewer
-from widgets.deckselector import DeckSelector
+from widgets.deckselector import CardStackSelector
 from widgets.dbbrowser import DbBrowser
 from widgets.cardslist import CardsList
+
+import connector
 
 from lib import qt
 import constants
@@ -19,9 +21,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         self.setTheme()
 
-        # Set Fonts
-        font_id = QtGui.QFontDatabase.addApplicationFont("resources/mana_font/mana.ttf")
-        # font_families = QtGui.QFontDatabase.applicationFontFamilies(font_id)
+        # Set Font
+        QtGui.QFontDatabase.addApplicationFont("resources/mana_font/mana.ttf")  # Mana font
 
         # Load frontend
         self.setupUi()
@@ -48,16 +49,30 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         # Top one is decklist
         self.decklist = CardsList()
+        self.decklist.cardSelected.connect(self.on_decklistCardSelected)
         self.cardBrowsersSplitter.addWidget(self.decklist)
 
         # Bottom one is DB browser
         self.dbBrowser = DbBrowser()
-        self.dbBrowser.cardSelected.connect(self.cardViewer.display)
+        self.dbBrowser.cardSelected.connect(self.on_dbBrowserCardSelected)
         self.cardBrowsersSplitter.addWidget(self.dbBrowser)
 
         # Right pane is deck/collection selector
-        self.deckSelector = DeckSelector()
+        self.deckSelector = CardStackSelector()
+        self.deckSelector.deckSelectionChanged.connect(self.on_cardStackChange)
+        self.deckSelector.collectionSelectionChanged.connect(self.on_cardStackChange)
         self.splitter.addWidget(self.deckSelector)
+
+    def on_decklistCardSelected(self, cardId: str):
+        self.dbBrowser.dbResultsList.clearSelection()
+        self.cardViewer.display(cardId)
+
+    def on_dbBrowserCardSelected(self, cardId: str):
+        self.decklist.cardsList.clearSelection()
+        self.cardViewer.display(cardId)
+
+    def on_cardStackChange(self, cardStack: connector.Deck | connector.Collection):
+        self.decklist.cardsList.setCardList(cardStack["cardList"])
 
     def setTheme(self):
         qt.selectPalette(self.app)
@@ -65,6 +80,5 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     window = MTGORG_GUI()
-    # window.showMaximized()
-    window.show()
+    window.showMaximized()
     sys.exit(window.app.exec())
