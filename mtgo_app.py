@@ -1,6 +1,7 @@
 import sys
 
 from PySide6 import QtWidgets, QtCore, QtGui
+import qt_material
 
 from widgets.cardviewer import CardViewer
 from widgets.deckselector import CardStackSelector
@@ -15,6 +16,7 @@ import constants
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
+    qt_material.apply_stylesheet(app, theme='dark_teal.xml', extra={'density_scale': '-1'})
 
     def __init__(self, parent=None):
         super().__init__(parent)
