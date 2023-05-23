@@ -20,14 +20,18 @@ class CardListWidget(QtWidgets.QListWidget):
         event.accept()
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
-        # FIXME triggers 2 times on drop ?
-        super().dropEvent(event)
         cardId = event.source().currentItem().data(QtCore.Qt.UserRole)["id"]
         self.addCard(scryfall.getCardById(cardId))
 
     def addCard(self, card: str):
-        # TODO save in db
         self.addItem(getCardWidgetListItem(card))
+        stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
+        if stackType == "deck":
+            connector.addCardToDeck(stackName, card["id"])
+        elif stackType == "collection":
+            connector.addCardToCollection(stackName, card["id"])
+        else:
+            ...
 
 
 class CardStackListWidget(CardListWidget):

@@ -18,10 +18,10 @@ class Deck(Collection):
 
 def getDB(location: Path = constants.DEFAULT_DB_LOCATION) -> TinyDB:
     if location.is_file() and system.isFileEditable(location):
-        return TinyDB(location.as_posix())
+        return TinyDB(location.as_posix(), sort_keys=True, indent=4)
     else:
         # TODO Ask for db creation location
-        return TinyDB(location.as_posix())
+        return TinyDB(location.as_posix(), sort_keys=True, indent=4)
 
 
 def getDecksList() -> list:
@@ -44,3 +44,25 @@ def getCollection(collectionName) -> Deck:
     collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).search(Query().name == collectionName)
     if len(collections) == 1:
         return collections[0]
+
+
+def addCardToDeck(deckName, cardId):
+    deck = getDeck(deckName)
+    cardList = deck["cardList"]
+    deck.update(
+        {"cardList": cardList + [cardId]}
+    )
+    getDB().table(constants.DECKS_TABLE_NAME).update(
+        deck, Query().name == deckName
+    )
+
+
+def addCardToCollection(collectionName, cardId):
+    collection = getCollection(collectionName)
+    cardList = collection["cardList"]
+    collection.update(
+        {"cardList": cardList + [cardId]}
+    )
+    getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
+        collection, Query().name == collectionName
+    )

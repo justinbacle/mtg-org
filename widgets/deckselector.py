@@ -44,6 +44,18 @@ class CardStackSelector(QtWidgets.QWidget):
         self.decksWidgetLayout.addWidget(self.decksListWidget)
         self.splitter.addWidget(self.decksWidget)
 
+    def getSelected(self):
+        if len(self.decksListWidget.selectedItems()) == 1:
+            stackType = "deck"
+            stackName = self.decksListWidget.selectedItems()[0].text()
+        elif len(self.collectionsListWidget.selectedItems()) == 1:
+            stackType = "collection"
+            stackName = self.collectionsListWidget.selectedItems()[0].text()
+        else:
+            stackType = None
+            stackName = None
+        return (stackType, stackName)
+
     def setCallBacks(self):
         self.collectionsListWidget.itemSelectionChanged.connect(self.on_collectionSelectChanged)
         self.decksListWidget.itemSelectionChanged.connect(self.on_deckSelectChanged)

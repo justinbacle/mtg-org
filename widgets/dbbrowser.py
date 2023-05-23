@@ -55,6 +55,7 @@ class SearchForm(QtWidgets.QWidget):
         self.setLayout(self.mainLayout)
 
         self.nameField = QtWidgets.QLineEdit()
+        self.nameField.returnPressed.connect(self.on_searchAction)
         self.mainLayout.addRow("Name", self.nameField)
 
         self.searchButton = QtWidgets.QPushButton("Search")
