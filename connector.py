@@ -46,22 +46,22 @@ def getCollection(collectionName) -> Deck:
         return collections[0]
 
 
-def addCardToDeck(deckName, cardId):
+def addCardToDeck(deckName, qty, cardId):
     deck = getDeck(deckName)
     cardList = deck["cardList"]
     deck.update(
-        {"cardList": cardList + [cardId]}
+        {"cardList": cardList + [(qty, cardId)]}
     )
     getDB().table(constants.DECKS_TABLE_NAME).update(
         deck, Query().name == deckName
     )
 
 
-def addCardToCollection(collectionName, cardId):
+def addCardToCollection(collectionName, qty, cardId):
     collection = getCollection(collectionName)
     cardList = collection["cardList"]
     collection.update(
-        {"cardList": cardList + [cardId]}
+        {"cardList": cardList + [(qty, cardId)]}
     )
     getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
         collection, Query().name == collectionName

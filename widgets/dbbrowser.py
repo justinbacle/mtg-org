@@ -33,7 +33,8 @@ class DbBrowser(QtWidgets.QWidget):
         # TODO update list with results
         req = scryfall.getCardByName(searchDict["name"])
         self.dbResultsList.clear()
-        self.dbResultsList.setCards(req)
+        cardList = [(1, card) for card in req]
+        self.dbResultsList.setCards(cardList)
 
     def on_dbSelectChanged(self):
         if len(self.dbResultsList.selectedItems()) == 1:

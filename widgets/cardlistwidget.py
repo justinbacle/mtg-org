@@ -13,8 +13,8 @@ class CardListWidget(QtWidgets.QListWidget):
 
     def setCards(self, cardsList: list):
         self.clear()
-        for card in cardsList:
-            self.addItem(getCardWidgetListItem(card))
+        for qty, card in cardsList:
+            self.addItem(getCardWidgetListItem(qty, card))
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -24,12 +24,12 @@ class CardListWidget(QtWidgets.QListWidget):
         self.addCard(scryfall.getCardById(cardId))
 
     def addCard(self, card: str):
-        self.addItem(getCardWidgetListItem(card))
+        self.addItem(getCardWidgetListItem(qty=1, cardData=card))
         stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
         if stackType == "deck":
-            connector.addCardToDeck(stackName, card["id"])
+            connector.addCardToDeck(stackName, 1, card["id"])
         elif stackType == "collection":
-            connector.addCardToCollection(stackName, card["id"])
+            connector.addCardToCollection(stackName, 1, card["id"])
         else:
             ...
 
@@ -41,14 +41,18 @@ class CardStackListWidget(CardListWidget):
         super().__init__(parent)
 
     def setCardList(self, cardList: connector.Deck | connector.Collection):
-        self.cardStack = [scryfall.getCardById(card) for card in cardList]
-        # ? To update to handle quantities etc ???
+        self.cardStack = []
+        for qty, card in cardList:
+            self.cardStack.append(
+                (qty, scryfall.getCardById(card))
+            )
         self.setCards(self.cardStack)
 
 
-def getCardWidgetListItem(cardData: dict) -> QtWidgets.QListWidgetItem:
+def getCardWidgetListItem(qty: 1, cardData: dict) -> QtWidgets.QListWidgetItem:
     if cardData is not None:
         item = QtWidgets.QListWidgetItem(cardData["name"])
+        cardData.update({"qty": 1})
         item.setData(QtCore.Qt.UserRole, cardData)
     else:
         item = None

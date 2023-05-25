@@ -56,8 +56,9 @@ def getSetSvg(setId):
     return setIconFilePath.as_posix()
 
 
-def getSetReleaseDate(setId):
-    return getSetData(setId, "released_at")
+def getSetReleaseYear(setId):
+    releaseDate = getSetData(setId, "released_at")
+    return releaseDate.split("-")[0]
 
 
 @klepto.lru_cache(maxsize=10)

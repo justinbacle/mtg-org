@@ -1,5 +1,8 @@
 from PySide6 import QtWidgets, QtGui, QtCore, QtNetwork, QtSvgWidgets
 
+import urllib
+from pathlib import Path
+
 import sys
 import os
 sys.path.append(os.getcwd())  # FIXME Remove
@@ -8,14 +11,17 @@ from lib import scryfall, utils, qt  # noqa E402
 
 import constants  # noqa E402
 
+IMG_DOWNLOAD_METHOD = "direct"  # ["direct", "qt"]
+
 
 class CardViewer(QtWidgets.QWidget):
     # To Build
     def __init__(self, parent=None, **kwargs):
         super(CardViewer, self).__init__(parent=parent, **kwargs)
         self.setupUi()
-        self.imgDownloader = ImageDownloader()
-        self.imgDownloader.finished.connect(self.handle_finished)
+        if IMG_DOWNLOAD_METHOD == "qt":
+            self.imgDownloader = ImageDownloader()
+            self.imgDownloader.finished.connect(self.displayPixmapCard)
 
     def setupUi(self):
         self.mainLayout = QtWidgets.QGridLayout(self)
@@ -46,7 +52,7 @@ class CardViewer(QtWidgets.QWidget):
     def on_scryfallLinkClicked(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.card['related_uris']['gatherer']))
 
-    def handle_finished(self, image):
+    def displayPixmapCard(self, image):
         self.cardImgPixMap = QtGui.QPixmap.fromImage(image)
         if self.cardImgGraphicsView.scene() is None:
             self.cardImgGraphicsView.setScene(QtWidgets.QGraphicsScene())
@@ -69,6 +75,10 @@ class CardViewer(QtWidgets.QWidget):
             color = constants.RARITIES[rarity]["color"]
         else:
             color = "#00F"
+        if "#000" not in data:  # adding the path filling if not present
+            splitText = "/></svg>"
+            fillText = " fill=\"#000\" fill-rule=\"nonzero\""
+            data = data.split(splitText)[0] + fillText + splitText
         data = data.replace("#000", color)
         return data
 
@@ -82,7 +92,8 @@ class CardViewer(QtWidgets.QWidget):
         setIconSvgData = self.colorSetIcon(setIconSvgData, self.card["rarity"])
         self.setIconSvg.load(QtCore.QByteArray(setIconSvgData))
         self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
-        self.setNameLabel.setText(f"{self.card['set_name']} - {scryfall.getSetReleaseDate(self.card['set_id'])}")
+        self.setNameLabel.setText(
+            f"{self.card['set_name']} ({self.card['set'].upper()}) - {scryfall.getSetReleaseYear(self.card['set_id'])}")
 
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
             imageUri = utils.getFromDict(self.card, ["image_uris", "normal"])
@@ -91,13 +102,21 @@ class CardViewer(QtWidgets.QWidget):
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", 0, "image_uris", "normal"])
 
-        url = QtCore.QUrl.fromUserInput(imageUri)
-        # TODO handle cache of images ?
-        # TODO handle image resize when ui resize
-        self.imgDownloader.start_download(url)
+        if IMG_DOWNLOAD_METHOD == "qt":
+            url = QtCore.QUrl.fromUserInput(imageUri)
+            # TODO handle cache of images ?
+            # TODO handle image resize when ui resize
+            self.imgDownloader.start_download(url)
+        elif IMG_DOWNLOAD_METHOD == "direct":
+            # TODO Thread that ?
+            image = QtGui.QImage(getCardImageFromUrl(imageUri, cardId))
+            self.displayPixmapCard(image)
 
         # scrifall uri
-        self.scryfallUriLabel.setText(f"<a href={self.card['related_uris']['gatherer']}>Scryfall Link</a>")
+        try:
+            self.scryfallUriLabel.setText(f"<a href={self.card['related_uris']['gatherer']}>Gatherer Link</a>")
+        except KeyError:
+            self.scryfallUriLabel.setText(f"<a href={self.card['scryfall_uri']}>Scryfall Link</a>")
         self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
 
 
@@ -128,3 +147,10 @@ def setManaText(inputStr) -> str:
     inputStr.replace("{R}", "&#xe603;")
     inputStr.replace("{G}", "&#xe604;")
     return inputStr
+
+
+def getCardImageFromUrl(url, cardId) -> str:
+    cardImgPath = Path("resources/images/cards/") / cardId
+    if not (cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)):
+        urllib.request.urlretrieve(url, cardImgPath)
+    return cardImgPath
