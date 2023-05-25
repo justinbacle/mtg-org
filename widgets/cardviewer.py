@@ -10,8 +10,7 @@ sys.path.append(os.getcwd())  # FIXME Remove
 from lib import scryfall, utils, qt  # noqa E402
 
 import constants  # noqa E402
-
-IMG_DOWNLOAD_METHOD = "direct"  # ["direct", "qt"]
+import config  # noqa E402
 
 
 class CardViewer(QtWidgets.QWidget):
@@ -19,7 +18,7 @@ class CardViewer(QtWidgets.QWidget):
     def __init__(self, parent=None, **kwargs):
         super(CardViewer, self).__init__(parent=parent, **kwargs)
         self.setupUi()
-        if IMG_DOWNLOAD_METHOD == "qt":
+        if config.IMG_DOWNLOAD_METHOD == "qt":
             self.imgDownloader = ImageDownloader()
             self.imgDownloader.finished.connect(self.displayPixmapCard)
 
@@ -102,12 +101,12 @@ class CardViewer(QtWidgets.QWidget):
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", 0, "image_uris", "normal"])
 
-        if IMG_DOWNLOAD_METHOD == "qt":
+        if config.IMG_DOWNLOAD_METHOD == "qt":
             url = QtCore.QUrl.fromUserInput(imageUri)
             # TODO handle cache of images ?
             # TODO handle image resize when ui resize
             self.imgDownloader.start_download(url)
-        elif IMG_DOWNLOAD_METHOD == "direct":
+        elif config.IMG_DOWNLOAD_METHOD == "direct":
             # TODO Thread that ?
             image = QtGui.QImage(getCardImageFromUrl(imageUri, cardId))
             self.displayPixmapCard(image)

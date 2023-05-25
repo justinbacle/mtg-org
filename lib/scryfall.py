@@ -1,6 +1,6 @@
 import logging
-import klepto
 from pathlib import Path
+from cache_to_disk import cache_to_disk
 
 import scrython.cards
 from scrython.foundation import ScryfallError
@@ -9,11 +9,11 @@ import sys
 import os
 sys.path.append(os.getcwd())  # FIXME Remove
 
+import connector  # noqa E402
 from card import Card  # noqa E402
 from lib import utils  # noqa E402
 
 
-@klepto.lru_cache(maxsize=1000)
 def getCardByName(name: str):
     cards = []
     try:
@@ -26,10 +26,14 @@ def getCardByName(name: str):
     return cards
 
 
-@klepto.lru_cache(maxsize=1000)
 def getCardById(id: str):
-    scryfallReq = scrython.cards.Id(id=id)
-    card = Card(scryfallReq.scryfallJson)
+    card = connector.getCard(id)
+    if card is None:
+        scryfallReq = scrython.cards.Id(id=id)
+        card = Card(scryfallReq.scryfallJson)
+        connector.saveCard(id, card)
+    else:
+        card = card["data"]
     return card
 
 
@@ -61,7 +65,7 @@ def getSetReleaseYear(setId):
     return releaseDate.split("-")[0]
 
 
-@klepto.lru_cache(maxsize=10)
+@cache_to_disk(1)
 def getSets() -> list:
     sets = scrython.Sets()
     return sets.scryfallJson["data"]

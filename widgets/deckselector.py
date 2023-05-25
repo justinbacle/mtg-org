@@ -23,7 +23,6 @@ class CardStackSelector(QtWidgets.QWidget):
         self.setLayout(self.layout)
 
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical, self)
-        self.splitter.setHandleWidth(constants.QSPLITTER_HANDLE_WIDTH)
         self.layout.addWidget(self.splitter)
 
         # Collections

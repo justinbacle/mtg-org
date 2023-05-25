@@ -12,20 +12,18 @@ import connector
 
 from lib import qt
 import constants
-
-
-THEME = "material"  # ["fusion", "material"]
+import config
 
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
-    if THEME == "material":
+    if config.THEME == "material":
         qt_material.apply_stylesheet(app, theme='dark_teal.xml', extra={'density_scale': '-1'})
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        if THEME == "fusion":
+        if config.THEME == "fusion":
             qt.selectPalette(self.app)
 
         # Set Font
@@ -39,7 +37,6 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.setCentralWidget(self.centralWidget)
         self.mainLayout = QtWidgets.QHBoxLayout(self.centralWidget)
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self.centralWidget)
-        self.splitter.setHandleWidth(constants.QSPLITTER_HANDLE_WIDTH)
         self.mainLayout.addWidget(self.splitter)
 
         # Left pane is card viewer

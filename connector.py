@@ -1,3 +1,4 @@
+import logging
 from tinydb import TinyDB, Query
 from pathlib import Path
 
@@ -22,6 +23,14 @@ def getDB(location: Path = constants.DEFAULT_DB_LOCATION) -> TinyDB:
     else:
         # TODO Ask for db creation location
         return TinyDB(location.as_posix(), sort_keys=True, indent=4)
+
+
+def getCacheDB(location: Path = constants.DEFAULT_CACHE_DB_LOCATION) -> TinyDB:
+    if location.is_file() and system.isFileEditable(location):
+        return TinyDB(location.as_posix())
+    else:
+        # TODO Ask for db creation location
+        return TinyDB(location.as_posix())
 
 
 def getDecksList() -> list:
@@ -65,4 +74,23 @@ def addCardToCollection(collectionName, qty, cardId):
     )
     getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
         collection, Query().name == collectionName
+    )
+
+
+def getCard(cardId) -> dict:
+    card = getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)
+    if len(card) == 0:
+        card = None
+    elif len(card) == 1:
+        card = card[0]
+    else:
+        card = card[0]
+        logging.warning(f"Got multiple entries for card id {cardId}")
+
+    return card
+
+
+def saveCard(cardId, cardData) -> None:
+    getCacheDB().table(constants.CARDS_TABLE_NAME).insert(
+        {"data": cardData, "id": cardId}
     )
