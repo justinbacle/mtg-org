@@ -2,7 +2,6 @@ from PySide6 import QtWidgets, QtCore
 
 import connector
 
-import constants
 
 
 class CardStackSelector(QtWidgets.QWidget):

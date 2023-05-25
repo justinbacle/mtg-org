@@ -11,7 +11,6 @@ from widgets.cardslist import CardsList
 import connector
 
 from lib import qt
-import constants
 import config
 
 
