@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.append(os.getcwd())  # FIXME Remove
 
-from lib import scryfall, utils  # noqa E402
+from lib import scryfall, utils, qt  # noqa E402
 
 import constants  # noqa E402
 
@@ -24,11 +24,11 @@ class CardViewer(QtWidgets.QWidget):
         self.nameLabel = QtWidgets.QLabel("Name")
         self.mainLayout.addWidget(self.nameLabel, 0, 0)
         self.manacostLabel = QtWidgets.QLabel("{M}{A}{N}{A}{0}")
-        self.manacostLabel.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(0)))
         self.mainLayout.addWidget(self.manacostLabel, 0, 1)
 
         # Set icon + Name + Year
         self.setIconSvg = QtSvgWidgets.QSvgWidget()
+        self.setIconSvg.setMaximumHeight(36)
         self.mainLayout.addWidget(self.setIconSvg, 1, 0)
         self.setNameLabel = QtWidgets.QLabel("Set Name")
         self.mainLayout.addWidget(self.setNameLabel, 1, 1)
@@ -58,21 +58,34 @@ class CardViewer(QtWidgets.QWidget):
         self.cardImgGraphicsView.setRenderHint(QtGui.QPainter.Antialiasing)
         self.cardImgGraphicsView.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
 
+    def setManaFont(self):
+        if self.manacostLabel.font().family() != "Mana":
+            self.manacostLabel.setFont(
+                QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                    self.parent().parent().parent().manaFontId)))
+
+    def colorSetIcon(self, data: QtCore.QByteArray, rarity: str = "C"):
+        if rarity in constants.RARITIES.keys():
+            color = constants.RARITIES[rarity]["color"]
+        else:
+            color = "#00F"
+        data = data.replace("#000", color)
+        return data
+
     def display(self, cardId: str):
         self.card = scryfall.getCardById(cardId)
         self.nameLabel.setText(self.card["name"])
-        self.manacostLabel.setText(
-            setManaText(utils.getFromDict(self.card, ["mana_cost"], ""))
-        )
-        self.setIconSvg.load(
-            scryfall.getSetSvg(self.card["set_id"])
-        )
+        self.manacostLabel.setText(setManaText(utils.getFromDict(self.card, ["mana_cost"], "")))
+        self.setManaFont()
+
+        setIconSvgData = qt.fileData(scryfall.getSetSvg(self.card["set_id"]))
+        setIconSvgData = self.colorSetIcon(setIconSvgData, self.card["rarity"])
+        self.setIconSvg.load(QtCore.QByteArray(setIconSvgData))
         self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
         self.setNameLabel.setText(f"{self.card['set_name']} - {scryfall.getSetReleaseDate(self.card['set_id'])}")
 
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
-            imageUri = utils.getFromDict(
-                self.card, ["image_uris", "normal"])
+            imageUri = utils.getFromDict(self.card, ["image_uris", "normal"])
         else:
             # TODO handle two_sided cards -> len(self.card['card_faces']) > 1
             imageUri = utils.getFromDict(

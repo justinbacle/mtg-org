@@ -1,10 +1,12 @@
 import logging
-from PySide6 import QtGui, QtWidgets
+from pathlib import Path
+from PySide6 import QtGui, QtWidgets, QtSvg, QtCore
 
 from lib import system
 
 
 def selectPalette(app):
+    # Overriden by material
     try:
         palette = QtGui.QPalette()
         if system.isWin10Dark():  # Dark theme enabled
@@ -38,3 +40,27 @@ def selectPalette(app):
         app.setPalette(palette)
     except Exception as e:
         logging.error(e)
+
+
+def svgPathToPixmap(svg_filename: str, width: int, height: int, color: QtGui.QColor) -> QtGui.QPixmap:
+    renderer = QtSvg.QSvgRenderer(svg_filename)
+    pixmap = QtGui.QPixmap(width, height)
+    pixmap.fill(QtGui.Qt.GlobalColor.transparent)
+    painter = QtGui.QPainter(pixmap)
+    painter.setPen(QtGui.QPen(color))
+    renderer.render(painter)
+    painter.end()
+    return pixmap
+
+
+def fileData(path: str | Path) -> str:
+    if isinstance(path, Path):
+        stream = QtCore.QFile(path.as_posix())
+    else:
+        stream = QtCore.QFile(path)
+    if stream.open(QtCore.QFile.ReadOnly):
+        js = str(stream.readAll(), 'utf-8')
+        stream.close()
+    else:
+        logging.error(stream.errorString())
+    return js

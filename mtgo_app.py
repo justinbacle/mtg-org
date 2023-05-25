@@ -14,17 +14,22 @@ from lib import qt
 import constants
 
 
+THEME = "material"  # ["fusion", "material"]
+
+
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
-    qt_material.apply_stylesheet(app, theme='dark_teal.xml', extra={'density_scale': '-1'})
+    if THEME == "material":
+        qt_material.apply_stylesheet(app, theme='dark_teal.xml', extra={'density_scale': '-1'})
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setTheme()
+        if THEME == "fusion":
+            qt.selectPalette(self.app)
 
         # Set Font
-        QtGui.QFontDatabase.addApplicationFont("resources/mana_font/mana.ttf")  # Mana font
+        self.manaFontId = QtGui.QFontDatabase.addApplicationFont("resources/mana_font/mana.ttf")  # Mana font
 
         # Load frontend
         self.setupUi()
@@ -75,9 +80,6 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
     def on_cardStackChange(self, cardStack: connector.Deck | connector.Collection):
         self.decklist.cardsList.setCardList(cardStack["cardList"])
-
-    def setTheme(self):
-        qt.selectPalette(self.app)
 
 
 if __name__ == '__main__':
