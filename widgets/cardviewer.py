@@ -84,7 +84,7 @@ class CardViewer(QtWidgets.QWidget):
     def display(self, cardId: str):
         self.card = scryfall.getCardById(cardId)
         self.nameLabel.setText(self.card["name"])
-        self.manacostLabel.setText(setManaText(utils.getFromDict(self.card, ["mana_cost"], "")))
+        self.manacostLabel.setText(utils.setManaText(utils.getFromDict(self.card, ["mana_cost"], "")))
         self.setManaFont()
 
         setIconSvgData = qt.fileData(scryfall.getSetSvg(self.card["set_id"]))
@@ -137,15 +137,6 @@ class ImageDownloader(QtCore.QObject):
         image = QtGui.QImage()
         image.loadFromData(reply.readAll())
         self.finished.emit(image)
-
-
-def setManaText(inputStr) -> str:
-    inputStr.replace("{W}", "&#xe600;")
-    inputStr.replace("{U}", "&#xe601;")
-    inputStr.replace("{B}", "&#xe602;")
-    inputStr.replace("{R}", "&#xe603;")
-    inputStr.replace("{G}", "&#xe604;")
-    return inputStr
 
 
 def getCardImageFromUrl(url, cardId) -> str:

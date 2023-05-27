@@ -26,7 +26,7 @@ class CardListWidget(QtWidgets.QTableWidget):
             self._addOneLine(card)
 
     def _addOneLine(self, card: dict):
-        for i, tableItem in enumerate(getCardTableItem(card, columns=self.columns)):
+        for i, tableItem in enumerate(self.getCardTableItem(card, columns=self.columns)):
             tableItem.setFlags(tableItem.flags() ^ QtCore.Qt.ItemIsEditable)
             self.setItem(self.rowCount() - 1, i, tableItem)
 
@@ -49,6 +49,22 @@ class CardListWidget(QtWidgets.QTableWidget):
         else:
             ...
 
+    def getCardTableItem(self, cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
+        dataList = []
+        if cardData is not None:
+            for column in columns:
+                item = QtWidgets.QTableWidgetItem()
+                text = utils.getFromDict(cardData, column.split("."))
+                if column == "mana_cost":
+                    item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                        self.parent().parent().parent().parent().parent().parent().manaFontId
+                    )))
+                    text = utils.setManaText(str(text))
+                item.setData(QtCore.Qt.DisplayRole, text)
+                item.setData(QtCore.Qt.UserRole, cardData)
+                dataList.append(item)
+        return dataList
+
 
 class CardStackListWidget(CardListWidget):
     # similar to the cardListWidget but whith specific data about qties, user comments, etc...
@@ -68,14 +84,3 @@ class CardStackListWidget(CardListWidget):
         for qty, card in cardList:
             self.cardStack.append((qty, scryfall.getCardById(card)))
         self.setCards(self.cardStack)
-
-
-def getCardTableItem(cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
-    dataList = []
-    if cardData is not None:
-        for column in columns:
-            item = QtWidgets.QTableWidgetItem()
-            item.setData(QtCore.Qt.DisplayRole, utils.getFromDict(cardData, column.split(".")))
-            item.setData(QtCore.Qt.UserRole, cardData)
-            dataList.append(item)
-    return dataList

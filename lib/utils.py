@@ -2,6 +2,7 @@ import requests
 import functools
 import operator
 from dotmap import DotMap
+import re
 
 
 def getSvgData(url):
@@ -31,3 +32,13 @@ def getFromDict(dataDict: dict, mapList: list, default=None):
         value = default
 
     return value
+
+
+def setManaText(inputStr) -> str:
+    inputStr.replace("{W}", "&#xe600;")
+    inputStr.replace("{U}", "&#xe601;")
+    inputStr.replace("{B}", "&#xe602;")
+    inputStr.replace("{R}", "&#xe603;")
+    inputStr.replace("{G}", "&#xe604;")
+    inputStr = re.sub(r"{(\d)}", r"\g<1>", inputStr)
+    return inputStr

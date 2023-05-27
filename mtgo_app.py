@@ -62,6 +62,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         # Right pane is deck/collection selector
         self.deckSelector = CardStackSelector()
+        self.deckSelector.setMaximumWidth(300)
         self.deckSelector.deckSelectionChanged.connect(self.on_cardStackChange)
         self.deckSelector.collectionSelectionChanged.connect(self.on_cardStackChange)
         self.splitter.addWidget(self.deckSelector)

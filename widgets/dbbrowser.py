@@ -22,6 +22,7 @@ class DbBrowser(QtWidgets.QWidget):
         self.setLayout(self.mainLayout)
         # Form on the left for search terms ?
         self.searchForm = SearchForm()
+        self.searchForm.setMaximumWidth(300)
         self.searchForm.find.connect(self.on_searchRequest)
         self.mainLayout.addWidget(self.searchForm)
         # QListWidget on the right for results
