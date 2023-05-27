@@ -26,7 +26,9 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             qt.selectPalette(self.app)
 
         # Set Font
-        self.manaFontId = QtGui.QFontDatabase.addApplicationFont("resources/mana_font/mana.ttf")  # Mana font
+        self.manaFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/mana/mana.ttf")  # Mana font
+        self.ndpmtgFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/NDPMTG.ttf")  # NDPMTG font (halfs)
+        self.keyruneFontId = QtGui.QFontDatabase.addApplicationFont("resources/keyrune/keyrune.ttf")  # Set font
 
         # Load frontend
         self.setupUi()
