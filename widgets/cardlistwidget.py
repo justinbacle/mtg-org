@@ -4,20 +4,21 @@ import connector
 from lib import scryfall, utils
 
 COLUMNS = ["name", "mana_cost", "set", "type_line"]
+USER_COLUMNS = ["qty"] + COLUMNS
 
 
 class CardListWidget(QtWidgets.QTableWidget):
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent=None, columns=COLUMNS) -> None:
         super().__init__(parent)
+        self.columns = columns
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
-        self.setColumnCount(len(COLUMNS))
-        self.setHorizontalHeaderLabels(COLUMNS)
+        self.setColumnCount(len(self.columns))
         self.verticalHeader().setVisible(False)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setHorizontalHeaderLabels(self.columns)
 
     def setCards(self, cardsList: list):
-        # self.clear()
         self.setRowCount(0)
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
@@ -25,7 +26,7 @@ class CardListWidget(QtWidgets.QTableWidget):
             self._addOneLine(card)
 
     def _addOneLine(self, card: dict):
-        for i, tableItem in enumerate(getCardTableItem(card, columns=COLUMNS)):
+        for i, tableItem in enumerate(getCardTableItem(card, columns=self.columns)):
             tableItem.setFlags(tableItem.flags() ^ QtCore.Qt.ItemIsEditable)
             self.setItem(self.rowCount() - 1, i, tableItem)
 
@@ -51,16 +52,21 @@ class CardListWidget(QtWidgets.QTableWidget):
 
 class CardStackListWidget(CardListWidget):
     # similar to the cardListWidget but whith specific data about qties, user comments, etc...
-    def __init__(self, parent=None) -> None:
-        self.cardStack = None
-        super().__init__(parent)
+    def __init__(self, parent=None, columns=USER_COLUMNS) -> None:
+        super().__init__(parent, columns=columns)
+        self.columns = columns
+        self.setAcceptDrops(True)
+        self.setDragEnabled(True)
+        self.setColumnCount(len(self.columns))
+        self.verticalHeader().setVisible(False)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setHorizontalHeaderLabels(self.columns)
 
     def setCardList(self, cardList: connector.Deck | connector.Collection):
+        self.setRowCount(0)
         self.cardStack = []
         for qty, card in cardList:
-            self.cardStack.append(
-                (qty, scryfall.getCardById(card))
-            )
+            self.cardStack.append((qty, scryfall.getCardById(card)))
         self.setCards(self.cardStack)
 
 
