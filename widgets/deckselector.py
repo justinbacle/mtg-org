@@ -3,7 +3,6 @@ from PySide6 import QtWidgets, QtCore
 import connector
 
 
-
 class CardStackSelector(QtWidgets.QWidget):
 
     # Signals

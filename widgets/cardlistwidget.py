@@ -1,20 +1,33 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 
 import connector
-from lib import scryfall
+from lib import scryfall, utils
+
+COLUMNS = ["name", "mana_cost", "set", "type_line"]
 
 
-class CardListWidget(QtWidgets.QListWidget):
+class CardListWidget(QtWidgets.QTableWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
+        self.setColumnCount(len(COLUMNS))
+        self.setHorizontalHeaderLabels(COLUMNS)
+        self.verticalHeader().setVisible(False)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
 
     def setCards(self, cardsList: list):
-        self.clear()
+        # self.clear()
+        self.setRowCount(0)
         for qty, card in cardsList:
-            self.addItem(getCardWidgetListItem(qty, card))
+            self.insertRow(self.rowCount())
+            card.update({"qty": qty})
+            self._addOneLine(card)
+
+    def _addOneLine(self, card: dict):
+        for i, tableItem in enumerate(getCardTableItem(card, columns=COLUMNS)):
+            tableItem.setFlags(tableItem.flags() ^ QtCore.Qt.ItemIsEditable)
+            self.setItem(self.rowCount() - 1, i, tableItem)
 
     def dragEnterEvent(self, event):
         event.accept()
@@ -23,8 +36,10 @@ class CardListWidget(QtWidgets.QListWidget):
         cardId = event.source().currentItem().data(QtCore.Qt.UserRole)["id"]
         self.addCard(scryfall.getCardById(cardId))
 
-    def addCard(self, card: str):
-        self.addItem(getCardWidgetListItem(qty=1, cardData=card))
+    def addCard(self, card: dict):
+        self.insertRow(self.rowCount())
+        card.update({"qty": 1})
+        self._addOneLine(card=card)
         stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
         if stackType == "deck":
             connector.addCardToDeck(stackName, 1, card["id"])
@@ -49,11 +64,12 @@ class CardStackListWidget(CardListWidget):
         self.setCards(self.cardStack)
 
 
-def getCardWidgetListItem(qty: 1, cardData: dict) -> QtWidgets.QListWidgetItem:
+def getCardTableItem(cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
+    dataList = []
     if cardData is not None:
-        item = QtWidgets.QListWidgetItem(cardData["name"])
-        cardData.update({"qty": 1})
-        item.setData(QtCore.Qt.UserRole, cardData)
-    else:
-        item = None
-    return item
+        for column in columns:
+            item = QtWidgets.QTableWidgetItem()
+            item.setData(QtCore.Qt.DisplayRole, utils.getFromDict(cardData, column.split(".")))
+            item.setData(QtCore.Qt.UserRole, cardData)
+            dataList.append(item)
+    return dataList
