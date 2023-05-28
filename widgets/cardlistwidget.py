@@ -3,8 +3,8 @@ from PySide6 import QtWidgets, QtCore, QtGui
 import connector
 from lib import scryfall, utils
 
-COLUMNS = ["name", "mana_cost", "set", "type_line"]
-USER_COLUMNS = ["qty"] + COLUMNS
+COLUMNS = ["name", "mana_cost", "type_line", "sets"]
+USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set"]
 
 
 class CardListWidget(QtWidgets.QTableWidget):
@@ -23,6 +23,9 @@ class CardListWidget(QtWidgets.QTableWidget):
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
+            # handle reprints
+            sets = scryfall.getCardReprints(card["id"])
+            card.update({"sets": sets})
             self._addOneLine(card)
 
     def _addOneLine(self, card: dict):
@@ -55,11 +58,23 @@ class CardListWidget(QtWidgets.QTableWidget):
             for column in columns:
                 item = QtWidgets.QTableWidgetItem()
                 text = utils.getFromDict(cardData, column.split("."))
+                # mana cost handling # TODO handle split/phyrexian mana
                 if column == "mana_cost":
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
                         self.parent().parent().parent().parent().parent().parent().manaFontId
                     )))
                     text = utils.setManaText(str(text))
+                # Set(s) handling
+                if column == "sets" and "sets" in cardData.keys():
+                    item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                        self.parent().parent().parent().parent().parent().parent().keyruneFontId
+                    )))
+                    text = utils.setSetsText(text)
+                if column == "set" and "set" in cardData.keys():
+                    item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                        self.parent().parent().parent().parent().parent().parent().keyruneFontId
+                    )))
+                    text = utils.setSetsText([text])
                 item.setData(QtCore.Qt.DisplayRole, text)
                 item.setData(QtCore.Qt.UserRole, cardData)
                 dataList.append(item)

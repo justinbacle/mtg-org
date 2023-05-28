@@ -31,7 +31,7 @@ class DbBrowser(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.dbResultsList)
 
     def on_searchRequest(self, searchDict: dict):
-        req = scryfall.getCardByName(searchDict["name"])
+        req = scryfall.getCardByName(searchDict)
         cardList = [(1, card) for card in req]
         self.dbResultsList.setCards(cardList)
 
@@ -58,6 +58,9 @@ class SearchForm(QtWidgets.QWidget):
         self.nameField.returnPressed.connect(self.on_searchAction)
         self.mainLayout.addRow("Name", self.nameField)
 
+        self.extrasCB = QtWidgets.QCheckBox("Include Extras")
+        self.mainLayout.addRow("Extras", self.extrasCB)
+
         self.searchButton = QtWidgets.QPushButton("Search")
         self.searchButton.clicked.connect(self.on_searchAction)
         self.mainLayout.addWidget(self.searchButton)
@@ -67,6 +70,7 @@ class SearchForm(QtWidgets.QWidget):
 
     def getSearchData(self):
         searchData = {
-            "name": self.nameField.text()
+            "name": self.nameField.text(),
+            "includeExtras": self.extrasCB.isChecked()
         }
         return searchData

@@ -40,6 +40,7 @@ class CardViewer(QtWidgets.QWidget):
 
         # Card Img
         self.cardImgGraphicsView = QtWidgets.QGraphicsView()
+        self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform)
         self.mainLayout.addWidget(self.cardImgGraphicsView, 2, 0, 1, 2)
 
         # Card Link
@@ -60,8 +61,6 @@ class CardViewer(QtWidgets.QWidget):
         self.cardImgGraphicsView.scene().addPixmap(self.cardImgPixMap)
         bounds = self.cardImgGraphicsView.scene().itemsBoundingRect()
         self.cardImgGraphicsView.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
-        self.cardImgGraphicsView.setRenderHint(QtGui.QPainter.Antialiasing)
-        self.cardImgGraphicsView.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
 
     def setManaFont(self):
         if self.manacostLabel.font().family() != "Mana":
@@ -95,11 +94,11 @@ class CardViewer(QtWidgets.QWidget):
             f"{self.card['set_name']} ({self.card['set'].upper()}) - {scryfall.getSetReleaseYear(self.card['set_id'])}")
 
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
-            imageUri = utils.getFromDict(self.card, ["image_uris", "normal"])
+            imageUri = utils.getFromDict(self.card, ["image_uris", config.IMG_SIZE])
         else:
             # TODO handle two_sided cards -> len(self.card['card_faces']) > 1
             imageUri = utils.getFromDict(
-                self.card, ["card_faces", 0, "image_uris", "normal"])
+                self.card, ["card_faces", 0, "image_uris", config.IMG_SIZE])
 
         if config.IMG_DOWNLOAD_METHOD == "qt":
             url = QtCore.QUrl.fromUserInput(imageUri)

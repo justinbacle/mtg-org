@@ -94,3 +94,9 @@ def saveCard(cardId, cardData) -> None:
     getCacheDB().table(constants.CARDS_TABLE_NAME).insert(
         {"data": cardData, "id": cardId}
     )
+
+
+def updateCard(cardId, updateDict: dict) -> None:
+    cardData = getCard(cardId)["data"]
+    cardData.update(updateDict)
+    getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)

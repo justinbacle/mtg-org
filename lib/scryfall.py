@@ -14,16 +14,45 @@ from card import Card  # noqa E402
 from lib import utils  # noqa E402
 
 
-def getCardByName(name: str):
+SEARCH_DICT_KEYS = [
+    'order',
+    'unique',
+    'dir',
+    'include_variations',
+    'include_extras',
+    'include_multilingual',
+    'page',
+]
+
+
+def getCardByName(searchDict: dict):
     cards = []
+
+    kwargs = {}
+    for k in searchDict.keys():
+        if k in SEARCH_DICT_KEYS:
+            kwargs.update({k: searchDict.pop(k)})
+
     try:
-        scryfallReq = scrython.cards.Search(q=name)
+        scryfallReq = scrython.cards.Search(q=searchDict["name"], *kwargs)
     except ScryfallError as e:
         logging.warning(e)
     else:
         for cardJson in scryfallReq.scryfallJson["data"]:
             cards.append(Card(cardJson))
     return cards
+
+
+def getCardReprints(cardId: str):
+    card = getCardById(cardId)
+    if "sets" not in card.keys():
+        reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
+        sets = [_["set"] for _ in reprintsDict["data"]]
+        sets = list(set(sets))
+        connector.updateCard(cardId, {"sets": sets})
+    else:
+        sets = card["sets"]
+    return sets
 
 
 def getCardById(id: str):
@@ -53,7 +82,7 @@ def getSetSymbol(setId):
 def getSetSvg(setId):
     setIconFilePath = Path(f"resources/icons/sets/{setId}.svg")
     if not (setIconFilePath.is_file() and os.access(setIconFilePath, os.R_OK)):
-        svgData = utils.getSvgData(getSetSymbol(setId))
+        svgData = utils.getUrlData(getSetSymbol(setId))
         f = open(setIconFilePath, 'w')
         f.write(svgData)
         f.close()
