@@ -25,29 +25,35 @@ class CardViewer(QtWidgets.QWidget):
     def setupUi(self):
         self.mainLayout = QtWidgets.QGridLayout(self)
 
+        line = 0
+
         # Card Name + Mana
         self.nameLabel = QtWidgets.QLabel("Name")
-        self.mainLayout.addWidget(self.nameLabel, 0, 0)
+        self.mainLayout.addWidget(self.nameLabel, line, 0)
         self.manacostLabel = QtWidgets.QLabel("{M}{A}{N}{A}{0}")
-        self.mainLayout.addWidget(self.manacostLabel, 0, 1)
+        self.mainLayout.addWidget(self.manacostLabel, (line := line+1) - 1, 1)
 
         # Set icon + Name + Year
         self.setIconSvg = QtSvgWidgets.QSvgWidget()
         self.setIconSvg.setMaximumHeight(36)
-        self.mainLayout.addWidget(self.setIconSvg, 1, 0)
-        self.setNameLabel = QtWidgets.QLabel("Set Name")
-        self.mainLayout.addWidget(self.setNameLabel, 1, 1)
+        self.mainLayout.addWidget(self.setIconSvg, line, 0)
+        self.setSelect = QtWidgets.QComboBox()
+        self.mainLayout.addWidget(self.setSelect, (line := line+1) - 1, 1)
 
         # Card Img
         self.cardImgGraphicsView = QtWidgets.QGraphicsView()
         self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform)
-        self.mainLayout.addWidget(self.cardImgGraphicsView, 2, 0, 1, 2)
+        self.mainLayout.addWidget(self.cardImgGraphicsView, (line := line+1) - 1, 0, 1, 2)
 
         # Card Link
         self.scryfallUriLabel = QtWidgets.QLabel("uri")
         self.scryfallUriLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
         self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
-        self.mainLayout.addWidget(self.scryfallUriLabel, 3, 0)
+        self.mainLayout.addWidget(self.scryfallUriLabel, line, 0)
+
+        # Card price
+        self.avgPriceLabel = QtWidgets.QLabel("price")
+        self.mainLayout.addWidget(self.avgPriceLabel, (line := line+1) - 1, 1)
 
     def on_scryfallLinkClicked(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.card['related_uris']['gatherer']))
@@ -90,8 +96,25 @@ class CardViewer(QtWidgets.QWidget):
         setIconSvgData = self.colorSetIcon(setIconSvgData, self.card["rarity"])
         self.setIconSvg.load(QtCore.QByteArray(setIconSvgData))
         self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
-        self.setNameLabel.setText(
-            f"{self.card['set_name']} ({self.card['set'].upper()}) - {scryfall.getSetReleaseYear(self.card['set_id'])}")
+
+        try:
+            self.setSelect.currentIndexChanged.disconnect()
+        except RuntimeError:
+            ...
+        self.setSelect.clear()
+
+        # reprints handling
+        if "sets" not in self.card.keys():
+            self.card.update({"sets": scryfall.getCardReprints(self.card["id"])})
+        for set in self.card["sets"]:
+            setName = scryfall.getSetDataByCode(set, 'name')
+            setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(set, 'id'))
+            setText = f"{setName} ({set.upper()}) - {setYear}"
+            self.setSelect.addItem(setText, set)
+            if self.card["set"] == set:
+                selectedText = setText
+        self.setSelect.setCurrentText(selectedText)
+        self.setSelect.currentIndexChanged.connect(self.on_setChange)
 
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
             imageUri = utils.getFromDict(self.card, ["image_uris", config.IMG_SIZE])
@@ -115,7 +138,17 @@ class CardViewer(QtWidgets.QWidget):
             self.scryfallUriLabel.setText(f"<a href={self.card['related_uris']['gatherer']}>Gatherer Link</a>")
         except KeyError:
             self.scryfallUriLabel.setText(f"<a href={self.card['scryfall_uri']}>Scryfall Link</a>")
+        self.scryfallUriLabel.linkActivated.disconnect(self.on_scryfallLinkClicked)
         self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
+
+        # price
+        self.avgPriceLabel.setText(
+            str(utils.getFromDict(self.card, ["prices", constants.CURRENCY[0]])) + " " + constants.CURRENCY[1]
+        )
+
+    def on_setChange(self):
+        selectedSet = self.setSelect.itemData(self.setSelect.currentIndex())
+        self.display(scryfall.getCardReprintId(self.card["id"], selectedSet))
 
 
 class ImageDownloader(QtCore.QObject):

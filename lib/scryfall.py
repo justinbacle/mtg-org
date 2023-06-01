@@ -55,6 +55,13 @@ def getCardReprints(cardId: str):
     return sets
 
 
+def getCardReprintId(cardId: str, set: str):
+    card = getCardById(cardId)
+    reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
+    ids = [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
+    return ids[0]
+
+
 def getCardById(id: str):
     card = connector.getCard(id)
     if card is None:
@@ -73,6 +80,15 @@ def getSetData(setId, dataKey):
         return possibleSets[0][dataKey]
     else:
         raise IndexError("Set ID could not be found")
+
+
+def getSetDataByCode(setCode, dataKey):
+    allSets = getSets()
+    possibleSets = [_ for _ in allSets if _["code"] == setCode]
+    if len(possibleSets) == 1:
+        return possibleSets[0][dataKey]
+    else:
+        raise IndexError("Set code could not be found")
 
 
 def getSetSymbol(setId):

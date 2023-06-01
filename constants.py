@@ -23,3 +23,5 @@ RARITIES = {
         "color": "#F40"
     }
 }
+
+CURRENCY = ["eur", "€"]
