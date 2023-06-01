@@ -40,18 +40,6 @@ class CardListWidget(QtWidgets.QTableWidget):
         cardId = event.source().currentItem().data(QtCore.Qt.UserRole)["id"]
         self.addCard(scryfall.getCardById(cardId))
 
-    def addCard(self, card: dict):
-        self.insertRow(self.rowCount())
-        card.update({"qty": 1})
-        self._addOneLine(card=card)
-        stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
-        if stackType == "deck":
-            connector.addCardToDeck(stackName, 1, card["id"])
-        elif stackType == "collection":
-            connector.addCardToCollection(stackName, 1, card["id"])
-        else:
-            ...
-
     def getCardTableItem(self, cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
         dataList = []
         if cardData is not None:
@@ -99,3 +87,42 @@ class CardStackListWidget(CardListWidget):
         for qty, card in cardList:
             self.cardStack.append((qty, scryfall.getCardById(card)))
         self.setCards(self.cardStack)
+
+    def addCard(self, card: dict):
+        self.insertRow(self.rowCount())
+        card.update({"qty": 1})
+        self._addOneLine(card=card)
+        stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
+        if stackType == "deck":
+            connector.addCardToDeck(stackName, 1, card["id"])
+        elif stackType == "collection":
+            connector.addCardToCollection(stackName, 1, card["id"])
+        else:
+            ...
+
+    def removeOne(self):
+        print("-")
+        # TODO + handle qty == 0
+        ...
+
+    def addOne(self):
+        selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)
+        stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
+        if stackType == "deck":
+            connector.changeCardDeckQty(stackName, selectedCard["qty"] + 1, selectedCard["id"])
+            deck = connector.getDeck(stackName)
+            self.setCardList(deck["cardList"])
+        elif stackType == "collection":
+            connector.changeCardCollectionQty(stackName, selectedCard["qty"] + 1, selectedCard["id"])
+            collection = connector.getCollection(stackName)
+            self.setCardList(collection["cardList"])
+        else:
+            ...
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.key() == QtCore.Qt.Key_Minus:
+            self.removeOne()
+        elif event.key() == QtCore.Qt.Key_Plus:
+            self.addOne()
+        else:
+            return super().keyPressEvent(event)

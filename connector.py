@@ -58,9 +58,27 @@ def getCollection(collectionName) -> Deck:
 def addCardToDeck(deckName, qty, cardId):
     deck = getDeck(deckName)
     cardList = deck["cardList"]
-    deck.update(
-        {"cardList": cardList + [(qty, cardId)]}
-    )
+
+    # If card not in deck
+    if len([_[0] for _ in cardList if _[1] == cardId]) == 0:
+        deck.update(
+            {"cardList": cardList + [(qty, cardId)]}
+        )
+        getDB().table(constants.DECKS_TABLE_NAME).update(
+            deck, Query().name == deckName
+        )
+    else:
+        previousQty = [_[0] for _ in cardList if _[1] == cardId][0]
+        changeCardDeckQty(deckName, previousQty + 1, cardId)
+
+
+def changeCardDeckQty(deckName, qty, cardId):
+    deck = getDeck(deckName)
+    cardList = deck["cardList"]
+    for card in cardList:
+        if card[0] == cardId:
+            card[1] = qty
+    deck["cardList"] = cardList
     getDB().table(constants.DECKS_TABLE_NAME).update(
         deck, Query().name == deckName
     )
@@ -69,9 +87,26 @@ def addCardToDeck(deckName, qty, cardId):
 def addCardToCollection(collectionName, qty, cardId):
     collection = getCollection(collectionName)
     cardList = collection["cardList"]
-    collection.update(
-        {"cardList": cardList + [(qty, cardId)]}
-    )
+    # If card not in collection
+    if len([_[0] for _ in cardList if _[1] == cardId]) == 0:
+        collection.update(
+            {"cardList": cardList + [(qty, cardId)]}
+        )
+        getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
+            collection, Query().name == collectionName
+        )
+    else:
+        previousQty = [_[0] for _ in cardList if _[1] == cardId][0]
+        changeCardCollectionQty(collectionName, previousQty + 1, cardId)
+
+
+def changeCardCollectionQty(collectionName, qty, cardId):
+    collection = getCollection(collectionName)
+    cardList = collection["cardList"]
+    for card in cardList:
+        if card[1] == cardId:
+            card[0] = qty
+    collection["cardList"] = cardList
     getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
         collection, Query().name == collectionName
     )
