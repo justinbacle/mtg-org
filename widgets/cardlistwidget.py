@@ -109,6 +109,7 @@ class CardStackListWidget(CardListWidget):
         selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)
         stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
         if stackType == "deck":
+            # FIXME not working for deck?
             connector.changeCardDeckQty(stackName, selectedCard["qty"] + 1, selectedCard["id"])
             deck = connector.getDeck(stackName)
             self.setCardList(deck["cardList"])
