@@ -27,6 +27,10 @@ class CardViewer(QtWidgets.QWidget):
 
         line = 0
 
+        self.addToCurrentPB = QtWidgets.QPushButton("Add to current >>")
+        self.addToCurrentPB.clicked.connect(self.on_add)
+        self.mainLayout.addWidget(self.addToCurrentPB, (line := line+1) - 1, 1)
+
         # Card Name + Mana
         self.nameLabel = QtWidgets.QLabel("Name")
         self.mainLayout.addWidget(self.nameLabel, line, 0)
@@ -54,6 +58,9 @@ class CardViewer(QtWidgets.QWidget):
         # Card price
         self.avgPriceLabel = QtWidgets.QLabel("price")
         self.mainLayout.addWidget(self.avgPriceLabel, (line := line+1) - 1, 1)
+
+    def on_add(self):
+        self.parent().parent().parent().decklist.cardsList.addCard(self.card)
 
     def on_scryfallLinkClicked(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.card['related_uris']['gatherer']))
