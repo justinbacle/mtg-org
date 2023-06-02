@@ -45,7 +45,7 @@ class CardListWidget(QtWidgets.QTableWidget):
             for column in columns:
                 item = QtWidgets.QTableWidgetItem()
                 if column == "name" and "printed_name" in cardData.keys():
-                    text = utils.getFromDict(cardData, column.split("printed_name"))
+                    text = utils.getFromDict(cardData, ["printed_name"])
                 else:
                     text = utils.getFromDict(cardData, column.split("."))
                 # mana cost handling # TODO handle split/phyrexian mana

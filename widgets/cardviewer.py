@@ -48,6 +48,7 @@ class CardViewer(QtWidgets.QWidget):
         self.cardImgGraphicsView = qt.ResizingGraphicsView()
         self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform)
         self.mainLayout.addWidget(self.cardImgGraphicsView, (line := line+1) - 1, 0, 1, 2)
+        # TODO add button or shortcut to reload/redownload card
 
         # Card Link
         self.scryfallUriLabel = QtWidgets.QLabel("uri")
