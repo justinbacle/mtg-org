@@ -7,6 +7,8 @@ sys.path.append(os.getcwd())  # FIXME Remove
 from lib import scryfall  # noqa E402
 from widgets.cardlistwidget import CardListWidget  # noqa E402
 
+import constants  # noqa E402
+
 
 class DbBrowser(QtWidgets.QWidget):
     cardSelected: QtCore.Signal = QtCore.Signal(str)
@@ -31,7 +33,7 @@ class DbBrowser(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.dbResultsList)
 
     def on_searchRequest(self, searchDict: dict):
-        req = scryfall.getCardByName(searchDict)
+        req = scryfall.searchCards(searchDict)
         cardList = [(1, card) for card in req]
         self.dbResultsList.setCards(cardList)
 
@@ -58,6 +60,12 @@ class SearchForm(QtWidgets.QWidget):
         self.nameField.returnPressed.connect(self.on_searchAction)
         self.mainLayout.addRow("Name", self.nameField)
 
+        self.langCB = QtWidgets.QComboBox()
+        for lang in constants.LANG:
+            self.langCB.addItem(lang)
+        self.langCB.setCurrentText("en")
+        self.mainLayout.addRow("Lang", self.langCB)
+
         self.extrasCB = QtWidgets.QCheckBox("Include Extras")
         self.mainLayout.addRow("Extras", self.extrasCB)
 
@@ -71,6 +79,7 @@ class SearchForm(QtWidgets.QWidget):
     def getSearchData(self):
         searchData = {
             "name": self.nameField.text(),
-            "includeExtras": self.extrasCB.isChecked()
+            "include_extras": self.extrasCB.isChecked(),
+            "lang": self.langCB.currentText()
         }
         return searchData

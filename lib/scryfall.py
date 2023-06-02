@@ -25,16 +25,19 @@ SEARCH_DICT_KEYS = [
 ]
 
 
-def getCardByName(searchDict: dict):
+def searchCards(searchDict: dict):
     cards = []
 
     kwargs = {}
-    for k in searchDict.keys():
+    q = ""
+    for k, v in searchDict.items():
         if k in SEARCH_DICT_KEYS:
-            kwargs.update({k: searchDict.pop(k)})
+            kwargs.update({k: v})
+        else:
+            q += k + ":" + v + " "
 
     try:
-        scryfallReq = scrython.cards.Search(q=searchDict["name"], *kwargs)
+        scryfallReq = scrython.cards.Search(q=q, **kwargs)
     except ScryfallError as e:
         logging.warning(e)
     else:

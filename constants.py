@@ -25,3 +25,5 @@ RARITIES = {
 }
 
 CURRENCY = ["eur", "€"]
+
+LANG = ["en", "fr"]

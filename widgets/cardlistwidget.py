@@ -23,7 +23,6 @@ class CardListWidget(QtWidgets.QTableWidget):
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
-            # handle reprints
             sets = scryfall.getCardReprints(card["id"])
             card.update({"sets": sets})
             self._addOneLine(card)
@@ -45,7 +44,10 @@ class CardListWidget(QtWidgets.QTableWidget):
         if cardData is not None:
             for column in columns:
                 item = QtWidgets.QTableWidgetItem()
-                text = utils.getFromDict(cardData, column.split("."))
+                if column == "name" and "printed_name" in cardData.keys():
+                    text = utils.getFromDict(cardData, column.split("printed_name"))
+                else:
+                    text = utils.getFromDict(cardData, column.split("."))
                 # mana cost handling # TODO handle split/phyrexian mana
                 if column == "mana_cost":
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(

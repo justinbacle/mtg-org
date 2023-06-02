@@ -99,7 +99,11 @@ class CardViewer(QtWidgets.QWidget):
 
     def display(self, cardId: str):
         self.card = scryfall.getCardById(cardId)
-        self.nameLabel.setText(self.card["name"])
+        if "printed_name" in self.card.keys():
+            self.nameLabel.setText(self.card["printed_name"])
+        else:
+            self.nameLabel.setText(self.card["name"])
+
         self.manacostLabel.setText(utils.setManaText(utils.getFromDict(self.card, ["mana_cost"], "")))
         self.setManaFont()
 
