@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 from PySide6 import QtWidgets, QtCore, QtGui
 import qt_material
@@ -10,17 +11,24 @@ from widgets.cardslist import CardsList
 
 import connector
 
-from lib import qt
+from lib import qt, utils
 import config
 
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
-    if config.THEME == "material":
-        qt_material.apply_stylesheet(app, theme='dark_teal.xml', extra={'density_scale': '-1'})
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        if config.THEME == "material":
+            qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '-1'})
+
+        self.app.setWindowIcon(QtGui.QIcon(Path("resources/icons/mirari.png").as_posix()))
+        self.setWindowTitle("MTGorg")
+        if utils.isWin():
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u'mtgorg.mainwindow')
 
         if config.THEME == "fusion":
             qt.selectPalette(self.app)

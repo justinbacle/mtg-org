@@ -4,7 +4,29 @@ import operator
 from dotmap import DotMap
 import re
 import json
+import platform
 import html
+
+
+def isWin() -> bool:
+    if platform.system() == 'Windows':
+        return True
+    else:
+        return False
+
+
+def isLinux() -> bool:
+    if platform.system() == 'Linux':
+        return True
+    else:
+        return False
+
+
+def isMac() -> bool:
+    if platform.system() == 'Darwin':
+        return True
+    else:
+        return False
 
 
 def getUrlData(url):
