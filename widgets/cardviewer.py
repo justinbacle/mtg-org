@@ -45,7 +45,7 @@ class CardViewer(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.setSelect, (line := line+1) - 1, 1)
 
         # Card Img
-        self.cardImgGraphicsView = QtWidgets.QGraphicsView()
+        self.cardImgGraphicsView = qt.ResizingGraphicsView()
         self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform)
         self.mainLayout.addWidget(self.cardImgGraphicsView, (line := line+1) - 1, 0, 1, 2)
 
@@ -65,7 +65,11 @@ class CardViewer(QtWidgets.QWidget):
     def on_scryfallLinkClicked(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.card['related_uris']['gatherer']))
 
-    def displayPixmapCard(self, image):
+    def displayPixmapCard(self, image, cardId: str = None):
+        # Save
+        if not isCardImageCached(cardId):
+            saveCardImg(image, cardId)
+        # display
         self.cardImgPixMap = QtGui.QPixmap.fromImage(image)
         if self.cardImgGraphicsView.scene() is None:
             self.cardImgGraphicsView.setScene(QtWidgets.QGraphicsScene())
@@ -130,15 +134,18 @@ class CardViewer(QtWidgets.QWidget):
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", 0, "image_uris", config.IMG_SIZE])
 
-        if config.IMG_DOWNLOAD_METHOD == "qt":
+        # TODO handle image resize when ui resize
+        if isCardImageCached(cardId) or config.IMG_DOWNLOAD_METHOD == "direct":
+            cardImgPath = Path("resources/images/cards/") / cardId
+            image = QtGui.QImage()
+            image.load(cardImgPath.as_posix())
+            self.displayPixmapCard(image, cardId)
+        elif config.IMG_DOWNLOAD_METHOD == "qt":
+            if self.cardImgGraphicsView.scene() is not None:
+                if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
+                    self.cardImgGraphicsView.scene().clear()
             url = QtCore.QUrl.fromUserInput(imageUri)
-            # TODO handle cache of images ?
-            # TODO handle image resize when ui resize
-            self.imgDownloader.start_download(url)
-        elif config.IMG_DOWNLOAD_METHOD == "direct":
-            # TODO Thread that ?
-            image = QtGui.QImage(getCardImageFromUrl(imageUri, cardId))
-            self.displayPixmapCard(image)
+            self.imgDownloader.start_download(url, cardId)
 
         # scrifall uri
         try:
@@ -159,14 +166,15 @@ class CardViewer(QtWidgets.QWidget):
 
 
 class ImageDownloader(QtCore.QObject):
-    finished = QtCore.Signal(QtGui.QImage)
+    finished = QtCore.Signal(QtGui.QImage, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.manager = QtNetwork.QNetworkAccessManager()
         self.manager.finished.connect(self.handle_finished)
 
-    def start_download(self, url):
+    def start_download(self, url, cardId):
+        self.cardId = cardId
         self.manager.get(QtNetwork.QNetworkRequest(url))
 
     def handle_finished(self, reply):
@@ -175,7 +183,12 @@ class ImageDownloader(QtCore.QObject):
             return
         image = QtGui.QImage()
         image.loadFromData(reply.readAll())
-        self.finished.emit(image)
+        self.finished.emit(image, self.cardId)
+
+
+def isCardImageCached(cardId) -> bool:
+    cardImgPath = Path("resources/images/cards/") / cardId
+    return cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)
 
 
 def getCardImageFromUrl(url, cardId) -> str:
@@ -183,3 +196,9 @@ def getCardImageFromUrl(url, cardId) -> str:
     if not (cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)):
         urllib.request.urlretrieve(url, cardImgPath)
     return cardImgPath
+
+
+def saveCardImg(image: QtGui.QImage, cardId: str):
+    path = Path("resources/images/cards/") / cardId
+    writer = QtGui.QImageWriter(path.as_posix(), format=QtCore.QByteArray("jpg"))
+    writer.write(image)

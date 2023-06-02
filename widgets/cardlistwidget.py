@@ -101,15 +101,38 @@ class CardStackListWidget(CardListWidget):
             ...
 
     def removeOne(self):
-        print("-")
-        # TODO + handle qty == 0
-        ...
+        selectedLine = self.selectedIndexes()[0]
+        selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)
+        stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
+        if selectedCard["qty"] > 1:
+            if stackType == "deck":
+                connector.changeCardDeckQty(stackName, selectedCard["qty"] - 1, selectedCard["id"])
+                deck = connector.getDeck(stackName)
+                self.setCardList(deck["cardList"])
+            elif stackType == "collection":
+                connector.changeCardCollectionQty(stackName, selectedCard["qty"] - 1, selectedCard["id"])
+                collection = connector.getCollection(stackName)
+                self.setCardList(collection["cardList"])
+            else:
+                ...
+            self.setCurrentCell(selectedLine.row(), selectedLine.column())
+        else:
+            if stackType == "deck":
+                connector.removeCardFromDeck(stackName, selectedCard["id"])
+                deck = connector.getDeck(stackName)
+                self.setCardList(deck["cardList"])
+            elif stackType == "collection":
+                connector.removeCardFromCollection(stackName, selectedCard["id"])
+                collection = connector.getCollection(stackName)
+                self.setCardList(collection["cardList"])
+            else:
+                ...
 
     def addOne(self):
+        selectedLine = self.selectedIndexes()[0]
         selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)
         stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
         if stackType == "deck":
-            # FIXME not working for deck?
             connector.changeCardDeckQty(stackName, selectedCard["qty"] + 1, selectedCard["id"])
             deck = connector.getDeck(stackName)
             self.setCardList(deck["cardList"])
@@ -119,6 +142,7 @@ class CardStackListWidget(CardListWidget):
             self.setCardList(collection["cardList"])
         else:
             ...
+        self.setCurrentCell(selectedLine.row(), selectedLine.column())
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == QtCore.Qt.Key_Minus:

@@ -64,3 +64,14 @@ def fileData(path: str | Path) -> str:
     else:
         logging.error(stream.errorString())
     return js
+
+
+class ResizingGraphicsView(QtWidgets.QGraphicsView):
+    def __init__(self, parent: QtWidgets.QWidget = None):
+        super().__init__(parent)
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        if self.scene() is not None:
+            bounds = self.scene().itemsBoundingRect()
+            self.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
+        return super().resizeEvent(event)

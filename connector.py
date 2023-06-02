@@ -76,9 +76,18 @@ def changeCardDeckQty(deckName, qty, cardId):
     deck = getDeck(deckName)
     cardList = deck["cardList"]
     for card in cardList:
-        if card[0] == cardId:
-            card[1] = qty
+        if card[1] == cardId:
+            card[0] = qty
     deck["cardList"] = cardList
+    getDB().table(constants.DECKS_TABLE_NAME).update(
+        deck, Query().name == deckName
+    )
+
+
+def removeCardFromDeck(deckName, cardId):
+    deck = getDeck(deckName)
+    cardList = deck["cardList"]
+    deck["cardList"] = [_ for _ in cardList if _[1] != cardId]
     getDB().table(constants.DECKS_TABLE_NAME).update(
         deck, Query().name == deckName
     )
@@ -108,6 +117,15 @@ def changeCardCollectionQty(collectionName, qty, cardId):
             card[0] = qty
     collection["cardList"] = cardList
     getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
+        collection, Query().name == collectionName
+    )
+
+
+def removeCardFromCollection(collectionName, cardId):
+    collection = getCollection(collectionName)
+    cardList = collection["cardList"]
+    collection["cardList"] = [_ for _ in cardList if _[1] != cardId]
+    getDB().table(constants.DECKS_TABLE_NAME).update(
         collection, Query().name == collectionName
     )
 

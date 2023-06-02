@@ -271,7 +271,7 @@ KEYRUNE_SYMBOLS = {
     "hou": "&#xe924;",
     "ice": "&#xe619;",
     "ice2": "&#xe925;",
-    "iko":"&ampe962;",
+    "iko": "&#xe962;",
     "ima": "&#xe935;",
     "inv": "&#xe628;",
     "isd": "&#xe64a;",
@@ -355,8 +355,8 @@ KEYRUNE_SYMBOLS = {
     "rav": "&#xe637;",
     "rix": "&#xe92f;",
     "xren": "&#xe917;",
-    "xrin":"&ampe918;",
-    "rna":"&ampe959;",
+    "xrin": "&#xe918;",
+    "rna": "&#xe959;",
     "roe": "&#xe646;",
     "rtr": "&#xe64d;",
     "s00": "&#xe668;",
@@ -421,7 +421,7 @@ KEYRUNE_SYMBOLS = {
     "xln": "&#xe92e;",
     "y22": "&#xe989;",
     "ydmu": "&#xe9a7;",
-    "zen":"&ampe644;",
+    "zen": "&#xe644;",
     "znc": "&#xe967;",
     "znr": "&#xe963;"
 }
