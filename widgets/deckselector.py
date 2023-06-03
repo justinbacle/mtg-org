@@ -30,6 +30,19 @@ class CardStackSelector(QtWidgets.QWidget):
         self.collectionsWidgetLayout.addWidget(self.collectionsLabel)
         self.collectionsListWidget = QtWidgets.QListWidget()
         self.collectionsWidgetLayout.addWidget(self.collectionsListWidget)
+
+        self.collectionEditionLayout = QtWidgets.QHBoxLayout()
+        self.collectionsWidgetLayout.addLayout(self.collectionEditionLayout)
+        self.addCollectionPB = QtWidgets.QPushButton("+")
+        self.addCollectionPB.clicked.connect(self.on_addColl)
+        self.collectionEditionLayout.addWidget(self.addCollectionPB)
+        self.removeCollectionPB = QtWidgets.QPushButton("-")
+        self.removeCollectionPB.clicked.connect(self.on_removeColl)
+        self.collectionEditionLayout.addWidget(self.removeCollectionPB)
+        self.editCollectionPB = QtWidgets.QPushButton("...")
+        self.editCollectionPB.clicked.connect(self.on_editColl)
+        self.collectionEditionLayout.addWidget(self.editCollectionPB)
+
         self.splitter.addWidget(self.collectionsWidget)
 
         # Decks
@@ -40,6 +53,58 @@ class CardStackSelector(QtWidgets.QWidget):
         self.decksListWidget = QtWidgets.QListWidget()
         self.decksWidgetLayout.addWidget(self.decksListWidget)
         self.splitter.addWidget(self.decksWidget)
+
+        self.deckEditionLayout = QtWidgets.QHBoxLayout()
+        self.decksWidgetLayout.addLayout(self.deckEditionLayout)
+        self.addDeckPB = QtWidgets.QPushButton("+")
+        self.addDeckPB.clicked.connect(self.on_addDeck)
+        self.deckEditionLayout.addWidget(self.addDeckPB)
+        self.removeDeckPB = QtWidgets.QPushButton("-")
+        self.removeDeckPB.clicked.connect(self.on_removeDeck)
+        self.deckEditionLayout.addWidget(self.removeDeckPB)
+        self.editDeckPB = QtWidgets.QPushButton("...")
+        self.editDeckPB.clicked.connect(self.on_editDeck)
+        self.deckEditionLayout.addWidget(self.editDeckPB)
+
+    def on_addColl(self):
+        collName, ok = QtWidgets.QInputDialog.getText(
+            self, "QInputDialog.getText()",
+            "New collection name:", QtWidgets.QLineEdit.Normal,
+        )
+        if ok and collName:
+            connector.createCollection(collName)
+            self.initData()
+
+    def on_removeColl(self):
+        button = QtWidgets.QMessageBox.question(
+            self, "Confirm deletion ?", "This will permanently delete the collection and its contents, continue ?")
+        if button == QtWidgets.QMessageBox.Yes:
+            connector.removeCollection(self.getSelected()[1])
+            self.initData()
+
+    def on_editColl(self):
+        # TODO
+        ...
+
+    def on_addDeck(self):
+        deckName, ok = QtWidgets.QInputDialog.getText(
+            self, "QInputDialog.getText()",
+            "New deck name:", QtWidgets.QLineEdit.Normal,
+        )
+        if ok and deckName:
+            connector.createDeck(deckName)
+            self.initData()
+
+    def on_removeDeck(self):
+        button = QtWidgets.QMessageBox.question(
+            self, "Confirm deletion ?", "This will permanently delete the deck and its contents, continue ?")
+        if button == QtWidgets.QMessageBox.Yes:
+            connector.removeDeck(self.getSelected()[1])
+            self.initData()
+
+    def on_editDeck(self):
+        # TODO
+        ...
 
     def getSelected(self):
         if len(self.decksListWidget.selectedItems()) == 1:
@@ -74,14 +139,14 @@ class CardStackSelector(QtWidgets.QWidget):
     def initData(self):
         # Collections
         collectionsList = connector.getCollectionsList()
-
+        self.collectionsListWidget.clear()
         for collection in collectionsList:
             # TODO add more data ?
             self.collectionsListWidget.addItem(collectionItem(collection["name"]))
 
         # Decks
         decksList = connector.getDecksList()
-
+        self.decksListWidget.clear()
         for deck in decksList:
             self.decksListWidget.addItem(collectionItem(deck["name"]))
 

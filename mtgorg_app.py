@@ -88,7 +88,10 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.cardViewer.display(cardId)
 
     def on_cardStackChange(self, cardStack: connector.Deck | connector.Collection):
-        self.decklist.cardsList.setCardList(cardStack["cardList"])
+        if cardStack is not None:
+            self.decklist.cardsList.setCardList(cardStack["cardList"])
+        else:
+            self.decklist.cardsList.clear()
 
 
 if __name__ == '__main__':

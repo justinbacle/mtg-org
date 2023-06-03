@@ -13,6 +13,7 @@ class CardListWidget(QtWidgets.QTableWidget):
         self.columns = columns
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
+        self.setSortingEnabled(True)
         self.setColumnCount(len(self.columns))
         self.verticalHeader().setVisible(False)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
@@ -36,8 +37,9 @@ class CardListWidget(QtWidgets.QTableWidget):
         event.accept()
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
-        cardId = event.source().currentItem().data(QtCore.Qt.UserRole)["id"]
-        self.addCard(scryfall.getCardById(cardId))
+        if event.source() != self:
+            cardId = event.source().currentItem().data(QtCore.Qt.UserRole)["id"]
+            self.addCard(scryfall.getCardById(cardId))
 
     def getCardTableItem(self, cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
         dataList = []

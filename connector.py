@@ -33,6 +33,44 @@ def getCacheDB(location: Path = constants.DEFAULT_CACHE_DB_LOCATION) -> TinyDB:
         return TinyDB(location.as_posix())
 
 
+def createCollection(collName):
+    if getCollection(collName) is None:
+        getDB().table(constants.COLLECTIONS_TABLE_NAME).insert(
+            {
+                "name": collName,
+                "cardList": []
+            }
+        )
+    else:
+        logging.error(f"Collection with {collName=} already exists")
+
+
+def removeCollection(collName):
+    if getCollection(collName) is not None:
+        getDB().table(constants.COLLECTIONS_TABLE_NAME).remove(
+            Query().name == collName
+        )
+
+
+def createDeck(deckName):
+    if getDeck(deckName) is None:
+        getDB().table(constants.DECKS_TABLE_NAME).insert(
+            {
+                "name": deckName,
+                "cardList": []
+            }
+        )
+    else:
+        logging.error(f"Deck with {deckName=} already exists")
+
+
+def removeDeck(deckName):
+    if getDeck(deckName) is not None:
+        getDB().table(constants.DECKS_TABLE_NAME).remove(
+            Query().name == deckName
+        )
+
+
 def getDecksList() -> list:
     decks = getDB().table(constants.DECKS_TABLE_NAME).all()
     return decks
@@ -53,6 +91,8 @@ def getCollection(collectionName) -> Deck:
     collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).search(Query().name == collectionName)
     if len(collections) == 1:
         return collections[0]
+    else:
+        return None
 
 
 def addCardToDeck(deckName, qty, cardId):
