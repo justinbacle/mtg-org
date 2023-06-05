@@ -192,6 +192,8 @@ class ImageDownloader(QtCore.QObject):
 
 
 def isCardImageCached(cardId) -> bool:
+    if not os.path.exists(Path("resources/images/cards/").as_posix()):
+        raise FileNotFoundError
     cardImgPath = Path("resources/images/cards/") / cardId
     return cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)
 
