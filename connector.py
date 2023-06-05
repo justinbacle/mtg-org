@@ -52,6 +52,14 @@ def removeCollection(collName):
         )
 
 
+def renameCollection(previousCollName, newCollName):
+    coll = getCollection(previousCollName)
+    coll["name"] = newCollName
+    getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
+        coll, Query().name == previousCollName
+    )
+
+
 def createDeck(deckName):
     if getDeck(deckName) is None:
         getDB().table(constants.DECKS_TABLE_NAME).insert(
@@ -69,6 +77,14 @@ def removeDeck(deckName):
         getDB().table(constants.DECKS_TABLE_NAME).remove(
             Query().name == deckName
         )
+
+
+def renameDeck(previousDeckName, newDeckName):
+    deck = getDeck(previousDeckName)
+    deck["name"] = newDeckName
+    getDB().table(constants.DECKS_TABLE_NAME).update(
+        deck, Query().name == previousDeckName
+    )
 
 
 def getDecksList() -> list:

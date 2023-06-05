@@ -66,9 +66,19 @@ class CardStackSelector(QtWidgets.QWidget):
         self.editDeckPB.clicked.connect(self.on_editDeck)
         self.deckEditionLayout.addWidget(self.editDeckPB)
 
+        # Import/Export
+        self.deckImportExportLayout = QtWidgets.QHBoxLayout()
+        self.importPB = QtWidgets.QPushButton("Import...")
+        self.importPB.clicked.connect(self.on_importPBclicked)
+        self.deckImportExportLayout.addWidget(self.importPB)
+        self.exportPB = QtWidgets.QPushButton("Export...")
+        self.exportPB.clicked.connect(self.on_exportPBclicked)
+        self.deckImportExportLayout.addWidget(self.exportPB)
+        self.decksWidgetLayout.addLayout(self.deckImportExportLayout)
+
     def on_addColl(self):
         collName, ok = QtWidgets.QInputDialog.getText(
-            self, "QInputDialog.getText()",
+            self, "New collection",
             "New collection name:", QtWidgets.QLineEdit.Normal,
         )
         if ok and collName:
@@ -83,7 +93,18 @@ class CardStackSelector(QtWidgets.QWidget):
             self.initData()
 
     def on_editColl(self):
-        # TODO
+        newCollName, ok = QtWidgets.QInputDialog.getText(
+            self, "Rename collection",
+            "Rename collection to...:", QtWidgets.QLineEdit.Normal,
+        )
+        if ok and newCollName:
+            connector.renameCollection(previousCollName=self.getSelected()[1], newCollName=newCollName)
+            self.initData()
+
+    def on_importPBclicked(self):
+        ...
+
+    def on_exportPBclicked(self):
         ...
 
     def on_addDeck(self):
@@ -103,8 +124,13 @@ class CardStackSelector(QtWidgets.QWidget):
             self.initData()
 
     def on_editDeck(self):
-        # TODO
-        ...
+        newDeckName, ok = QtWidgets.QInputDialog.getText(
+            self, "Rename deck",
+            "Rename deck to...:", QtWidgets.QLineEdit.Normal,
+        )
+        if ok and newDeckName:
+            connector.renameDeck(previousDeckName=self.getSelected()[1], newDeckName=newDeckName)
+            self.initData()
 
     def getSelected(self):
         if len(self.decksListWidget.selectedItems()) == 1:
