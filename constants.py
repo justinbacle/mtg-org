@@ -30,3 +30,8 @@ CURRENCY = [
 ]
 
 LANG = ["en", "fr"]
+
+IMPORT_FORMATS = [
+    "MTGO",
+    "MTG Arena"
+]

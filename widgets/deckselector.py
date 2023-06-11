@@ -2,6 +2,12 @@ from PySide6 import QtWidgets, QtCore
 
 import connector
 
+import sys
+import os
+sys.path.append(os.getcwd())  # FIXME Remove
+
+from lib import importexport  # noqa E402
+
 
 class CardStackSelector(QtWidgets.QWidget):
 
@@ -102,7 +108,8 @@ class CardStackSelector(QtWidgets.QWidget):
             self.initData()
 
     def on_importPBclicked(self):
-        ...
+        importDialog = importexport.importDialog()
+        importDialog.exec()
 
     def on_exportPBclicked(self):
         ...
