@@ -1,4 +1,6 @@
+import os
 import sys
+import logging
 from pathlib import Path
 
 from PySide6 import QtWidgets, QtCore, QtGui
@@ -29,6 +31,15 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         if utils.isWin():
             import ctypes
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u'mtgorg.mainwindow')
+        elif utils.isLinux():
+            # TODO
+            ...
+        elif utils.isMac():
+            # ?
+            ...
+        else:
+            logging.error("Unhandled system platform")
+            ...
 
         if config.THEME == "fusion":
             qt.selectPalette(self.app)
@@ -94,7 +105,14 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             self.decklist.cardsList.clear()
 
 
+def initFolders():
+    os.makedirs("resources/icons/sets", exist_ok=True)
+    os.makedirs("resources/images/cards", exist_ok=True)
+
+
 if __name__ == '__main__':
+    initFolders()
     window = MTGORG_GUI()
-    window.showMaximized()
+    # window.showMaximized()
+    window.show()
     sys.exit(window.app.exec())

@@ -122,12 +122,19 @@ class CardViewer(QtWidgets.QWidget):
         # reprints handling
         if "sets" not in self.card.keys():
             self.card.update({"sets": scryfall.getCardReprints(self.card["id"])})
-        for set in self.card["sets"]:
-            setName = scryfall.getSetDataByCode(set, 'name')
-            setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(set, 'id'))
-            setText = f"{setName} ({set.upper()}) - {setYear}"
-            self.setSelect.addItem(setText, set)
-            if self.card["set"] == set:
+
+        sets = []
+        for setCode in self.card["sets"]:
+            setName = scryfall.getSetDataByCode(setCode, 'name')
+            setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(setCode, 'id'))
+            sets.append((setName, setYear, setCode))
+        # sort reprints by year
+        sets.sort(key=lambda _: _[1])
+        for _set in sets:
+            setName, setYear, setCode = _set
+            setText = f"{setName} ({setCode.upper()}) - {setYear}"
+            self.setSelect.addItem(setText, setCode)
+            if self.card["set"] == setCode:
                 selectedText = setText
         self.setSelect.setCurrentText(selectedText)
         self.setSelect.currentIndexChanged.connect(self.on_setChange)
@@ -139,7 +146,6 @@ class CardViewer(QtWidgets.QWidget):
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", 0, "image_uris", config.IMG_SIZE])
 
-        # TODO handle image resize when ui resize
         if isCardImageCached(cardId) or config.IMG_DOWNLOAD_METHOD == "direct":
             cardImgPath = Path("resources/images/cards/") / cardId
             image = QtGui.QImage()
@@ -192,8 +198,6 @@ class ImageDownloader(QtCore.QObject):
 
 
 def isCardImageCached(cardId) -> bool:
-    if not os.path.exists(Path("resources/images/cards/").as_posix()):
-        raise FileNotFoundError
     cardImgPath = Path("resources/images/cards/") / cardId
     return cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)
 
