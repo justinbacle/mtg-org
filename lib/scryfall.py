@@ -64,9 +64,13 @@ def getCardReprintId(cardId: str, set: str, lang: str):
     ids = [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
     correctEnId = ids[0]
     if lang != "en":
-        foundCard = scrython.cards.Collector(
-            code=set, collector_number=getCardById(correctEnId)["collector_number"], lang=lang).scryfallJson
-        returnId = foundCard["id"]
+        try:
+            foundCard = scrython.cards.Collector(
+                code=set, collector_number=getCardById(correctEnId)["collector_number"], lang=lang).scryfallJson
+            returnId = foundCard["id"]
+        except ScryfallError:
+            logging.warning(f"Could not find {lang=} translation for given set")
+            returnId = correctEnId
     else:
         returnId = correctEnId
 
