@@ -29,6 +29,7 @@ Here are the lists of things I'd like to have included in this project :
 
 - Card data rely on a cache, which is manually stored for now, this cache is not yet updated when a set comes out. Manual solution for now is to clean the cache manually but plan to implement a cache update system that could be triggered when a new set is out.
 - Some sets are not displayed properly if the sets icons and fonts are not available, this should be added in an update feature later
+- Mana cost is not repported correctly for non-basic mana types (phyrexian, hybrid, ...) as well as for dual sided cards
 
 ## Install / Usage
 
