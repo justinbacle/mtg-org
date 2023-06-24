@@ -2,9 +2,10 @@ from PySide6 import QtWidgets, QtCore, QtGui
 
 import connector
 from lib import scryfall, utils
+import constants
 
-COLUMNS = ["name", "mana_cost", "type_line", "sets", "rarity"]
-USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity"]
+COLUMNS = ["name", "mana_cost", "type_line", "sets", "rarity", "price"]
+USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
 
 
 class CardListWidget(QtWidgets.QTableWidget):
@@ -69,6 +70,12 @@ class CardListWidget(QtWidgets.QTableWidget):
                         self.parent().parent().parent().parent().parent().parent().keyruneFontId
                     )))
                     text = utils.setSetsText([text])
+                if column == "price":
+                    text = utils.getFromDict(cardData, ["prices", constants.CURRENCY[0]])
+                    if text is not None:
+                        text += " " + constants.CURRENCY[1]
+                    else:
+                        text = "?"
                 item.setData(QtCore.Qt.DisplayRole, text)
                 item.setData(QtCore.Qt.UserRole, cardData)
                 dataList.append(item)

@@ -24,6 +24,9 @@ RARITIES = {
     }
 }
 
-CURRENCY = ["eur", "€"]
+CURRENCY = [
+    # "usd", "$"
+    "eur", "€"
+]
 
 LANG = ["en", "fr"]
