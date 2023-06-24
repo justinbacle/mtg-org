@@ -17,25 +17,43 @@ from lib import qt, utils
 import config
 
 
+class customLogger(logging.Handler):
+    def __init__(self, statusbar: QtWidgets.QStatusBar) -> None:
+        self.statusbar = statusbar
+        super().__init__(0)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.statusbar.showMessage(record)
+        return super().emit(record)
+
+
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
 
-    def __init__(self, parent=None):
+    def __init__(self, statusbar: QtWidgets.QStatusBar, parent=None):
         super().__init__(parent)
+
+        self.statusbar = QtWidgets.QStatusBar()
+        logger.addHandler(customLogger(statusbar=statusbar))
+
+        self.setStatusBar(self.statusbar)
 
         if config.THEME == "material":
             qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '-1'})
 
-        self.app.setWindowIcon(QtGui.QIcon(Path("resources/icons/mirari.png").as_posix()))
-        self.setWindowTitle("MTGorg")
+        iconPath = Path("resources/icons/mirari.png").as_posix()
+        icon = QtGui.QIcon()
+        icon.addFile(iconPath)
+        self.app.setWindowIcon(icon)
+        self.setWindowTitle("MTG Organizer")
         if utils.isWin():
             import ctypes
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u'mtgorg.mainwindow')
         elif utils.isLinux():
-            # TODO
+            # ? No idea how ?
             ...
         elif utils.isMac():
-            # ?
+            # ? Who cares ?
             ...
         else:
             logging.error("Unhandled system platform")
@@ -112,6 +130,7 @@ def initFolders():
 
 if __name__ == '__main__':
     initFolders()
+    logger = logging.getLogger(__name__)
     window = MTGORG_GUI()
     # window.showMaximized()
     window.show()
