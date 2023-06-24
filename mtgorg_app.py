@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 from pathlib import Path
+import datetime
 
 from PySide6 import QtWidgets, QtCore, QtGui
 import qt_material
@@ -23,19 +24,34 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.statusbar = QtWidgets.QStatusBar()
+
+        def on_log(record: logging.LogRecord):
+            timeStr = datetime.datetime.now().strftime("%H:%M:%S")
+            logMsg = f"[{timeStr}] {record.levelname}: {record.msg}"
+            # TODO show log level with color with self.statusbar.setStyleSheet
+            self.statusbar.showMessage(logMsg)
+
+        logging.getLogger().addFilter(on_log)
+
+        self.setStatusBar(self.statusbar)
+
         if config.THEME == "material":
             qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '-1'})
 
-        self.app.setWindowIcon(QtGui.QIcon(Path("resources/icons/mirari.png").as_posix()))
-        self.setWindowTitle("MTGorg")
+        iconPath = Path("resources/icons/mirari.png").as_posix()
+        icon = QtGui.QIcon()
+        icon.addFile(iconPath)
+        self.app.setWindowIcon(icon)
+        self.setWindowTitle("MTG Organizer")
         if utils.isWin():
             import ctypes
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u'mtgorg.mainwindow')
         elif utils.isLinux():
-            # TODO
+            # ? No idea how ?
             ...
         elif utils.isMac():
-            # ?
+            # ? Who cares ?
             ...
         else:
             logging.error("Unhandled system platform")
@@ -112,6 +128,7 @@ def initFolders():
 
 if __name__ == '__main__':
     initFolders()
+    logger = logging.getLogger(__name__)
     window = MTGORG_GUI()
     # window.showMaximized()
     window.show()

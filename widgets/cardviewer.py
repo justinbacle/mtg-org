@@ -44,6 +44,12 @@ class CardViewer(QtWidgets.QWidget):
         self.setSelect = QtWidgets.QComboBox()
         self.mainLayout.addWidget(self.setSelect, (line := line+1) - 1, 1)
 
+        # Face Selector
+        self.cardFaceChooser = QtWidgets.QPushButton("See other face \u21B7")
+        self.cardFaceChooser.setVisible(False)
+        self.cardFaceChooser.clicked.connect(self.on_cardflip)
+        self.mainLayout.addWidget(self.cardFaceChooser, (line := line+1) - 1, 0)
+
         # Card Img
         self.cardImgGraphicsView = qt.ResizingGraphicsView()
         self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform)
@@ -61,6 +67,7 @@ class CardViewer(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.avgPriceLabel, (line := line+1) - 1, 1)
 
     def on_add(self):
+        # TODO check when already present to raise qty instead of adding other line
         self.parent().parent().parent().decklist.cardsList.addCard(self.card)
 
     def on_scryfallLinkClicked(self):
@@ -98,7 +105,7 @@ class CardViewer(QtWidgets.QWidget):
         data = data.replace("#000", color)
         return data
 
-    def display(self, cardId: str):
+    def display(self, cardId: str, cardFace: int = 0):
         self.card = scryfall.getCardById(cardId)
         if "printed_name" in self.card.keys():
             self.nameLabel.setText(self.card["printed_name"])
@@ -139,14 +146,19 @@ class CardViewer(QtWidgets.QWidget):
         self.setSelect.setCurrentText(selectedText)
         self.setSelect.currentIndexChanged.connect(self.on_setChange)
 
+        self.cardFaceChooser.setVisible(False)
+        self.cardFace = cardFace
+        _hasManyFaces = False
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
             imageUri = utils.getFromDict(self.card, ["image_uris", config.IMG_SIZE])
         else:
-            # TODO handle two_sided cards -> len(self.card['card_faces']) > 1
+            if len(self.card['card_faces']) > 1:
+                _hasManyFaces = True
+                self.cardFaceChooser.setVisible(True)
             imageUri = utils.getFromDict(
-                self.card, ["card_faces", 0, "image_uris", config.IMG_SIZE])
+                self.card, ["card_faces", cardFace, "image_uris", config.IMG_SIZE])
 
-        if isCardImageCached(cardId) or config.IMG_DOWNLOAD_METHOD == "direct":
+        if isCardImageCached(cardId) and not _hasManyFaces or config.IMG_DOWNLOAD_METHOD == "direct":
             cardImgPath = Path("resources/images/cards/") / cardId
             image = QtGui.QImage()
             image.load(cardImgPath.as_posix())
@@ -171,9 +183,12 @@ class CardViewer(QtWidgets.QWidget):
             str(utils.getFromDict(self.card, ["prices", constants.CURRENCY[0]])) + " " + constants.CURRENCY[1]
         )
 
+    def on_cardflip(self):
+        self.display(self.card["id"], cardFace=(self.cardFace+1) % 2)
+
     def on_setChange(self):
         selectedSet = self.setSelect.itemData(self.setSelect.currentIndex())
-        self.display(scryfall.getCardReprintId(self.card["id"], selectedSet))
+        self.display(scryfall.getCardReprintId(self.card["id"], selectedSet, lang=self.card["lang"]))
 
 
 class ImageDownloader(QtCore.QObject):
