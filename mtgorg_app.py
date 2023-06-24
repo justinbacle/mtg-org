@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 from pathlib import Path
+import datetime
 
 from PySide6 import QtWidgets, QtCore, QtGui
 import qt_material
@@ -17,24 +18,21 @@ from lib import qt, utils
 import config
 
 
-class customLogger(logging.Handler):
-    def __init__(self, statusbar: QtWidgets.QStatusBar) -> None:
-        self.statusbar = statusbar
-        super().__init__(0)
-
-    def emit(self, record: logging.LogRecord) -> None:
-        self.statusbar.showMessage(record)
-        return super().emit(record)
-
-
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
 
-    def __init__(self, statusbar: QtWidgets.QStatusBar, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         self.statusbar = QtWidgets.QStatusBar()
-        logger.addHandler(customLogger(statusbar=statusbar))
+
+        def on_log(record: logging.LogRecord):
+            timeStr = datetime.datetime.now().strftime("%H:%M:%S")
+            logMsg = f"[{timeStr}] {record.levelname}: {record.msg}"
+            # TODO show log level with color with self.statusbar.setStyleSheet
+            self.statusbar.showMessage(logMsg)
+
+        logging.getLogger().addFilter(on_log)
 
         self.setStatusBar(self.statusbar)
 

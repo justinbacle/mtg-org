@@ -58,11 +58,19 @@ def getCardReprints(cardId: str):
     return sets
 
 
-def getCardReprintId(cardId: str, set: str):
+def getCardReprintId(cardId: str, set: str, lang: str):
     card = getCardById(cardId)
     reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
     ids = [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
-    return ids[0]
+    correctEnId = ids[0]
+    if lang != "en":
+        foundCard = scrython.cards.Collector(
+            code=set, collector_number=getCardById(correctEnId)["collector_number"], lang=lang).scryfallJson
+        returnId = foundCard["id"]
+    else:
+        returnId = correctEnId
+
+    return returnId
 
 
 def getCardById(id: str):

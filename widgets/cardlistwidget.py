@@ -3,8 +3,8 @@ from PySide6 import QtWidgets, QtCore, QtGui
 import connector
 from lib import scryfall, utils
 
-COLUMNS = ["name", "mana_cost", "type_line", "sets"]
-USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set"]
+COLUMNS = ["name", "mana_cost", "type_line", "sets", "rarity"]
+USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity"]
 
 
 class CardListWidget(QtWidgets.QTableWidget):
@@ -50,7 +50,9 @@ class CardListWidget(QtWidgets.QTableWidget):
                     text = utils.getFromDict(cardData, ["printed_name"])
                 else:
                     text = utils.getFromDict(cardData, column.split("."))
-                # mana cost handling # TODO handle split/phyrexian mana
+                # mana cost handling
+                # TODO handle split/phyrexian mana
+                # TODO handle mana of dual faced cards ?
                 if column == "mana_cost":
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
                         self.parent().parent().parent().parent().parent().parent().manaFontId
