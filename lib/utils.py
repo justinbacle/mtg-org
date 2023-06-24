@@ -2,7 +2,6 @@ import requests
 import functools
 import operator
 from dotmap import DotMap
-import re
 import json
 import platform
 import html
@@ -65,12 +64,12 @@ def getFromDict(dataDict: dict, mapList: list, default=None):
 
 
 def setManaText(inputStr) -> str:
-
+    # import re
     # Mana
     # if len(re.findall(r"{(\d)}", inputStr)) > 0:
     #     for match in re.findall(r"{(\d)}", inputStr):
     #         inputStr = inputStr.replace("{" + match + "}", match)
-            # inputStr = re.fin(r"{(\d)}", r"\g<1>", inputStr)  #noqa E800
+    #         inputStr = re.fin(r"{(\d)}", r"\g<1>", inputStr)  #noqa E800
 
     # for mana_symbol, replacement in MANA_SYMBOLS.items():
     #     _pre = "<font face=\"Mana\">"
