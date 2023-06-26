@@ -104,8 +104,6 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.deckSelector.collectionSelectionChanged.connect(self.on_cardStackChange)
         self.splitter.addWidget(self.deckSelector)
 
-        # TODO add logging in status bar
-
     def on_decklistCardSelected(self, cardId: str):
         self.dbBrowser.dbResultsList.clearSelection()
         self.cardViewer.display(cardId)

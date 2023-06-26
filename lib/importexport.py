@@ -29,7 +29,6 @@ class importDialog(QtWidgets.QDialog):
         self.mainLayout.addWidget(self.fromUrlPB, 1, 2)
 
         self.textEdit = QtWidgets.QPlainTextEdit()
-        self.textEdit.textChanged.connect(self.checkInputImport)
         self.mainLayout.addWidget(self.textEdit, 2, 0, 1, 3)
 
         self.formatSelectGroup = QtWidgets.QGroupBox("Format Select")
@@ -46,14 +45,24 @@ class importDialog(QtWidgets.QDialog):
         self.deckNameLE = QtWidgets.QLineEdit("")
         self.mainLayout.addWidget(self.deckNameLE, 4, 1, 1, 2)
 
+        self.autoSetCB = QtWidgets.QCheckBox("Automatically choose set (most recent) if not given")
+        self.autoSetCB.setChecked(True)
+        self.mainLayout.addWidget(self.autoSetCB, 5, 0, 3, 1)
+
         self.importButtonPB = QtWidgets.QPushButton("Import deck")
         self.importButtonPB.setEnabled(False)
         self.importButtonPB.clicked.connect(self.on_importPBclicked)
-        self.mainLayout.addWidget(self.importButtonPB, 5, 0, 1, 1)
+        self.mainLayout.addWidget(self.importButtonPB, 6, 1, 1, 1)
 
     def on_importPBclicked(self):
-        if self.importer is not None:
-            self.importer.toDatabase(self.deckNameLE.text())
+        isValid, errorMsg = self.checkInputImport(autoset=self.autoSetCB.isChecked())
+        if isValid:
+            if self.importer is not None:
+                self.importer.toDatabase(self.deckNameLE.text())
+            self.close()
+        else:
+            # TODO show error msg
+            print(errorMsg)
 
     def getSelectedImportFormat(self) -> str:
         selectedFormat = None
@@ -63,20 +72,23 @@ class importDialog(QtWidgets.QDialog):
                 selectedFormat = radioButton.text()
         return selectedFormat
 
-    def checkInputImport(self):
+    def checkInputImport(self, autoset: bool):
         format = self.getSelectedImportFormat()
+        isValid = False
+        errorMsg = ""
         if format == "MTGO":
             ...
         elif format == "MTG Arena":
             self.importer = MTGA_importer()
-            isValid, errorMsg = self.importer.loadInputText(self.textEdit.toPlainText())
-            if isValid:
-                self.importButtonPB.setEnabled(True)
-            else:
-                QtWidgets.QMessageBox.information(self, "Could not import", errorMsg)
-                self.importButtonPB.setEnabled(False)
+            isValid, errorMsg = self.importer.loadInputText(self.textEdit.toPlainText(), autoSet=autoset)
         else:
             raise NotImplementedError
+        if isValid:
+            self.importButtonPB.setEnabled(True)
+        else:
+            QtWidgets.QMessageBox.information(self, "Could not import", errorMsg)
+            self.importButtonPB.setEnabled(False)
+        return isValid, errorMsg
 
 
 class MTGA_importer:
@@ -97,24 +109,30 @@ class MTGA_importer:
         lines = text.split("\n")
         for line in lines:
             if not line.startswith("#"):
-                qty, cardName = re.fullmatch(r"(\d+)\s(.*)", line).groups()
-                qty = int(qty)
-                cards = scryfall.searchCards({"name": cardName})
-                if len(cards) == 0:
-                    isValid = False
-                    errorMsg += f"\ncould not find {cardName=}"
-                elif len(cards) == 1:
-                    self.deckList.append(
-                        [qty, cards[0]["id"]]
-                    )
-                else:
-                    print(cards)
-                    if autoSet:
-                        # most recent set ?
-                        ...
+                matched = re.fullmatch(r"(\d+)\s(.*)", line)
+                if matched is not None:
+                    qty, cardName = matched.groups()
+                    qty = int(qty)
+                    cards = scryfall.searchCards({"name": cardName}, exact=True)  # https://scryfall.com/docs/syntax#exact
+                    if len(cards) == 0:
+                        isValid = False
+                        errorMsg += f"\ncould not find {cardName=}"
+                    elif len(cards) == 1:
+                        sets = scryfall.getCardReprints(cards[0]["id"])
+                        if len(sets) > 1 and not autoSet:
+                            # TODO popup, ask set
+                            print(sets)
+                            ...
+                        else:
+                            self.deckList.append(
+                                [qty, cards[0]["id"]]
+                            )
                     else:
-                        # TODO popup, ask set
-                        ...
+                        # Multiple or no cards found
+                        print(cards)
+                        # ask user
+                else:
+                    errorMsg += f"\nError on line {line=}"
         return isValid, errorMsg
 
     def toDatabase(self, deckName):

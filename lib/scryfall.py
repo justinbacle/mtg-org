@@ -25,7 +25,7 @@ SEARCH_DICT_KEYS = [
 ]
 
 
-def searchCards(searchDict: dict):
+def searchCards(searchDict: dict, exact: bool = False):
     cards = []
 
     kwargs = {}
@@ -33,6 +33,8 @@ def searchCards(searchDict: dict):
     for k, v in searchDict.items():
         if k in SEARCH_DICT_KEYS:
             kwargs.update({k: v})
+        elif k == "name" and exact:
+            q += "!\"" + v + "\" "
         else:
             q += k + ":" + v + " "
 

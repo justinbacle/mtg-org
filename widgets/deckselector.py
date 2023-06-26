@@ -109,6 +109,7 @@ class CardStackSelector(QtWidgets.QWidget):
 
     def on_importPBclicked(self):
         importDialog = importexport.importDialog()
+        importDialog.finished.connect(self.initData)
         importDialog.exec()
 
     def on_exportPBclicked(self):
