@@ -113,7 +113,7 @@ class MTGA_importer:
                 if matched is not None:
                     qty, cardName = matched.groups()
                     qty = int(qty)
-                    cards = scryfall.searchCards({"name": cardName}, exact=True)  # https://scryfall.com/docs/syntax#exact
+                    cards = scryfall.searchCards({"name": cardName}, exact=True)
                     if len(cards) == 0:
                         isValid = False
                         errorMsg += f"\ncould not find {cardName=}"

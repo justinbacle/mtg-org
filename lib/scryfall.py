@@ -33,7 +33,7 @@ def searchCards(searchDict: dict, exact: bool = False):
     for k, v in searchDict.items():
         if k in SEARCH_DICT_KEYS:
             kwargs.update({k: v})
-        elif k == "name" and exact:
+        elif k == "name" and exact:  # https://scryfall.com/docs/syntax#exact
             q += "!\"" + v + "\" "
         else:
             q += k + ":" + v + " "
