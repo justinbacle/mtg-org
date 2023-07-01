@@ -1,5 +1,5 @@
 import re
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtGui
 
 import constants
 
@@ -8,7 +8,7 @@ import os
 sys.path.append(os.getcwd())  # FIXME Remove
 
 import connector  # noqa E402
-from lib import scryfall  # noqa E402
+from lib import utils, scryfall  # noqa E402
 
 
 class importDialog(QtWidgets.QDialog):
@@ -79,7 +79,7 @@ class importDialog(QtWidgets.QDialog):
         if format == "MTGO":
             ...
         elif format == "MTG Arena":
-            self.importer = MTGA_importer()
+            self.importer = MTGA_importer(self)
             isValid, errorMsg = self.importer.loadInputText(self.textEdit.toPlainText(), autoSet=autoset)
         else:
             raise NotImplementedError
@@ -91,6 +91,43 @@ class importDialog(QtWidgets.QDialog):
         return isValid, errorMsg
 
 
+class SetChooserDialog(QtWidgets.QDialog):
+    def __init__(self, cardName: str, sets: list[str], parent: QtWidgets.QWidget) -> None:
+        super().__init__(parent)
+
+        self.setWindowTitle("Choose set")
+
+        self.mainLayout = QtWidgets.QVBoxLayout()
+        self.setLayout(self.mainLayout)
+        self.buttonWidget = QtWidgets.QWidget()
+        self.buttonLayout = QtWidgets.QGridLayout()
+        self.buttonWidget.setLayout(self.buttonLayout)
+        self.sets = sets
+        self.resultSetIndex = None
+        self.setButtons = []
+        N_COLUMNS = 6
+
+        for i, set in enumerate(sets):
+            _button = QtWidgets.QPushButton()
+            _button.setFont(
+                QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                    self.parent().parent().parent().parent().parent().keyruneFontId)))
+            _button.setStyleSheet("QPushButton{font-size: 12px;font-family: Keyrune;}")
+            _button.setText(utils.setSetsText([set]) + " " + set)
+            _button.clicked.connect(self.onSetButtonPushed)
+            self.buttonLayout.addWidget(_button, i % N_COLUMNS, int(i/N_COLUMNS))
+
+        message = QtWidgets.QLabel(f"Which set the card {cardName} comes from ?")
+        self.mainLayout.addWidget(message)
+        self.mainLayout.addWidget(self.buttonWidget)
+
+    def onSetButtonPushed(self):
+        set = self.sender().text().split(" ")[-1]
+        setIndex = self.sets.index(set)
+        self.setResult(setIndex)
+        self.done(setIndex)
+
+
 class MTGA_importer:
     """
     Example deck :
@@ -100,7 +137,8 @@ class MTGA_importer:
         4 Brutal Cathar
     """
 
-    def __init__(self) -> None:
+    def __init__(self, parent=None) -> None:
+        self.parent = parent
         self.deckList = []
 
     def loadInputText(self, text, autoSet: bool = True) -> bool:
@@ -120,9 +158,10 @@ class MTGA_importer:
                     elif len(cards) == 1:
                         sets = scryfall.getCardReprints(cards[0]["id"])
                         if len(sets) > 1 and not autoSet:
-                            # TODO popup, ask set
-                            print(sets)
-                            ...
+                            _dialog = SetChooserDialog(parent=self.parent, cardName=cardName, sets=sets)
+                            i = _dialog.exec()
+                            set = sets[i]
+                            # TODO find card whic set corresponds to selected one
                         else:
                             self.deckList.append(
                                 [qty, cards[0]["id"]]
