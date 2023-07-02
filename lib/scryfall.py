@@ -53,6 +53,9 @@ def getCardReprints(cardId: str):
     if "sets" not in card.keys():
         reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
         sets = [_["set"] for _ in reprintsDict["data"]]
+        while reprintsDict["has_more"]:
+            reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
+            sets += [_["set"] for _ in reprintsDict["data"]]
         sets = list(set(sets))
         connector.updateCard(cardId, {"sets": sets})
     else:
@@ -60,11 +63,14 @@ def getCardReprints(cardId: str):
     return sets
 
 
-def getCardReprintId(cardId: str, set: str, lang: str):
+def getCardReprintId(cardId: str, set: str, lang: str = "en"):
     card = getCardById(cardId)
     reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
     ids = [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
-    correctEnId = ids[0]
+    while reprintsDict["has_more"]:
+        reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
+        ids += [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
+    correctEnId = ids[0]  # Todo handle mutiple matches (e.g. basic lands)
     if lang != "en":
         try:
             foundCard = scrython.cards.Collector(

@@ -1,5 +1,6 @@
 import re
 from PySide6 import QtWidgets, QtGui
+import logging
 
 import constants
 
@@ -16,6 +17,8 @@ class importDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.mainLayout = QtWidgets.QGridLayout()
         self.setLayout(self.mainLayout)
+
+        self.setWindowTitle("Import tool")
 
         self.importLabel = QtWidgets.QLabel("Import source : ")
         self.mainLayout.addWidget(self.importLabel, 0, 0, 1, 3)
@@ -105,17 +108,25 @@ class SetChooserDialog(QtWidgets.QDialog):
         self.sets = sets
         self.resultSetIndex = None
         self.setButtons = []
-        N_COLUMNS = 6
+        N_COLUMNS = 10
+
+        # sort sets by year
+        setsSortedList = []
+        for setCode in sets:
+            setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(setCode, 'id'))
+            setsSortedList.append((setCode, setYear))
+        setsSortedList.sort(key=lambda _: _[1])
+        sets = [_[0] for _ in setsSortedList]
 
         for i, set in enumerate(sets):
             _button = QtWidgets.QPushButton()
             _button.setFont(
                 QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
                     self.parent().parent().parent().parent().parent().keyruneFontId)))
-            _button.setStyleSheet("QPushButton{font-size: 12px;font-family: Keyrune;}")
+            _button.setStyleSheet("QPushButton{font-size: 20px;font-family: Keyrune; font-weight: normal}")
             _button.setText(utils.setSetsText([set]) + " " + set)
             _button.clicked.connect(self.onSetButtonPushed)
-            self.buttonLayout.addWidget(_button, i % N_COLUMNS, int(i/N_COLUMNS))
+            self.buttonLayout.addWidget(_button, int(i/N_COLUMNS), i % N_COLUMNS)
 
         message = QtWidgets.QLabel(f"Which set the card {cardName} comes from ?")
         self.mainLayout.addWidget(message)
@@ -161,13 +172,16 @@ class MTGA_importer:
                             _dialog = SetChooserDialog(parent=self.parent, cardName=cardName, sets=sets)
                             i = _dialog.exec()
                             set = sets[i]
-                            # TODO find card whic set corresponds to selected one
+                            cardId = scryfall.getCardReprintId(cards[0]["id"], set)  # TODO handle lang ?
+                            self.deckList.append(
+                                [qty, cardId]
+                            )
                         else:
                             self.deckList.append(
                                 [qty, cards[0]["id"]]
                             )
                     else:
-                        # Multiple or no cards found
+                        logging.error(f"found multiple matches for {cardName=}")
                         print(cards)
                         # ask user
                 else:
