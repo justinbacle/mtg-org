@@ -1,6 +1,8 @@
 import re
 from PySide6 import QtWidgets, QtGui
 import logging
+import csv
+import io
 
 import constants
 
@@ -83,7 +85,10 @@ class importDialog(QtWidgets.QDialog):
             ...
         elif format == "MTG Arena":
             self.importer = MTGA_importer(self)
-            isValid, errorMsg = self.importer.loadInputText(self.textEdit.toPlainText(), autoSet=autoset)
+            isValid, errorMsg = self.importer.loadInput(self.textEdit.toPlainText(), autoSet=autoset)
+        elif format == "CSV":
+            self.importer = CSV_importer(self)
+            isValid, errorMsg = self.importer.loadInput(self.textEdit.toPlainText(), autoSet=autoset)
         else:
             raise NotImplementedError
         if isValid:
@@ -152,12 +157,12 @@ class MTGA_importer:
         self.parent = parent
         self.deckList = []
 
-    def loadInputText(self, text, autoSet: bool = True) -> bool:
+    def loadInput(self, text, autoSet: bool = True) -> bool:
         isValid = True
         errorMsg = ""
         lines = text.split("\n")
         for line in lines:
-            if not line.startswith("#"):
+            if not line.startswith("#") and not line == "":
                 matched = re.fullmatch(r"(\d+)\s(.*)", line)
                 if matched is not None:
                     qty, cardName = matched.groups()
@@ -187,6 +192,62 @@ class MTGA_importer:
                 else:
                     errorMsg += f"\nError on line {line=}"
         return isValid, errorMsg
+
+    def toDatabase(self, deckName):
+        connector.createDeck(deckName, self.deckList)
+
+
+class CSV_importer:
+    """
+    Import from Urza Gatherer
+    """
+
+    def __init__(self, parent=None) -> None:
+        self.parent = parent
+        self.deckList = []
+
+    def loadInput(self, text, autoSet: bool = True) -> bool:
+        ftext = io.StringIO(text)
+        reader = csv.reader(ftext, delimiter=",")
+        cards = []
+        headerLine = None
+        for i, row in enumerate(reader):
+            # Skip header by looking at "name" in real columns names line
+            if headerLine is None and "name" not in [_.lower() for _ in row]:
+                next
+            elif headerLine is None and "name" in [_.lower() for _ in row]:
+                headerLine = i
+                columns = row
+            elif headerLine is not None:
+                card = {}
+                for i, v in enumerate(row):
+                    card.update({columns[i]: v})
+                cards.append(card)
+
+        # Check if Scryfall ID is in the available keys (Urza gatherer)
+        # Urza Gatherer : "Scryfall ID"
+        scryFallIdDictKey = None
+        if "Scryfall ID".lower() in [_.lower() for _ in cards[0].keys()]:
+            scryFallIdDictKey = list(cards[0].keys())[[_.lower() for _ in cards[0].keys()].index("Scryfall ID".lower())]
+
+        # Get qty/count key
+        # Urza Gatherer : "Count"
+        countDictKey = None
+        for countTestKey in ["qty", "count", "quantity"]:
+            try:
+                countDictKey = list(cards[0].keys())[[_.lower() for _ in cards[0].keys()].index(countTestKey.lower())]
+            except ValueError:
+                ...
+
+        self.deckList = []
+        for card in cards:
+            if scryFallIdDictKey is not None:
+                if countDictKey is not None:
+                    self.deckList.append([card[countDictKey], card[scryFallIdDictKey]])
+                else:  # if no quantity is given, assume one of each
+                    self.deckList.append([1, card[scryFallIdDictKey]])
+
+        return True, ""
 
     def toDatabase(self, deckName):
         connector.createDeck(deckName, self.deckList)

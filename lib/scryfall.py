@@ -50,7 +50,7 @@ def searchCards(searchDict: dict, exact: bool = False):
 
 def getCardReprints(cardId: str):
     card = getCardById(cardId)
-    if "sets" not in card.keys():
+    if "sets" not in card.keys():  # Cache
         reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
         sets = [_["set"] for _ in reprintsDict["data"]]
         while reprintsDict["has_more"]:
@@ -64,6 +64,7 @@ def getCardReprints(cardId: str):
 
 
 def getCardReprintId(cardId: str, set: str, lang: str = "en"):
+    # TODO add cache ?
     card = getCardById(cardId)
     reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
     ids = [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
@@ -87,7 +88,7 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en"):
 
 def getCardById(id: str):
     card = connector.getCard(id)
-    if card is None:
+    if card is None:  # Cache
         scryfallReq = scrython.cards.Id(id=id)
         card = Card(scryfallReq.scryfallJson)
         connector.saveCard(id, card)

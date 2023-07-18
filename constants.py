@@ -33,5 +33,6 @@ LANG = ["en", "fr"]
 
 IMPORT_FORMATS = [
     "MTGO",
-    "MTG Arena"
+    "MTG Arena",
+    "CSV"
 ]
