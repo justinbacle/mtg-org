@@ -60,12 +60,12 @@ def renameCollection(previousCollName, newCollName):
     )
 
 
-def createDeck(deckName):
+def createDeck(deckName, cardList: list = []):
     if getDeck(deckName) is None:
         getDB().table(constants.DECKS_TABLE_NAME).insert(
             {
                 "name": deckName,
-                "cardList": []
+                "cardList": cardList
             }
         )
     else:
@@ -181,7 +181,7 @@ def removeCardFromCollection(collectionName, cardId):
     collection = getCollection(collectionName)
     cardList = collection["cardList"]
     collection["cardList"] = [_ for _ in cardList if _[1] != cardId]
-    getDB().table(constants.DECKS_TABLE_NAME).update(
+    getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
         collection, Query().name == collectionName
     )
 

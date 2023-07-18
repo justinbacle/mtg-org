@@ -7,6 +7,8 @@ import platform
 import html
 
 
+# --------------------------------- Platform --------------------------------- #
+
 def isWin() -> bool:
     if platform.system() == 'Windows':
         return True
@@ -27,6 +29,8 @@ def isMac() -> bool:
     else:
         return False
 
+
+# -------------------------------- Misc utils -------------------------------- #
 
 def getUrlData(url):
     if url is not None:
@@ -61,6 +65,59 @@ def getFromDict(dataDict: dict, mapList: list, default=None):
         value = default
 
     return value
+
+
+class counter(object):
+    """counter
+    from : https://stackoverflow.com/questions/1485841/behaviour-of-increment-and-decrement-operators-in-python
+    """
+    def __init__(self, v=0):
+        self.set(v)
+
+    def preinc(self):
+        self.v += 1
+        return self.v
+
+    def predec(self):
+        self.v -= 1
+        return self.v
+
+    def postinc(self):
+        self.v += 1
+        return self.v - 1
+
+    def postdec(self):
+        self.v -= 1
+        return self.v + 1
+
+    def val(self):
+        return self.v
+
+    def __add__(self, addend):
+        return self.v + addend
+
+    def __sub__(self, subtrahend):
+        return self.v - subtrahend
+
+    def __mul__(self, multiplier):
+        return self.v * multiplier
+
+    def __div__(self, divisor):
+        return self.v / divisor
+
+    def __getitem__(self):
+        return self.v
+
+    def __str__(self):
+        return str(self.v)
+
+    def set(self, v):
+        if type(v) != int:
+            v = 0
+        self.v = v
+
+
+# --------------------------------- MTG stuff -------------------------------- #
 
 
 def setManaText(inputStr) -> str:

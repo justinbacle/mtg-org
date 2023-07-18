@@ -25,7 +25,7 @@ SEARCH_DICT_KEYS = [
 ]
 
 
-def searchCards(searchDict: dict):
+def searchCards(searchDict: dict, exact: bool = False):
     cards = []
 
     kwargs = {}
@@ -33,6 +33,8 @@ def searchCards(searchDict: dict):
     for k, v in searchDict.items():
         if k in SEARCH_DICT_KEYS:
             kwargs.update({k: v})
+        elif k == "name" and exact:  # https://scryfall.com/docs/syntax#exact
+            q += "!\"" + v + "\" "
         else:
             q += k + ":" + v + " "
 
@@ -48,9 +50,12 @@ def searchCards(searchDict: dict):
 
 def getCardReprints(cardId: str):
     card = getCardById(cardId)
-    if "sets" not in card.keys():
+    if "sets" not in card.keys():  # Cache
         reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
         sets = [_["set"] for _ in reprintsDict["data"]]
+        while reprintsDict["has_more"]:
+            reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
+            sets += [_["set"] for _ in reprintsDict["data"]]
         sets = list(set(sets))
         connector.updateCard(cardId, {"sets": sets})
     else:
@@ -58,15 +63,23 @@ def getCardReprints(cardId: str):
     return sets
 
 
-def getCardReprintId(cardId: str, set: str, lang: str):
+def getCardReprintId(cardId: str, set: str, lang: str = "en"):
+    # TODO add cache ?
     card = getCardById(cardId)
     reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
     ids = [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
-    correctEnId = ids[0]
+    while reprintsDict["has_more"]:
+        reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
+        ids += [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
+    correctEnId = ids[0]  # Todo handle mutiple matches (e.g. basic lands)
     if lang != "en":
-        foundCard = scrython.cards.Collector(
-            code=set, collector_number=getCardById(correctEnId)["collector_number"], lang=lang).scryfallJson
-        returnId = foundCard["id"]
+        try:
+            foundCard = scrython.cards.Collector(
+                code=set, collector_number=getCardById(correctEnId)["collector_number"], lang=lang).scryfallJson
+            returnId = foundCard["id"]
+        except ScryfallError:
+            logging.warning(f"Could not find {lang=} translation for given set")
+            returnId = correctEnId
     else:
         returnId = correctEnId
 
@@ -75,7 +88,7 @@ def getCardReprintId(cardId: str, set: str, lang: str):
 
 def getCardById(id: str):
     card = connector.getCard(id)
-    if card is None:
+    if card is None:  # Cache
         scryfallReq = scrython.cards.Id(id=id)
         card = Card(scryfallReq.scryfallJson)
         connector.saveCard(id, card)

@@ -1,6 +1,7 @@
 __pycache__
 
 venv
+_local/
 
 resources/icons/sets
 resources/images/cards
