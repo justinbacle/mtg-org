@@ -17,12 +17,14 @@ Here are the lists of things I'd like to have included in this project :
 | Feature | Status |
 | --- | --- |
 | Basic Search through MTG database | Done |
+| Advanced Search through MTG database | Planned, not started |
 | Support for other languages than EN | POC with French OK|
 |Organizing cards in decks & collections| Done |
 |Add deck visualizations and tools| Not started|
-|Import / Export decks| Basic import (MTGA) POC|
+|Import| Import MTGA & CSV(Urza Gatherer) OK, MTGO planned|
+|Export| Not started|
 |Scan from webcam| Would be nice to have|
-|Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" |
+|Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
 |Multiplatform Windows/Linux/Mac| Windows & Linux OK, macOS untested |
 
 ## Known issues

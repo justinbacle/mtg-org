@@ -97,6 +97,10 @@ def getCardById(id: str):
     return card
 
 
+def getRandomCard() -> str:
+    return scrython.Random().scryfallJson
+
+
 def getSetData(setId, dataKey):
     allSets = getSets()
     possibleSets = [_ for _ in allSets if _["id"] == setId]

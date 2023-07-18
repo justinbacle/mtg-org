@@ -37,7 +37,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.setStatusBar(self.statusbar)
 
         if config.THEME == "material":
-            qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '-1'})
+            qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '0'})
 
         iconPath = Path("resources/icons/mirari.png").as_posix()
         icon = QtGui.QIcon()

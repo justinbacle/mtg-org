@@ -25,46 +25,49 @@ class CardViewer(QtWidgets.QWidget):
     def setupUi(self):
         self.mainLayout = QtWidgets.QGridLayout(self)
 
-        line = 0
+        line = utils.counter()
 
+        self.randomCardPB = QtWidgets.QPushButton("\u003F\u00BF")
+        self.randomCardPB.clicked.connect(self.on_randomCardPBClicked)
+        self.mainLayout.addWidget(self.randomCardPB, line.val(), 0)
         self.addToCurrentPB = QtWidgets.QPushButton("Add to current >>")
         self.addToCurrentPB.clicked.connect(self.on_add)
-        self.mainLayout.addWidget(self.addToCurrentPB, (line := line+1) - 1, 1)
+        self.mainLayout.addWidget(self.addToCurrentPB, line.postinc(), 1)
 
         # Card Name + Mana
         self.nameLabel = QtWidgets.QLabel("Name")
-        self.mainLayout.addWidget(self.nameLabel, line, 0)
+        self.mainLayout.addWidget(self.nameLabel, line.val(), 0)
         self.manacostLabel = QtWidgets.QLabel("{M}{A}{N}{A}{0}")
-        self.mainLayout.addWidget(self.manacostLabel, (line := line+1) - 1, 1)
+        self.mainLayout.addWidget(self.manacostLabel, line.postinc(), 1)
 
         # Set icon + Name + Year
         self.setIconSvg = QtSvgWidgets.QSvgWidget()
         self.setIconSvg.setMaximumHeight(36)
-        self.mainLayout.addWidget(self.setIconSvg, line, 0)
+        self.mainLayout.addWidget(self.setIconSvg, line.val(), 0)
         self.setSelect = QtWidgets.QComboBox()
-        self.mainLayout.addWidget(self.setSelect, (line := line+1) - 1, 1)
+        self.mainLayout.addWidget(self.setSelect, line.postinc(), 1)
 
         # Face Selector
         self.cardFaceChooser = QtWidgets.QPushButton("See other face \u21B7")
         self.cardFaceChooser.setVisible(False)
         self.cardFaceChooser.clicked.connect(self.on_cardflip)
-        self.mainLayout.addWidget(self.cardFaceChooser, (line := line+1) - 1, 0)
+        self.mainLayout.addWidget(self.cardFaceChooser, line.postinc(), 0)
 
         # Card Img
         self.cardImgGraphicsView = qt.ResizingGraphicsView()
         self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform)
-        self.mainLayout.addWidget(self.cardImgGraphicsView, (line := line+1) - 1, 0, 1, 2)
+        self.mainLayout.addWidget(self.cardImgGraphicsView, line.postinc(), 0, 1, 2)
         # TODO add button or shortcut to reload/redownload card
 
         # Card Link
         self.scryfallUriLabel = QtWidgets.QLabel("uri")
         self.scryfallUriLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
         self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
-        self.mainLayout.addWidget(self.scryfallUriLabel, line, 0)
+        self.mainLayout.addWidget(self.scryfallUriLabel, line.val(), 0)
 
         # Card price
         self.avgPriceLabel = QtWidgets.QLabel("price")
-        self.mainLayout.addWidget(self.avgPriceLabel, (line := line+1) - 1, 1)
+        self.mainLayout.addWidget(self.avgPriceLabel, line.postinc(), 1)
 
     def on_add(self):
         # TODO check when already present to raise qty instead of adding other line
@@ -72,6 +75,9 @@ class CardViewer(QtWidgets.QWidget):
 
     def on_scryfallLinkClicked(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.card['related_uris']['gatherer']))
+
+    def on_randomCardPBClicked(self):
+        self.display(scryfall.getRandomCard()["id"])
 
     def displayPixmapCard(self, image, cardId: str = None):
         # Save
