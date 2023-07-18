@@ -3,6 +3,7 @@ from PySide6 import QtWidgets, QtGui
 import logging
 import csv
 import io
+import pyperclip
 
 import constants
 
@@ -22,19 +23,23 @@ class importDialog(QtWidgets.QDialog):
 
         self.setWindowTitle("Import tool")
 
+        line = utils.counter()
+
         self.importLabel = QtWidgets.QLabel("Import source : ")
-        self.mainLayout.addWidget(self.importLabel, 0, 0, 1, 3)
+        self.mainLayout.addWidget(self.importLabel, line.postinc(), 0, 1, 3)
 
         self.fromClipboardPB = QtWidgets.QPushButton("from clipboard")
-        self.mainLayout.addWidget(self.fromClipboardPB, 1, 0)
+        self.fromClipboardPB.clicked.connect(self.on_fromClipboardPBClicked)
+        self.mainLayout.addWidget(self.fromClipboardPB, line.val(), 0)
         self.fromfilePB = QtWidgets.QPushButton("from file")
-        self.mainLayout.addWidget(self.fromfilePB, 1, 1)
+        self.fromfilePB.setEnabled(False)  # Not implemented
+        self.mainLayout.addWidget(self.fromfilePB, line.val(), 1)
         self.fromUrlPB = QtWidgets.QPushButton("from url")
         self.fromUrlPB.setEnabled(False)  # Not implemented
-        self.mainLayout.addWidget(self.fromUrlPB, 1, 2)
+        self.mainLayout.addWidget(self.fromUrlPB, line.postinc(), 2)
 
         self.textEdit = QtWidgets.QPlainTextEdit()
-        self.mainLayout.addWidget(self.textEdit, 2, 0, 1, 3)
+        self.mainLayout.addWidget(self.textEdit, line.postinc(), 0, 1, 3)
 
         self.formatSelectGroup = QtWidgets.QGroupBox("Format Select")
         self.formatSelectLayout = QtWidgets.QVBoxLayout()
@@ -43,27 +48,33 @@ class importDialog(QtWidgets.QDialog):
             _radioButton = QtWidgets.QRadioButton(importFormat)
             _radioButton.clicked.connect(self.checkInputImport)
             self.formatSelectLayout.addWidget(_radioButton)
-        self.mainLayout.addWidget(self.formatSelectGroup, 3, 0, 1, 3)
+        self.mainLayout.addWidget(self.formatSelectGroup, line.postinc(), 0, 1, 3)
 
-        self.deckNameLabel = QtWidgets.QLabel("Deck Name :")
-        self.mainLayout.addWidget(self.deckNameLabel, 4, 0, 1, 1)
-        self.deckNameLE = QtWidgets.QLineEdit("")
-        self.mainLayout.addWidget(self.deckNameLE, 4, 1, 1, 2)
+        self.collectionChooser = QtWidgets.QComboBox()
+        self.collectionChooser.addItems(["Deck", "Collection"])
+        self.mainLayout.addWidget(self.collectionChooser, line.val(), 0, 1, 1)
+        self.collectionNameLabel = QtWidgets.QLabel("Name :")
+        self.mainLayout.addWidget(self.collectionNameLabel, line.val(), 1, 1, 1)
+        self.collectionNameLE = QtWidgets.QLineEdit("")
+        self.mainLayout.addWidget(self.collectionNameLE, line.postinc(), 2, 1, 1)
 
         self.autoSetCB = QtWidgets.QCheckBox("Automatically choose set (most recent) if not given")
         self.autoSetCB.setChecked(True)
-        self.mainLayout.addWidget(self.autoSetCB, 5, 0, 3, 1)
+        self.mainLayout.addWidget(self.autoSetCB, line.postinc(), 0, 3, 1)
 
-        self.importButtonPB = QtWidgets.QPushButton("Import deck")
+        self.importButtonPB = QtWidgets.QPushButton("Import")
         self.importButtonPB.setEnabled(False)
         self.importButtonPB.clicked.connect(self.on_importPBclicked)
-        self.mainLayout.addWidget(self.importButtonPB, 6, 1, 1, 1)
+        self.mainLayout.addWidget(self.importButtonPB, line.postinc(), 1, 1, 1)
+
+    def on_fromClipboardPBClicked(self):
+        self.textEdit.setPlainText(pyperclip.paste())
 
     def on_importPBclicked(self):
         isValid, errorMsg = self.checkInputImport(autoset=self.autoSetCB.isChecked())
         if isValid:
             if self.importer is not None:
-                self.importer.toDatabase(self.deckNameLE.text())
+                self.importer.toDatabase(self.collectionNameLE.text())
             self.close()
         else:
             # TODO show error msg

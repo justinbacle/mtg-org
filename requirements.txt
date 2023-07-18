@@ -1,4 +1,6 @@
 pyside6
+pytest
+pyperclip
 qt_material
 cache_to_disk
 scrython
