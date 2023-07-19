@@ -109,6 +109,3 @@ def test_MTGO_DEK_import():
     importer = importexport.MTGO_DEK_importer()
     importer.loadInput(MTGO_DEK)
     assert importer.deckList == MTGO_DEK_DECKLIST
-
-
-test_MTGO_DEK_import()
