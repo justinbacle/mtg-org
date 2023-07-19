@@ -21,7 +21,7 @@ Here are the lists of things I'd like to have included in this project :
 | Support for other languages than EN | POC with French OK|
 |Organizing cards in decks & collections| Done |
 |Add deck visualizations and tools| Not started|
-|Import| Import MTGA & CSV(Urza Gatherer) OK, MTGO planned|
+|Import| MTGA, CSV(Urza Gatherer), MTGO(.dek) |
 |Export| Not started|
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
