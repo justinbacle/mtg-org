@@ -201,17 +201,13 @@ class MTGA_importer(importer):
                             i = _dialog.exec()
                             set = sets[i]
                             cardId = scryfall.getCardReprintId(cards[0]["id"], set)  # TODO handle lang ?
-                            self.deckList.append(
-                                [qty, cardId]
-                            )
+                            self.deckList.append([qty, cardId])
                         else:
-                            self.deckList.append(
-                                [qty, cards[0]["id"]]
-                            )
+                            self.deckList.append([qty, cards[0]["id"]])
                     else:
                         logging.error(f"found multiple matches for {cardName=}")
                         print(cards)
-                        # ask user
+                        # ask user ?
                 else:
                     errorMsg += f"\nError on line {line=}"
         return isValid, errorMsg
@@ -227,23 +223,42 @@ class CSV_importer(importer):
         cards = []
         headerLine = None
         for i, row in enumerate(reader):
+            isProbableHeader = (
+                "name" in [_.lower() for _ in row] or
+                "card" in [_.lower() for _ in row] or
+                "card_name" in [_.lower() for _ in row]
+            )
             # Skip header by looking at "name" in real columns names line
-            if headerLine is None and "name" not in [_.lower() for _ in row]:
+            if headerLine is None and not isProbableHeader:
                 next
-            elif headerLine is None and "name" in [_.lower() for _ in row]:
+            elif headerLine is None and isProbableHeader:
                 headerLine = i
                 columns = row
             elif headerLine is not None:
                 card = {}
                 for i, v in enumerate(row):
-                    card.update({columns[i]: v})
+                    if v != '' and i < len(columns):  # Pucatrade has wrongly formated csv, missing one header column
+                        card.update({columns[i]: v})
                 cards.append(card)
 
         # Check if Scryfall ID is in the available keys (Urza gatherer)
         # Urza Gatherer : "Scryfall ID"
         scryFallIdDictKey = None
-        if "Scryfall ID".lower() in [_.lower() for _ in cards[0].keys()]:
-            scryFallIdDictKey = list(cards[0].keys())[[_.lower() for _ in cards[0].keys()].index("Scryfall ID".lower())]
+        nameKey = None
+        setKey = None
+        availableKeys = [_.lower() for _ in cards[0].keys()]
+        if "Scryfall ID".lower() in availableKeys:
+            scryFallIdDictKey = list(cards[0].keys())[availableKeys.index("Scryfall ID".lower())]
+        POSSIBLE_NAME_KEYS = ["Name", "Card", "Card_name"]
+        for possibleNameKey in POSSIBLE_NAME_KEYS:
+            if nameKey is None:
+                if possibleNameKey.lower() in availableKeys:
+                    nameKey = list(cards[0].keys())[availableKeys.index(possibleNameKey.lower())]
+        POSSIBLE_SET_KEYS = ["Edition", "Set", "Set_code", "Code"]
+        for possibleSetKey in POSSIBLE_SET_KEYS:
+            if setKey is None:
+                if possibleSetKey.lower() in availableKeys:
+                    setKey = list(cards[0].keys())[availableKeys.index(possibleSetKey.lower())]
 
         # Get qty/count key
         # Urza Gatherer : "Count"
@@ -261,6 +276,18 @@ class CSV_importer(importer):
                     self.deckList.append([card[countDictKey], card[scryFallIdDictKey]])
                 else:  # if no quantity is given, assume one of each
                     self.deckList.append([1, card[scryFallIdDictKey]])
+            elif nameKey is not None and setKey is not None:
+                if card[setKey].lower() in [_["code"] for _ in scryfall.getSets()]:
+                    cards = scryfall.searchCards({"name": card[nameKey], "set": card[setKey]}, exact=True)
+                    foundCard = [_ for _ in cards if _["set"].lower() == card[setKey].lower()][0]
+                else:
+                    set = [_["code"] for _ in scryfall.getSets() if _["name"] == card[setKey]][0]
+                    cards = scryfall.searchCards({"name": card[nameKey], "set": set}, exact=True)
+                    foundCard = [_ for _ in cards if _["set"].lower() == set.lower()][0]
+                if countDictKey is not None:
+                    self.deckList.append([card[countDictKey], foundCard["id"]])
+                else:
+                    self.deckList.append([1, foundCard["id"]])
 
         return True, ""  # TODO grab errors
 
