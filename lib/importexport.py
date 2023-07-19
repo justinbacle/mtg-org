@@ -4,6 +4,7 @@ import logging
 import csv
 import io
 import pyperclip
+import lxml.etree
 
 import constants
 
@@ -92,8 +93,9 @@ class importDialog(QtWidgets.QDialog):
         format = self.getSelectedImportFormat()
         isValid = False
         errorMsg = ""
-        if format == "MTGO":
-            ...
+        if format == "MTGO .dek":
+            self.importer = MTGO_DEK_importer(self)
+            isValid, errorMsg = self.importer.loadInput(self.textEdit.toPlainText())
         elif format == "MTG Arena":
             self.importer = MTGA_importer(self)
             isValid, errorMsg = self.importer.loadInput(self.textEdit.toPlainText(), autoSet=autoset)
@@ -155,7 +157,21 @@ class SetChooserDialog(QtWidgets.QDialog):
         self.done(setIndex)
 
 
-class MTGA_importer:
+class importer:
+    def __init__(self, parent=None) -> None:
+        self.parent = parent
+        self.deckList = []
+
+    def toDatabase(self, deckName):
+        if self.parent.collectionChooser.currentText() == "Deck":
+            connector.createDeck(deckName, self.deckList)
+        elif self.parent.collectionChooser.currentText() == "Collection":
+            connector.createCollection(deckName, self.deckList)
+        else:
+            raise NotImplementedError
+
+
+class MTGA_importer(importer):
     """
     Example deck :
         # Deck
@@ -163,15 +179,11 @@ class MTGA_importer:
         4 Thalia, Guardian of Thraben
         4 Brutal Cathar
     """
-
-    def __init__(self, parent=None) -> None:
-        self.parent = parent
-        self.deckList = []
-
     def loadInput(self, text, autoSet: bool = True) -> bool:
         isValid = True
         errorMsg = ""
         lines = text.split("\n")
+        self.deckList = []
         for line in lines:
             if not line.startswith("#") and not line == "":
                 matched = re.fullmatch(r"(\d+)\s(.*)", line)
@@ -204,19 +216,11 @@ class MTGA_importer:
                     errorMsg += f"\nError on line {line=}"
         return isValid, errorMsg
 
-    def toDatabase(self, deckName):
-        connector.createDeck(deckName, self.deckList)
 
-
-class CSV_importer:
+class CSV_importer(importer):
     """
     Import from Urza Gatherer
     """
-
-    def __init__(self, parent=None) -> None:
-        self.parent = parent
-        self.deckList = []
-
     def loadInput(self, text, autoSet: bool = True) -> bool:
         ftext = io.StringIO(text)
         reader = csv.reader(ftext, delimiter=",")
@@ -258,25 +262,21 @@ class CSV_importer:
                 else:  # if no quantity is given, assume one of each
                     self.deckList.append([1, card[scryFallIdDictKey]])
 
-        return True, ""
-
-    def toDatabase(self, deckName):
-        connector.createDeck(deckName, self.deckList)
+        return True, ""  # TODO grab errors
 
 
-class MTGO_importer:
+class MTGO_DEK_importer(importer):
     """
-    Example deck :
-        Card Name,Quantity,ID #,Rarity,Set,Collector #,Premium,
-        "Banisher Priest",1,51909,Uncommon,PRM,1136/1158,Yes'
-        "Batterskull",10,51909,Uncommon,PRM,1136/1158,Yes'
+    .dek "xml" format
     """
-
-    def __init__(self) -> None:
+    def loadInput(self, text: str) -> bool:
         self.deckList = []
-
-    def loadInputText(self, text) -> bool:
-        ...
-
-    def toDatabase(self):
-        ...
+        xmlRoot = lxml.etree.fromstring(text.encode(encoding="utf-8"))
+        for card in xmlRoot.findall("Cards"):
+            qty = int(card.attrib["Quantity"])
+            mtgoId = card.attrib["CatID"]
+            card = scryfall.getCardByMTGOId(int(mtgoId))
+            self.deckList.append(
+                [qty, card["id"]]
+            )
+        return True, ""  # TODO grab errors

@@ -32,7 +32,7 @@ CURRENCY = [
 LANG = ["en", "fr"]
 
 IMPORT_FORMATS = [
-    "MTGO",
+    "MTGO .dek",
     "MTG Arena",
     "CSV"
 ]

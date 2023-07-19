@@ -97,6 +97,12 @@ def getCardById(id: str):
     return card
 
 
+def getCardByMTGOId(mtgoId: int) -> dict:
+    url = f"https://api.scryfall.com/cards/mtgo/{mtgoId}"
+    cardData = utils.getUrlJsonData(url)
+    return cardData
+
+
 def getRandomCard() -> str:
     return scrython.Random().scryfallJson
 

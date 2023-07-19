@@ -1,6 +1,7 @@
 pyside6
 pytest
 pyperclip
+lxml
 qt_material
 cache_to_disk
 scrython

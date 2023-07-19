@@ -33,12 +33,12 @@ def getCacheDB(location: Path = constants.DEFAULT_CACHE_DB_LOCATION) -> TinyDB:
         return TinyDB(location.as_posix())
 
 
-def createCollection(collName):
+def createCollection(collName, cardList: list = []):
     if getCollection(collName) is None:
         getDB().table(constants.COLLECTIONS_TABLE_NAME).insert(
             {
                 "name": collName,
-                "cardList": []
+                "cardList": cardList
             }
         )
     else:

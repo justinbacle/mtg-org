@@ -49,13 +49,66 @@ MTGA_DECKLIST = [
 ]
 
 
+MTGO_DEK = """<?xml version="1.0" encoding="UTF-8"?>
+<Deck xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <NetDeckID>0</NetDeckID>
+  <PreconstructedDeckID>0</PreconstructedDeckID>
+  <Cards CatID="49370" Quantity="4" Sideboard="false" Name="Blur Sliver" Annotation="0"/>
+  <Cards CatID="49367" Quantity="2" Sideboard="false" Name="Bonescythe Sliver" Annotation="0"/>
+  <Cards CatID="53444" Quantity="3" Sideboard="false" Name="Diffusion Sliver" Annotation="0"/>
+  <Cards CatID="25855" Quantity="4" Sideboard="false" Name="Gemhide Sliver" Annotation="0"/>
+  <Cards CatID="49359" Quantity="4" Sideboard="false" Name="Manaweft Sliver" Annotation="0"/>
+  <Cards CatID="49830" Quantity="2" Sideboard="false" Name="Megantic Sliver" Annotation="0"/>
+  <Cards CatID="49579" Quantity="4" Sideboard="false" Name="Predatory Sliver" Annotation="0"/>
+  <Cards CatID="49512" Quantity="3" Sideboard="false" Name="Sentinel Sliver" Annotation="0"/>
+  <Cards CatID="26383" Quantity="4" Sideboard="false" Name="Sinew Sliver" Annotation="0"/>
+  <Cards CatID="49471" Quantity="2" Sideboard="false" Name="Striking Sliver" Annotation="0"/>
+  <Cards CatID="53616" Quantity="2" Sideboard="false" Name="Belligerent Sliver" Annotation="0"/>
+  <Cards CatID="80335" Quantity="4" Sideboard="false" Name="Lead the Stampede" Annotation="0"/>
+  <Cards CatID="49415" Quantity="2" Sideboard="false" Name="Hive Stirrings" Annotation="0"/>
+  <Cards CatID="79632" Quantity="16" Sideboard="false" Name="Forest" Annotation="0"/>
+  <Cards CatID="53622" Quantity="4" Sideboard="false" Name="Sliver Hive" Annotation="0"/>
+  <Cards CatID="53756" Quantity="1" Sideboard="true" Name="Sliver Hivelord" Annotation="0"/>
+  <Cards CatID="49355" Quantity="4" Sideboard="true" Name="Galerider Sliver" Annotation="0"/>
+</Deck>
+"""
+MTGO_DEK_DECKLIST = [
+    [4, '63227937-86cc-45e0-9e9e-8c7ab80cbaef'],
+    [2, 'a26bb68b-1830-470a-8cea-91edc7db0c57'],
+    [3, 'fb110a55-c8f9-4627-82c2-edb10db4f380'],
+    [4, 'f09135b0-fd57-4205-aa74-c9869946c264'],
+    [4, 'fe45433b-e124-44d7-9463-dada39310148'],
+    [2, '46d7778f-b436-418b-9454-8a53a1c87d4b'],
+    [4, 'a2e37de8-66a1-4afa-aa6f-1151f849dfa8'],
+    [3, '74c28560-e6ac-4be9-a253-22c4613b0d90'],
+    [4, '6cd2ed50-cd9a-45d9-a59a-6279be1ab308'],
+    [2, '4ee9254b-3d98-4477-a82e-1450cf3ee96e'],
+    [2, 'b78b8268-b090-4012-a3ba-5daab491f78d'],
+    [4, '9e76b676-c7a3-4de6-a78d-3059a0df83f2'],
+    [2, 'e4399e19-d05d-4bb3-9aff-c4133ddd2850'],
+    [16, '32af9f41-89e2-4e7a-9fec-fffe79cae077'],
+    [4, '91cef7ce-aa9f-4659-ac24-394c5ab9f77c'],
+    [1, 'ba4106de-20c7-48cf-8a36-8c6913b46c89'],
+    [4, '425f5d1b-9989-4fd1-88e2-6c3108aefa0b']
+]
+
+
 def test_CSV_import():
-    csvImporter = importexport.CSV_importer()
-    csvImporter.loadInput(URZA_GATHERER_CSV)
-    assert csvImporter.deckList == URZA_GATHERER_DECKLIST
+    importer = importexport.CSV_importer()
+    importer.loadInput(URZA_GATHERER_CSV)
+    assert importer.deckList == URZA_GATHERER_DECKLIST
 
 
 def test_MTGA_import():
-    csvImporter = importexport.MTGA_importer()
-    csvImporter.loadInput(MTGA_TXT)
-    assert csvImporter.deckList == MTGA_DECKLIST
+    importer = importexport.MTGA_importer()
+    importer.loadInput(MTGA_TXT)
+    assert importer.deckList == MTGA_DECKLIST
+
+
+def test_MTGO_DEK_import():
+    importer = importexport.MTGO_DEK_importer()
+    importer.loadInput(MTGO_DEK)
+    assert importer.deckList == MTGO_DEK_DECKLIST
+
+
+test_MTGO_DEK_import()
