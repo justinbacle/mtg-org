@@ -70,6 +70,7 @@ class importDialog(QtWidgets.QDialog):
 
     def on_fromClipboardPBClicked(self):
         self.textEdit.setPlainText(pyperclip.paste())
+        self.checkInputImport(autoset=True)
 
     def on_importPBclicked(self):
         isValid, errorMsg = self.checkInputImport(autoset=self.autoSetCB.isChecked())
@@ -254,7 +255,7 @@ class CSV_importer(importer):
             if nameKey is None:
                 if possibleNameKey.lower() in availableKeys:
                     nameKey = list(cards[0].keys())[availableKeys.index(possibleNameKey.lower())]
-        POSSIBLE_SET_KEYS = ["Edition", "Set", "Set_code", "Code"]
+        POSSIBLE_SET_KEYS = ["Edition", "Set_code", "Set code", "Code", "Set"]
         for possibleSetKey in POSSIBLE_SET_KEYS:
             if setKey is None:
                 if possibleSetKey.lower() in availableKeys:
@@ -271,23 +272,43 @@ class CSV_importer(importer):
 
         self.deckList = []
         for card in cards:
-            if scryFallIdDictKey is not None:
-                if countDictKey is not None:
+            if scryFallIdDictKey is not None and scryFallIdDictKey in card.keys():
+                if countDictKey is not None and countDictKey in card.keys():
                     self.deckList.append([card[countDictKey], card[scryFallIdDictKey]])
                 else:  # if no quantity is given, assume one of each
                     self.deckList.append([1, card[scryFallIdDictKey]])
             elif nameKey is not None and setKey is not None:
                 if card[setKey].lower() in [_["code"] for _ in scryfall.getSets()]:
-                    cards = scryfall.searchCards({"name": card[nameKey], "set": card[setKey]}, exact=True)
-                    foundCard = [_ for _ in cards if _["set"].lower() == card[setKey].lower()][0]
+                    foundCards = scryfall.searchCards({"name": card[nameKey], "set": card[setKey]}, exact=True)
+                    if len(foundCards) == 0:
+                        logging.error(f"could not load {card}, switching to accepting other sets")
+                        foundCards = scryfall.searchCards({"name": card[nameKey]}, exact=True)
+                        foundCard = foundCards[0]
+                    else:
+                        foundCard = [_ for _ in foundCards if _["set"].lower() == card[setKey].lower()][0]
                 else:
-                    set = [_["code"] for _ in scryfall.getSets() if _["name"] == card[setKey]][0]
-                    cards = scryfall.searchCards({"name": card[nameKey], "set": set}, exact=True)
-                    foundCard = [_ for _ in cards if _["set"].lower() == set.lower()][0]
-                if countDictKey is not None:
-                    self.deckList.append([card[countDictKey], foundCard["id"]])
-                else:
-                    self.deckList.append([1, foundCard["id"]])
+                    possibleSets = [_["code"] for _ in scryfall.getSets() if _["name"] == card[setKey]]
+                    if len(possibleSets) == 0:
+                        if autoSet:
+                            foundCards = scryfall.searchCards({"name": card[nameKey]}, exact=True)
+                        else:
+                            # TODO handle non auto sets
+                            logging.warning(f"could not find {card=} in the given set")
+                            foundCards = scryfall.searchCards({"name": card[nameKey]}, exact=True)
+                    else:
+                        set = possibleSets[0]
+                        foundCards = scryfall.searchCards({"name": card[nameKey], "set": set}, exact=True)
+                        foundCard = [_ for _ in foundCards if _["set"].lower() == set.lower()][0]
+                    if len(foundCards) == 0:
+                        logging.error(f"could not load {card}")
+                        foundCard = None
+                if foundCard is not None:
+                    if countDictKey is not None:
+                        self.deckList.append([card[countDictKey], foundCard["id"]])
+                    else:
+                        self.deckList.append([1, foundCard["id"]])
+            else:
+                logging.error(f"Could not import {card}")
 
         return True, ""  # TODO grab errors
 

@@ -1,4 +1,5 @@
 from PySide6 import QtWidgets, QtCore, QtGui
+from tqdm import tqdm
 
 import connector
 from lib import scryfall, utils
@@ -97,7 +98,7 @@ class CardStackListWidget(CardListWidget):
     def setCardList(self, cardList: connector.Deck | connector.Collection):
         self.setRowCount(0)
         self.cardStack = []
-        for qty, card in cardList:
+        for qty, card in tqdm(cardList):
             self.cardStack.append((qty, scryfall.getCardById(card)))
         self.setCards(self.cardStack)
 

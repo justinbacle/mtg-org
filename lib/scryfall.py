@@ -27,8 +27,10 @@ SEARCH_DICT_KEYS = [
 
 def searchCards(searchDict: dict, exact: bool = False):
     cards = []
-
     kwargs = {}
+    if "lang" not in searchDict.keys():
+        searchDict.update({"lang": "any"})
+
     q = ""
     for k, v in searchDict.items():
         if k in SEARCH_DICT_KEYS:
