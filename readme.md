@@ -25,13 +25,16 @@ Here are the lists of things I'd like to have included in this project :
 |Export| Not started|
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
-|Multiplatform Windows/Linux/Mac| Windows & Linux OK, macOS untested |
+|Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK |
 
 ## Known issues
 
 - Card data rely on a cache, which is manually stored for now, this cache is not yet updated when a set comes out. Manual solution for now is to clean the cache manually but plan to implement a cache update system that could be triggered when a new set is out.
 - Some sets are not displayed properly if the sets icons and fonts are not available, this should be added in an update feature later
 - Mana cost is not repported correctly for non-basic mana types (phyrexian, hybrid, ...) as well as for dual sided cards
+
+## Requirements
+> Python 3.10+
 
 ## Install / Usage
 
@@ -41,19 +44,15 @@ Clone this repo, then when in the folder, install dependencies
 
 - windows (with system python or venv activated)
     - > py -m pip install -r requirements.txt
-- linux (with a venv already set)
+- linux/mac (with a venv already set)
     - >venv/bin/python -m pip install -r requirements.txt
-- mac
-    - No idea, I don't use a mac
 
 then run the main program
 
 - windows
     - > py mtgorg_app.py
-- linux (venv)
-    - > venv/bin/python mtgorg_app.py
-- mac
-    - no idea
+- linux/mac (venv)
+    - >venv/bin/python mtgorg_app.py
 
 ## F.A.Q.
 
