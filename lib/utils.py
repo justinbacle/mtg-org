@@ -112,7 +112,7 @@ class counter(object):
         return str(self.v)
 
     def set(self, v):
-        if type(v) != int:
+        if not isinstance(v, int):
             v = 0
         self.v = v
 
