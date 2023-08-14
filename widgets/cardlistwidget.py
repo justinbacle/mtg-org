@@ -5,7 +5,7 @@ import connector
 from lib import scryfall, utils
 import constants
 
-COLUMNS = ["name", "mana_cost", "type_line", "sets", "rarity", "price"]
+COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
 USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
 
 
@@ -26,8 +26,6 @@ class CardListWidget(QtWidgets.QTableWidget):
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
-            sets = scryfall.getCardReprints(card["id"])
-            card.update({"sets": sets})
             self._addOneLine(card)
 
     def _addOneLine(self, card: dict):

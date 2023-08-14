@@ -7,4 +7,5 @@ cache_to_disk
 scrython
 tinydb
 dotmap
+tqdm
 requests

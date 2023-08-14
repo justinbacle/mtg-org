@@ -1,6 +1,10 @@
+import datetime
 import logging
+import json
 from pathlib import Path
 from cache_to_disk import cache_to_disk
+from tqdm import tqdm
+from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results
 
 import scrython.cards
 from scrython.foundation import ScryfallError
@@ -12,6 +16,7 @@ sys.path.append(os.getcwd())  # FIXME Remove
 import connector  # noqa E402
 from card import Card  # noqa E402
 from lib import utils  # noqa E402
+import constants  # noqa E402
 
 
 SEARCH_DICT_KEYS = [
@@ -26,6 +31,26 @@ SEARCH_DICT_KEYS = [
 
 
 def searchCards(searchDict: dict, exact: bool = False):
+    if constants.USE_BULK_FILES:
+        return searchCardsLocal(searchDict, exact)
+    else:
+        return searchCardsOnline(searchDict, exact)
+
+
+def searchCardsLocal(searchDict: dict, exact: bool = False):
+    if exact:
+        cards = list(filter(lambda x: x["name"].lower() == searchDict["name"].lower(), getBulkData()))
+        return cards
+    else:
+        logging.error("not implemented yet using bulk data, only looking for close names")
+        cards = []
+        for id, name in tqdm([(_["id"], _["name"]) for _ in getBulkData()]):
+            if fuzz.ratio(searchDict["name"], name) >= 60:
+                cards.append(getCardById(id))
+        return cards
+
+
+def searchCardsOnline(searchDict: dict, exact: bool = False):
     cards = []
     kwargs = {}
     if "lang" not in searchDict.keys():
@@ -90,9 +115,12 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en"):
 
 def getCardById(id: str):
     card = connector.getCard(id)
-    if card is None:  # Cache
-        scryfallReq = scrython.cards.Id(id=id)
-        card = Card(scryfallReq.scryfallJson)
+    if card is None:  # card not in Cache
+        if constants.USE_BULK_FILES:
+            card = list(filter(lambda x: x["id"] == id, getBulkData()))[0]
+        else:
+            scryfallReq = scrython.cards.Id(id=id)
+            card = Card(scryfallReq.scryfallJson)
         connector.saveCard(id, card)
     else:
         card = card["data"]
@@ -100,8 +128,11 @@ def getCardById(id: str):
 
 
 def getCardByMTGOId(mtgoId: int) -> dict:
-    url = f"https://api.scryfall.com/cards/mtgo/{mtgoId}"
-    cardData = utils.getUrlJsonData(url)
+    if constants.USE_BULK_FILES:
+        cardData = list(filter(lambda x: x["mtgo_id"] == mtgoId, getBulkData()))[0]
+    else:
+        url = f"https://api.scryfall.com/cards/mtgo/{mtgoId}"
+        cardData = utils.getUrlJsonData(url)
     return cardData
 
 
@@ -150,3 +181,33 @@ def getSetReleaseYear(setId):
 def getSets() -> list:
     sets = scrython.Sets()
     return sets.scryfallJson["data"]
+
+
+@cache_to_disk(1)
+def getBulkData():  # TODO load into a tinyDB object ?
+    bulkFiles = os.listdir(constants.DEFAULT_BULK_FOLDER_LOCATION)
+    if len(bulkFiles) == 0:
+        logging.error("no bulk files available")  # TODO prompt to download bulk file
+        raise NotImplementedError
+    else:
+        # Expected name : default-cards-20230813090443.json
+        mostRecent = (datetime.datetime(datetime.MINYEAR, 1, 1), None)  # (date, filename)
+        for bulkFile in bulkFiles:
+            parts = bulkFile.split("-")
+            bulkType = parts[0]  # Expected : oracle, unique, default, all
+            assert bulkType in ["default", "all"]
+            itemType = parts[1]  # Expected : cards, artwork (unwanted)
+            assert itemType == "cards"
+            date = datetime.datetime.strptime(parts[2].split(".")[0], "%Y%m%d%H%M%S")
+            if date > mostRecent[0]:
+                mostRecent = (date, bulkFile)
+        # TODO warn user if bulk data is outdated
+        with open(constants.DEFAULT_BULK_FOLDER_LOCATION / bulkFile, 'r') as _f:
+            data = json.load(_f)
+    return data
+
+
+def downloadBulkData():
+    # https://api.scryfall.com/bulk-data
+    # sends list of bulk data with link
+    ...
