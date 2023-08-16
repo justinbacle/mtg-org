@@ -23,10 +23,19 @@ class CardListWidget(QtWidgets.QTableWidget):
 
     def setCards(self, cardsList: list):
         self.setRowCount(0)
+        manaValues = [0, 0, 0, 0, 0, 0, 0]  # 0, 1, 2, 3, 4, 5, 6+
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
             self._addOneLine(card)
+            if card["cmc"] > 6:
+                manaValues[7] = manaValues[7] + qty
+            else:
+                manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
+        updateDict = {
+            "manaValues": manaValues
+        }
+        self.parent().infoPanel.updateValues(updateDict)
 
     def _addOneLine(self, card: dict):
         for i, tableItem in enumerate(self.getCardTableItem(card, columns=self.columns)):

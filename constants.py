@@ -11,6 +11,7 @@ COLLECTIONS_TABLE_NAME = "Collections"
 CARDS_TABLE_NAME = "Cards"
 
 USE_BULK_FILES = False  # TODO let use choose from gui
+# FIXME imports test require False (or full cards list) to work
 
 RARITIES = {
     "common": {

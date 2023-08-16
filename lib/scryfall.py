@@ -165,10 +165,13 @@ def getSetSymbol(setId):
 def getSetSvg(setId):
     setIconFilePath = Path(f"resources/icons/sets/{setId}.svg")
     if not (setIconFilePath.is_file() and os.access(setIconFilePath, os.R_OK)):
-        svgData = utils.getUrlData(getSetSymbol(setId))
-        f = open(setIconFilePath, 'w')
-        f.write(svgData)
-        f.close()
+        if constants.USE_BULK_FILES:  # TODO preload set icons
+            logging.error(f"Missing local data for {setId=}")
+        else:
+            svgData = utils.getUrlData(getSetSymbol(setId))
+            f = open(setIconFilePath, 'w')
+            f.write(svgData)
+            f.close()
     return setIconFilePath.as_posix()
 
 
