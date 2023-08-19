@@ -1,6 +1,9 @@
 from PySide6 import QtWidgets, QtCore, QtCharts, QtGui
 
 from widgets.cardlistwidget import CardStackListWidget
+from lib import utils
+
+import constants
 
 
 class CardsList(QtWidgets.QWidget):
@@ -33,43 +36,97 @@ class CardsList(QtWidgets.QWidget):
             selectedItem = None
 
 
+class DeckStatsWidget(QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+
+        self.mainLayout = QtWidgets.QGridLayout()
+        self.setLayout(self.mainLayout)
+
+        self._cardCountLabel = QtWidgets.QLabel("Card count")
+        self.mainLayout.addWidget(self._cardCountLabel, 0, 0)
+        self.cardCountLabel = QtWidgets.QLabel()
+        self.mainLayout.addWidget(self.cardCountLabel, 0, 1)
+
+        self._totalPriceLabel = QtWidgets.QLabel("Total Price")
+        self.mainLayout.addWidget(self._totalPriceLabel, 1, 0)
+        self.totalPriceLabel = QtWidgets.QLabel()
+        self.mainLayout.addWidget(self.totalPriceLabel, 1, 1)
+
+    def setData(self, dataDict):
+        self.cardCountLabel.setText(
+            str(dataDict["cardCount"])
+        )
+        self.totalPriceLabel.setText(
+            str(round(dataDict["totalPrice"], 2)) + constants.CURRENCY[1]
+        )
+
+
 class InfoWidget(QtWidgets.QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setMaximumWidth(320)
 
-        self.mainLayout = QtWidgets.QHBoxLayout()
+        self.mainLayout = QtWidgets.QVBoxLayout()
         self.setLayout(self.mainLayout)
+
+        # Deck stats
+        self.deckStatsWidget = DeckStatsWidget()
+        self.mainLayout.addWidget(self.deckStatsWidget)
 
         # Mana cost
         # Data series
-        self.barSeries = QtCharts.QBarSeries()
-        self.dataSet = QtCharts.QBarSet("Mana Cost")
-        self.dataSet.append([1, 2, 3, 4, 5, 6, 7])
-        self.barSeries.append(self.dataSet)
-        self.barSeries.append(self.dataSet)
-        self.chart = QtCharts.QChart()
-        self.chart.setTitle("Mana repartition")
-        self.chart.addSeries(self.barSeries)
+        self.manaBarSeries = QtCharts.QBarSeries()
+        self.manaDataSet = QtCharts.QBarSet("Mana Cost")
+        self.manaDataSet.append([1, 2, 3, 4, 5, 6, 7])
+        self.manaBarSeries.append(self.manaDataSet)
+        self.manaBarSeries.append(self.manaDataSet)
+        self.manaChart = QtCharts.QChart()
+        self.manaChart.setTitle("Mana repartition")
+        self.manaChart.addSeries(self.manaBarSeries)
         # Axes
-        self.categories = ["0", "1", "2", "3", "4", "5", "6+"]
-        self.axisX = QtCharts.QBarCategoryAxis()
-        self.axisX.append(self.categories)
-        self.barSeries.attachAxis(self.axisX)
-        self.axisY = QtCharts.QValueAxis()
-        self.chart.addAxis(self.axisX, QtCore.Qt.AlignBottom)
-        self.chart.addAxis(self.axisY, QtCore.Qt.AlignLeft)
-        self.barSeries.attachAxis(self.axisY)
+        self.manaCategories = ["0", "1", "2", "3", "4", "5", "6+"]
+        self.manaAxisX = QtCharts.QBarCategoryAxis()
+        self.manaAxisX.append(self.manaCategories)
+        self.manaBarSeries.attachAxis(self.manaAxisX)
+        self.manaAxisY = QtCharts.QValueAxis()
+        self.manaChart.addAxis(self.manaAxisX, QtCore.Qt.AlignBottom)
+        self.manaChart.addAxis(self.manaAxisY, QtCore.Qt.AlignLeft)
+        self.manaBarSeries.attachAxis(self.manaAxisY)
         # legend
-        self.chart.legend().setVisible(False)
-        self.chart.legend().setAlignment(QtCore.Qt.AlignBottom)
+        self.manaChart.legend().setVisible(False)
+        self.manaChart.legend().setAlignment(QtCore.Qt.AlignBottom)
         # View
-        self.chartView = QtCharts.QChartView(self.chart)
-        self.chartView.setRenderHint(QtGui.QPainter.Antialiasing)
-        self.chartView.setMinimumSize(160, 160)
-        self.mainLayout.addWidget(self.chartView)
+        self.manaChartView = QtCharts.QChartView(self.manaChart)
+        self.manaChartView.setRenderHint(QtGui.QPainter.Antialiasing)
+        self.manaChartView.setMinimumSize(160, 160)
+        self.mainLayout.addWidget(self.manaChartView)
+
+        # Color repartition
+        self.colorPieChart = QtCharts.QChart()
+        self.colorPieChart.createDefaultAxes()
+        self.colorPieSeries = QtCharts.QPieSeries()
+        self.colorPieChart.addSeries(self.colorPieSeries)
+        self.colorPieChart.legend().setVisible(False)
+        self.colorPieChart.setTitle("Color repartition")
+        self.colorPieChartView = QtCharts.QChartView(self.colorPieChart)
+        self.colorPieChartView.setRenderHint(QtGui.QPainter.Antialiasing)
+        self.colorPieChartView.setMinimumSize(160, 160)
+        self.mainLayout.addWidget(self.colorPieChartView)
 
     def updateValues(self, updateDict: dict):
         # Mana values graph
         for j, value in enumerate(updateDict["manaValues"]):
-            self.dataSet.replace(j, value)
+            self.manaDataSet.replace(j, value)
+        self.deckStatsWidget.setData(updateDict)
+        # colorPie
+        self.colorPieSeries.clear()
+        for color, qty in updateDict["colorPie"].items():
+            if color != "":
+                _slice = QtCharts.QPieSlice(color, qty)
+            else:
+                _slice = QtCharts.QPieSlice("colorless", qty)
+            _slice.setLabelVisible()
+            _color = utils.getColor(color)
+            _slice.setColor(QtGui.QColor(_color[0], _color[1], _color[2]))
+            self.colorPieSeries.append(_slice)

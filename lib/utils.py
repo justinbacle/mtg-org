@@ -119,6 +119,30 @@ class counter(object):
 
 # --------------------------------- MTG stuff -------------------------------- #
 
+def getColor(coloridentity: str) -> tuple:
+    BASICCOLORS = {
+        "W": (249, 250, 244),
+        "U": (14, 104, 171),
+        "B": (21, 11, 0),
+        "R": (211, 32, 42),
+        "G": (0, 115, 62)
+    }
+    r = []
+    g = []
+    b = []
+    if coloridentity != "":
+        colors = list(coloridentity)
+        for color in colors:
+            r.append(BASICCOLORS[color][0])
+            g.append(BASICCOLORS[color][1])
+            b.append(BASICCOLORS[color][2])
+        for color in [r, g, b]:
+            color = int(sum(color) / len(color))
+
+        return (r[0], g[0], b[0])
+    else:
+        return (128, 128, 128)
+
 
 def setManaText(inputStr) -> str:
     # import re

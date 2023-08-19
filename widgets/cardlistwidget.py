@@ -24,18 +24,37 @@ class CardListWidget(QtWidgets.QTableWidget):
     def setCards(self, cardsList: list):
         self.setRowCount(0)
         manaValues = [0, 0, 0, 0, 0, 0, 0]  # 0, 1, 2, 3, 4, 5, 6+
+        cardCount = 0
+        totalPrice = 0
+        colorPie = {}
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
             self._addOneLine(card)
             if card["cmc"] > 6:
-                manaValues[7] = manaValues[7] + qty
+                manaValues[6] = manaValues[6] + qty
             else:
                 manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
+            cardCount += qty
+            cardPrice = utils.getFromDict(card, ["prices", constants.CURRENCY[0]])
+            if cardPrice is not None:
+                totalPrice += qty * float(cardPrice)
+            colorIdentity = "".join(sorted("".join(card["color_identity"])))
+            if colorIdentity in colorPie.keys():
+                colorPie[colorIdentity] += qty
+            else:
+                colorPie.update({colorIdentity: qty})
         updateDict = {
-            "manaValues": manaValues
+            "manaValues": manaValues,
+            "cardCount": cardCount,
+            "totalPrice": totalPrice,
+            "colorPie": colorPie
         }
         self.parent().infoPanel.updateValues(updateDict)
+
+    def updateCardListInfos(self):
+        # TODO update cardStack before
+        self.setCards(cardsList=self.cardStack)
 
     def _addOneLine(self, card: dict):
         for i, tableItem in enumerate(self.getCardTableItem(card, columns=self.columns)):
@@ -120,6 +139,7 @@ class CardStackListWidget(CardListWidget):
             connector.addCardToCollection(stackName, 1, card["id"])
         else:
             ...
+        self.updateCardListInfos()
 
     def removeOne(self):
         selectedLine = self.selectedIndexes()[0]
