@@ -19,14 +19,21 @@ class CardsList(QtWidgets.QWidget):
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.setLayout(self.mainLayout)
 
+        # self.splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical, self)
+
         # Left (main pane) is cards list
         self.cardsList = CardStackListWidget()
         self.cardsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
         self.mainLayout.addWidget(self.cardsList)
 
+
         # Right pane is infos data (text, graphs, list, ...)
         self.infoPanel = InfoWidget()
-        self.mainLayout.addWidget(self.infoPanel)
+        self.qscroll = QtWidgets.QScrollArea()
+        self.qscroll.setWidgetResizable(True)
+        self.qscroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.qscroll.setWidget(self.infoPanel)
+        self.mainLayout.addWidget(self.qscroll)
 
     def on_dbSelectChanged(self):
         if len(self.cardsList.selectedItems()) == 1:
@@ -114,6 +121,18 @@ class InfoWidget(QtWidgets.QWidget):
         self.colorPieChartView.setMinimumSize(160, 160)
         self.mainLayout.addWidget(self.colorPieChartView)
 
+        # Card type repartition
+        self.typePieChart = QtCharts.QChart()
+        self.typePieChart.createDefaultAxes()
+        self.typePieSeries = QtCharts.QPieSeries()
+        self.typePieChart.addSeries(self.typePieSeries)
+        self.typePieChart.legend().setVisible(False)
+        self.typePieChart.setTitle("Type repartition")
+        self.typePieChartView = QtCharts.QChartView(self.typePieChart)
+        self.typePieChartView.setRenderHint(QtGui.QPainter.Antialiasing)
+        self.typePieChartView.setMinimumSize(160, 160)
+        self.mainLayout.addWidget(self.typePieChartView)
+
     def updateValues(self, updateDict: dict):
         # Mana values graph
         for j, value in enumerate(updateDict["manaValues"]):
@@ -130,3 +149,9 @@ class InfoWidget(QtWidgets.QWidget):
             _color = utils.getColor(color)
             _slice.setColor(QtGui.QColor(_color[0], _color[1], _color[2]))
             self.colorPieSeries.append(_slice)
+        # typePie
+        self.typePieSeries.clear()
+        for type, qty in updateDict["typePie"].items():
+            _slice = QtCharts.QPieSlice(type, qty)
+            _slice.setLabelVisible()
+            self.typePieSeries.append(_slice)

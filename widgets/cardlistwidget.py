@@ -15,7 +15,7 @@ class CardListWidget(QtWidgets.QTableWidget):
         self.columns = columns
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
-        self.setSortingEnabled(True)
+        # self.setSortingEnabled(True)  # TODO bugs on add/delete line ?
         self.setColumnCount(len(self.columns))
         self.verticalHeader().setVisible(False)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
@@ -27,28 +27,43 @@ class CardListWidget(QtWidgets.QTableWidget):
         cardCount = 0
         totalPrice = 0
         colorPie = {}
+        typePie = {}
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
             self._addOneLine(card)
+            # manaCost
             if card["cmc"] > 6:
                 manaValues[6] = manaValues[6] + qty
             else:
                 manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
+            # cardCount
             cardCount += qty
+            # cardPrice
             cardPrice = utils.getFromDict(card, ["prices", constants.CURRENCY[0]])
             if cardPrice is not None:
                 totalPrice += qty * float(cardPrice)
+            # colorPie
             colorIdentity = "".join(sorted("".join(card["color_identity"])))
             if colorIdentity in colorPie.keys():
                 colorPie[colorIdentity] += qty
             else:
                 colorPie.update({colorIdentity: qty})
+            # typePie
+            if "—" in card["type_line"]:
+                cardType = card["type_line"].split("—")[0].rstrip()
+            else:
+                cardType = card["type_line"]
+            if cardType in typePie.keys():
+                typePie[cardType] += qty
+            else:
+                typePie.update({cardType: qty})
         updateDict = {
             "manaValues": manaValues,
             "cardCount": cardCount,
             "totalPrice": totalPrice,
-            "colorPie": colorPie
+            "colorPie": colorPie,
+            "typePie": typePie
         }
         self.parent().infoPanel.updateValues(updateDict)
 
@@ -139,6 +154,7 @@ class CardStackListWidget(CardListWidget):
             connector.addCardToCollection(stackName, 1, card["id"])
         else:
             ...
+        self.cardStack.append(card)
         self.updateCardListInfos()
 
     def removeOne(self):
