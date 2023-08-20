@@ -65,7 +65,7 @@ class CardListWidget(QtWidgets.QTableWidget):
             "colorPie": colorPie,
             "typePie": typePie
         }
-        self.parent().infoPanel.updateValues(updateDict)
+        self.parent().parent().infoPanel.updateValues(updateDict)
 
     def updateCardListInfos(self):
         # TODO update cardStack before
@@ -98,18 +98,18 @@ class CardListWidget(QtWidgets.QTableWidget):
                 # TODO handle mana of dual faced cards ?
                 if column == "mana_cost":
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        self.parent().parent().parent().parent().parent().parent().manaFontId
+                        self.parent().parent().parent().parent().parent().parent().parent().manaFontId
                     )))
                     text = utils.setManaText(str(text))
                 # Set(s) handling
                 if column == "sets" and "sets" in cardData.keys():
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        self.parent().parent().parent().parent().parent().parent().keyruneFontId
+                        self.parent().parent().parent().parent().parent().parent().parent().keyruneFontId
                     )))
                     text = utils.setSetsText(text)
                 if column == "set" and "set" in cardData.keys():
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        self.parent().parent().parent().parent().parent().parent().keyruneFontId
+                        self.parent().parent().parent().parent().parent().parent().parent().keyruneFontId
                     )))
                     text = utils.setSetsText([text])
                 if column == "price":
