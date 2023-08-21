@@ -27,7 +27,7 @@ class CardViewer(QtWidgets.QWidget):
 
         line = utils.counter()
 
-        self.randomCardPB = QtWidgets.QPushButton("\u003F\u00BF")
+        self.randomCardPB = QtWidgets.QPushButton("View random card \u2680")
         self.randomCardPB.clicked.connect(self.on_randomCardPBClicked)
         self.mainLayout.addWidget(self.randomCardPB, line.val(), 0)
         self.addToCurrentPB = QtWidgets.QPushButton("Add to current >>")

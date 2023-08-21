@@ -1,7 +1,7 @@
 from PySide6 import QtWidgets, QtCore, QtCharts, QtGui
 
 from widgets.cardlistwidget import CardStackListWidget
-from lib import utils
+from lib import utils, qt
 
 import constants
 
@@ -82,6 +82,10 @@ class InfoWidget(QtWidgets.QWidget):
         self.deckStatsWidget = DeckStatsWidget()
         self.mainLayout.addWidget(self.deckStatsWidget)
 
+        # Legalities
+        self.legalitiesWidget = LegalitiesWidget(self)
+        self.mainLayout.addWidget(self.legalitiesWidget)
+
         # Mana cost
         # Data series
         self.manaBarSeries = QtCharts.QBarSeries()
@@ -139,10 +143,13 @@ class InfoWidget(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.typePieChartView)
 
     def updateValues(self, updateDict: dict):
+        # Main data
+        self.deckStatsWidget.setData(updateDict)
+        # Legalities
+        self.legalitiesWidget.displayLegalities(updateDict["legalities"])
         # Mana values graph
         for j, value in enumerate(updateDict["manaValues"]):
             self.manaDataSet.replace(j, value)
-        self.deckStatsWidget.setData(updateDict)
         # colorPie
         self.colorPieSeries.clear()
         for color, qty in updateDict["colorPie"].items():
@@ -160,3 +167,28 @@ class InfoWidget(QtWidgets.QWidget):
             _slice = QtCharts.QPieSlice(type, qty)
             _slice.setLabelVisible()
             self.typePieSeries.append(_slice)
+
+
+class LegalitiesWidget(QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget | None) -> None:
+        super().__init__(parent)
+        self.mainLayout = qt.FlowLayout()
+        self.setLayout(self.mainLayout)
+        self.legalitiesWidgets = {}
+
+    def clear(self):
+        # Remove all checkboxes
+        for _widget in self.legalitiesWidgets.values():
+            _widget.deleteLater()
+        self.legalitiesWidgets = {}
+
+    def displayLegalities(self, legalitiesDict):
+        self.clear()
+        for k, v in legalitiesDict.items():
+            _legalityCB = QtWidgets.QCheckBox(k)
+            _legalityCB.setEnabled(False)
+            _legalityCB.setChecked(v == "legal")
+            _legalityCB.setMaximumHeight(24)
+            # TODO add tooltip to say what is not legal
+            self.mainLayout.addWidget(_legalityCB)
+            self.legalitiesWidgets.update({k: _legalityCB})

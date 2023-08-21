@@ -28,6 +28,7 @@ class CardListWidget(QtWidgets.QTableWidget):
         totalPrice = 0
         colorPie = {}
         typePie = {}
+        legalities = {}
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
@@ -58,12 +59,27 @@ class CardListWidget(QtWidgets.QTableWidget):
                 typePie[cardType] += qty
             else:
                 typePie.update({cardType: qty})
+            # legality
+            for format, legality in card["legalities"].items():
+                if legality not in ["legal", "not_legal", "restricted", "banned"]:
+                    raise NotImplementedError(f"{legality=} is an unupported legality type")
+                elif format in legalities.keys():
+                    # TODO handle "restricted"
+                    if legality == "legal" and legalities[format] == "legal":
+                        ...
+                    else:
+                        legalities[format] = "not_legal"
+                else:
+                    legalities.update({format: legality})
+                # TODO: Handle card numbers, and format specific restrictions.
+
         updateDict = {
             "manaValues": manaValues,
             "cardCount": cardCount,
             "totalPrice": totalPrice,
             "colorPie": colorPie,
-            "typePie": typePie
+            "typePie": typePie,
+            "legalities": legalities
         }
         qt.findAttrInParents(self, "infoPanel").updateValues(updateDict)
 

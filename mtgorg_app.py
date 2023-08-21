@@ -128,6 +128,5 @@ if __name__ == '__main__':
     initFolders()
     logger = logging.getLogger(__name__)
     window = MTGORG_GUI()
-    # window.showMaximized()
-    window.show()
+    window.showMaximized()
     sys.exit(window.app.exec())
