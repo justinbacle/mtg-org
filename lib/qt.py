@@ -1,4 +1,5 @@
 import logging
+import typing
 from pathlib import Path
 from PySide6 import QtGui, QtWidgets, QtSvg, QtCore
 
@@ -75,3 +76,14 @@ class ResizingGraphicsView(QtWidgets.QGraphicsView):
             bounds = self.scene().itemsBoundingRect()
             self.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
         return super().resizeEvent(event)
+
+
+def findAttrInParents(object: QtCore.QObject, attr: str) -> typing.Any:
+    parent = object.parent()
+    try:
+        while not hasattr(parent, attr):
+            parent = parent.parent()
+    except AttributeError as e:
+        logging.error(f"{object=} raised {e=} when looking for parent")
+        raise e
+    return getattr(parent, attr)

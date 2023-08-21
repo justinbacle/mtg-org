@@ -2,7 +2,7 @@ from PySide6 import QtWidgets, QtCore, QtGui
 from tqdm import tqdm
 
 import connector
-from lib import scryfall, utils
+from lib import scryfall, utils, qt
 import constants
 
 COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
@@ -65,7 +65,7 @@ class CardListWidget(QtWidgets.QTableWidget):
             "colorPie": colorPie,
             "typePie": typePie
         }
-        self.parent().parent().infoPanel.updateValues(updateDict)
+        qt.findAttrInParents(self, "infoPanel").updateValues(updateDict)
 
     def updateCardListInfos(self):
         # TODO update cardStack before
@@ -96,20 +96,21 @@ class CardListWidget(QtWidgets.QTableWidget):
                 # mana cost handling
                 # TODO handle split/phyrexian mana
                 # TODO handle mana of dual faced cards ?
+                # TODO better handle parent thing
                 if column == "mana_cost":
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        self.parent().parent().parent().parent().parent().parent().parent().manaFontId
+                        qt.findAttrInParents(self, "manaFontId")
                     )))
                     text = utils.setManaText(str(text))
                 # Set(s) handling
                 if column == "sets" and "sets" in cardData.keys():
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        self.parent().parent().parent().parent().parent().parent().parent().keyruneFontId
+                        qt.findAttrInParents(self, "keyruneFontId")
                     )))
                     text = utils.setSetsText(text)
                 if column == "set" and "set" in cardData.keys():
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        self.parent().parent().parent().parent().parent().parent().parent().keyruneFontId
+                        qt.findAttrInParents(self, "keyruneFontId")
                     )))
                     text = utils.setSetsText([text])
                 if column == "price":
@@ -147,20 +148,20 @@ class CardStackListWidget(CardListWidget):
         self.insertRow(self.rowCount())
         card.update({"qty": 1})
         self._addOneLine(card=card)
-        stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
+        stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if stackType == "deck":
             connector.addCardToDeck(stackName, 1, card["id"])
         elif stackType == "collection":
             connector.addCardToCollection(stackName, 1, card["id"])
         else:
             ...
-        self.cardStack.append(card)
+        self.cardStack.append((1, card))
         self.updateCardListInfos()
 
     def removeOne(self):
         selectedLine = self.selectedIndexes()[0]
         selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)
-        stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
+        stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if selectedCard["qty"] > 1:
             if stackType == "deck":
                 connector.changeCardDeckQty(stackName, selectedCard["qty"] - 1, selectedCard["id"])
@@ -188,7 +189,7 @@ class CardStackListWidget(CardListWidget):
     def addOne(self):
         selectedLine = self.selectedIndexes()[0]
         selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)
-        stackType, stackName = self.parent().parent().parent().parent().parent().parent().deckSelector.getSelected()
+        stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if stackType == "deck":
             connector.changeCardDeckQty(stackName, selectedCard["qty"] + 1, selectedCard["id"])
             deck = connector.getDeck(stackName)
