@@ -46,7 +46,7 @@ def getUrlJsonData(url):
     return jsonData
 
 
-def loadJson(jsonPath : str | Path):
+def loadJson(jsonPath: str | Path):
     if not isinstance(jsonPath, Path):
         jsonPath = Path(jsonPath)
     if jsonPath.is_file():

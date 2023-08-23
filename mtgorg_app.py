@@ -48,7 +48,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             import ctypes
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u'mtgorg.mainwindow')
         elif utils.isLinux():
-            # ? No idea how ?
+            # Not needed ?
             ...
         elif utils.isMac():
             # ? Who cares ?

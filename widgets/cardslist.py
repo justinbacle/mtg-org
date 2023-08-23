@@ -123,7 +123,7 @@ class InfoWidget(QtWidgets.QWidget):
         self.colorPieChart.setTitle("Color repartition")
         self.colorPieChartView = QtCharts.QChartView(self.colorPieChart)
         self.colorPieChartView.setRenderHint(QtGui.QPainter.Antialiasing)
-        self.colorPieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], GRAPH_MIN_SIZE[1])
+        self.colorPieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], GRAPH_MIN_SIZE[1] * 1.2)
         self.colorPieChartView.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.MinimumExpanding,
             QtWidgets.QSizePolicy.Policy.Preferred,
@@ -139,7 +139,7 @@ class InfoWidget(QtWidgets.QWidget):
         self.typePieChart.setTitle("Type repartition")
         self.typePieChartView = QtCharts.QChartView(self.typePieChart)
         self.typePieChartView.setRenderHint(QtGui.QPainter.Antialiasing)
-        self.typePieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], GRAPH_MIN_SIZE[1])
+        self.typePieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], GRAPH_MIN_SIZE[1] * 1.2)
         self.mainLayout.addWidget(self.typePieChartView)
 
     def updateValues(self, updateDict: dict):
