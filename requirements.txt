@@ -9,3 +9,4 @@ tinydb
 dotmap
 tqdm
 requests
+beautifulsoup4

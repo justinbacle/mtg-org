@@ -60,6 +60,10 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         if config.THEME == "fusion":
             qt.selectPalette(self.app)
 
+        # Update resources
+        # TODO set update every X days or new set available
+        self.updateResources()
+
         # Set Font
         self.manaFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/mana/mana.ttf")  # Mana font
         self.ndpmtgFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/NDPMTG.ttf")  # NDPMTG font (halfs)
@@ -67,6 +71,11 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         # Load frontend
         self.setupUi()
+
+    def updateResources(self):
+        keyruneFontUrl = "https://github.com/andrewgioia/keyrune/raw/master/fonts/keyrune.ttf"
+        utils.downloadFileFromUrl(keyruneFontUrl, Path("resources/fonts/keyrune/keyrune.ttf"))
+        utils.updateKeyRuneSymbols()
 
     def setupUi(self):
         self.centralWidget = QtWidgets.QWidget()

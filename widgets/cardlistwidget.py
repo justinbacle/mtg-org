@@ -81,7 +81,7 @@ class CardListWidget(QtWidgets.QTableWidget):
             "typePie": typePie,
             "legalities": legalities
         }
-        qt.findAttrInParents(self, "infoPanel").updateValues(updateDict)
+        qt.findAttrInParents(self, "decklist").infoPanel.updateValues(updateDict)
 
     def updateCardListInfos(self):
         # TODO update cardStack before
