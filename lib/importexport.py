@@ -56,7 +56,6 @@ class exportDialog(QtWidgets.QDialog):
         self.okButton.pressed.connect(self.on_okButtonPressed)
         self.mainLayout.addWidget(self.okButton)
 
-
     def on_typeSelectToggle(self):
         ...
 
