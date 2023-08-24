@@ -113,7 +113,13 @@ class CardStackSelector(QtWidgets.QWidget):
         importDialog.exec()
 
     def on_exportPBclicked(self):
-        ...
+        stackType, name = self.getSelected()
+        if stackType == "deck":
+            col = connector.getDeck(name)
+        elif stackType == "collection":
+            col = connector.getCollection(name)
+        exportDialog = importexport.exportDialog(parent=self, cardList=col["cardList"])
+        exportDialog.exec()
 
     def on_addDeck(self):
         deckName, ok = QtWidgets.QInputDialog.getText(
@@ -183,6 +189,8 @@ class CardStackSelector(QtWidgets.QWidget):
         self.decksListWidget.clear()
         for deck in decksList:
             self.decksListWidget.addItem(collectionItem(deck["name"]))
+
+        # TODO set exportbutton disabled when no coll selected
 
 
 def collectionItem(collectionName) -> QtWidgets.QListWidgetItem:

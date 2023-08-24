@@ -16,6 +16,55 @@ import connector  # noqa E402
 from lib import utils, scryfall  # noqa E402
 
 
+class exportDialog(QtWidgets.QDialog):
+    def __init__(self, cardList: list, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.mainLayout = QtWidgets.QVBoxLayout()
+        self.setLayout(self.mainLayout)
+        self.setWindowTitle("Export tool")
+
+        self.cardList = cardList
+
+        # Export type select
+        self.exportTypeSelectorGB = QtWidgets.QGroupBox("Export type")
+        self.exportTypeSelectorLayout = QtWidgets.QVBoxLayout()
+        self.exportTypeSelectorGB.setLayout(self.exportTypeSelectorLayout)
+        self.exportTypeSelector_cardmarketRB = QtWidgets.QRadioButton("Cardmarket")
+        # TODO add others
+        self.exportTypeSelector_cardmarketRB.toggled.connect(self.on_typeSelectToggle)
+        self.exportTypeSelectorLayout.addWidget(self.exportTypeSelector_cardmarketRB)
+        self.mainLayout.addWidget(self.exportTypeSelectorGB)
+
+        # Options
+        self.exportOptionsGB = QtWidgets.QGroupBox("Options")
+        self.exportOptionsLayout = QtWidgets.QVBoxLayout()
+        self.exportOptionsGB.setLayout(self.exportOptionsLayout)
+        self.exportOptions_discardSetCB = QtWidgets.QCheckBox("Discard set info")
+        self.exportOptionsLayout.addWidget(self.exportOptions_discardSetCB)
+        self.mainLayout.addWidget(self.exportOptionsGB)
+
+        # Destination
+        self.destinationSelectorGB = QtWidgets.QGroupBox("Destination")
+        self.destinationSelectorLayout = QtWidgets.QVBoxLayout()
+        self.destinationSelectorGB.setLayout(self.destinationSelectorLayout)
+        self.destinationSelect_ClipboardRB = QtWidgets.QRadioButton("Clipboard")
+        self.destinationSelectorLayout.addWidget(self.destinationSelect_ClipboardRB)
+        self.mainLayout.addWidget(self.destinationSelectorGB)
+
+        # Ok button
+        self.okButton = QtWidgets.QPushButton("OK")
+        self.okButton.pressed.connect(self.on_okButtonPressed)
+        self.mainLayout.addWidget(self.okButton)
+
+
+    def on_typeSelectToggle(self):
+        ...
+
+    def on_okButtonPressed(self):
+        ...
+        # TODO
+
+
 class importDialog(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
