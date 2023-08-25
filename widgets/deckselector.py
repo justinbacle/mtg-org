@@ -168,6 +168,9 @@ class CardStackSelector(QtWidgets.QWidget):
             collection = connector.getCollection(collectionName)
             self.collectionSelectionChanged.emit(collection)
             self.decksListWidget.clearSelection()
+            self.exportPB.setEnabled(True)
+        else:
+            self.exportPB.setEnabled(False)
 
     def on_deckSelectChanged(self):
         if len(self.decksListWidget.selectedItems()) == 1:
@@ -175,13 +178,15 @@ class CardStackSelector(QtWidgets.QWidget):
             deck = connector.getDeck(deckName)
             self.deckSelectionChanged.emit(deck)
             self.collectionsListWidget.clearSelection()
+            self.exportPB.setEnabled(True)
+        else:
+            self.exportPB.setEnabled(False)
 
     def initData(self):
         # Collections
         collectionsList = connector.getCollectionsList()
         self.collectionsListWidget.clear()
         for collection in collectionsList:
-            # TODO add more data ?
             self.collectionsListWidget.addItem(collectionItem(collection["name"]))
 
         # Decks
@@ -190,7 +195,7 @@ class CardStackSelector(QtWidgets.QWidget):
         for deck in decksList:
             self.decksListWidget.addItem(collectionItem(deck["name"]))
 
-        # TODO set exportbutton disabled when no coll selected
+        self.exportPB.setEnabled(False)
 
 
 def collectionItem(collectionName) -> QtWidgets.QListWidgetItem:

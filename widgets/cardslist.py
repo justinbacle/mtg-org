@@ -25,9 +25,30 @@ class CardsList(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.splitter)
 
         # Left (main pane) is cards list
+        self.cardsListWidget = QtWidgets.QWidget()
+        self.cardsListLayout = QtWidgets.QVBoxLayout()
+        self.cardsListWidget.setLayout(self.cardsListLayout)
+        self.cardsListButtonBox = QtWidgets.QWidget()
+        self.cardsListButtonBoxLayout = QtWidgets.QHBoxLayout()
+        self.cardsListButtonBox.setLayout(self.cardsListButtonBoxLayout)
+        self.cardsListButtonBoxLayout.addWidget(QtWidgets.QLabel("Sort by:"))
+        self.cardsListButton_type = QtWidgets.QPushButton("Type")
+        self.cardsListButton_type.clicked.connect(self.on_sortByType)
+        self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_type)
+        self.cardsListButton_price = QtWidgets.QPushButton("Price")
+        self.cardsListButton_price.clicked.connect(self.on_sortByPrice)
+        self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_price)
+        self.cardsListButton_name = QtWidgets.QPushButton("Name")
+        self.cardsListButton_name.clicked.connect(self.on_sortByName)
+        self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_name)
+        self.cardsListButton_cmc = QtWidgets.QPushButton("CMC")
+        self.cardsListButton_cmc.clicked.connect(self.on_sortByCmc)
+        self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_cmc)
+        self.cardsListLayout.addWidget(self.cardsListButtonBox)
         self.cardsList = CardStackListWidget()
         self.cardsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
-        self.splitter.addWidget(self.cardsList)
+        self.cardsListLayout.addWidget(self.cardsList)
+        self.splitter.addWidget(self.cardsListWidget)
 
         # Right pane is infos data (text, graphs, list, ...)
         self.infoPanel = InfoWidget()
@@ -43,6 +64,34 @@ class CardsList(QtWidgets.QWidget):
             self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["id"])
         else:
             selectedItem = None
+
+    def on_sortByType(self):
+        cardsList = self.cardsList.cardStack
+        cardsList.sort(key=lambda x: x[1]["type_line"])
+        self.cardsList.setCards(cardsList)
+
+    def on_sortByPrice(self):
+        cardsList = self.cardsList.cardStack
+        cardsList.sort(
+            key=lambda x: float(
+                utils.getFromDict(
+                    x[1], ["prices", constants.CURRENCY[0]], 0
+                ) if utils.getFromDict(
+                    x[1], ["prices", constants.CURRENCY[0]], 0
+                ) is not None else 0
+            )
+        )
+        self.cardsList.setCards(cardsList)
+
+    def on_sortByName(self):
+        cardsList = self.cardsList.cardStack
+        cardsList.sort(key=lambda x: x[1]["name"])
+        self.cardsList.setCards(cardsList)
+
+    def on_sortByCmc(self):
+        cardsList = self.cardsList.cardStack
+        cardsList.sort(key=lambda x: x[1]["cmc"])
+        self.cardsList.setCards(cardsList)
 
 
 class DeckStatsWidget(QtWidgets.QWidget):
@@ -150,6 +199,7 @@ class InfoWidget(QtWidgets.QWidget):
         # Mana values graph
         for j, value in enumerate(updateDict["manaValues"]):
             self.manaDataSet.replace(j, value)
+        self.manaAxisY.setMax(max(updateDict["manaValues"]))
         # colorPie
         self.colorPieSeries.clear()
         for color, qty in updateDict["colorPie"].items():

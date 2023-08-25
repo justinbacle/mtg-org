@@ -57,11 +57,27 @@ class exportDialog(QtWidgets.QDialog):
         self.mainLayout.addWidget(self.okButton)
 
     def on_typeSelectToggle(self):
-        ...
+        if self.exportTypeSelector_cardmarketRB.isChecked():
+            self.exportOptions_discardSetCB.setEnabled(True)
+        else:
+            self.exportOptions_discardSetCB.setEnabled(False)
 
     def on_okButtonPressed(self):
-        ...
-        # TODO
+        exportTxt = ""
+        if self.exportTypeSelector_cardmarketRB.isChecked():
+            for qty, cardId in self.cardList:
+                card = connector.getCard(cardId)['data']
+                if self.exportOptions_discardSetCB:
+                    exportTxt += f"{qty} {card['name']}\n"
+                else:
+                    exportTxt += f"{qty} {card['name']} ({card['set_name']})\n"
+        else:
+            raise NotImplementedError
+
+        if self.destinationSelect_ClipboardRB.isChecked():
+            pyperclip.copy(exportTxt)
+
+        self.close()
 
 
 class importDialog(QtWidgets.QDialog):

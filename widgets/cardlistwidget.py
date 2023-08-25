@@ -21,68 +21,6 @@ class CardListWidget(QtWidgets.QTableWidget):
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
         self.setHorizontalHeaderLabels(self.columns)
 
-    def setCards(self, cardsList: list):
-        self.setRowCount(0)
-        manaValues = [0, 0, 0, 0, 0, 0, 0]  # 0, 1, 2, 3, 4, 5, 6+
-        cardCount = 0
-        totalPrice = 0
-        colorPie = {}
-        typePie = {}
-        legalities = {}
-        for qty, card in cardsList:
-            self.insertRow(self.rowCount())
-            card.update({"qty": qty})
-            self._addOneLine(card)
-            # manaCost
-            if card["cmc"] > 6:
-                manaValues[6] = manaValues[6] + qty
-            else:
-                manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
-            # cardCount
-            cardCount += qty
-            # cardPrice
-            cardPrice = utils.getFromDict(card, ["prices", constants.CURRENCY[0]])
-            if cardPrice is not None:
-                totalPrice += qty * float(cardPrice)
-            # colorPie
-            colorIdentity = "".join(sorted("".join(card["color_identity"])))
-            if colorIdentity in colorPie.keys():
-                colorPie[colorIdentity] += qty
-            else:
-                colorPie.update({colorIdentity: qty})
-            # typePie
-            if "—" in card["type_line"]:
-                cardType = card["type_line"].split("—")[0].rstrip()
-            else:
-                cardType = card["type_line"]
-            if cardType in typePie.keys():
-                typePie[cardType] += qty
-            else:
-                typePie.update({cardType: qty})
-            # legality
-            for format, legality in card["legalities"].items():
-                if legality not in ["legal", "not_legal", "restricted", "banned"]:
-                    raise NotImplementedError(f"{legality=} is an unupported legality type")
-                elif format in legalities.keys():
-                    # TODO handle "restricted"
-                    if legality == "legal" and legalities[format] == "legal":
-                        ...
-                    else:
-                        legalities[format] = "not_legal"
-                else:
-                    legalities.update({format: legality})
-                # TODO: Handle card numbers, and format specific restrictions.
-
-        updateDict = {
-            "manaValues": manaValues,
-            "cardCount": cardCount,
-            "totalPrice": totalPrice,
-            "colorPie": colorPie,
-            "typePie": typePie,
-            "legalities": legalities
-        }
-        qt.findAttrInParents(self, "decklist").infoPanel.updateValues(updateDict)
-
     def updateCardListInfos(self):
         # TODO update cardStack before
         self.setCards(cardsList=self.cardStack)
@@ -99,6 +37,13 @@ class CardListWidget(QtWidgets.QTableWidget):
         if event.source() != self:
             cardId = event.source().currentItem().data(QtCore.Qt.UserRole)["id"]
             self.addCard(scryfall.getCardById(cardId))
+
+    def setCards(self, cardsList: list):
+        self.setRowCount(0)
+        for qty, card in cardsList:
+            self.insertRow(self.rowCount())
+            card.update({"qty": qty})
+            self._addOneLine(card)
 
     def getCardTableItem(self, cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
         dataList = []
@@ -225,3 +170,68 @@ class CardStackListWidget(CardListWidget):
             self.addOne()
         else:
             return super().keyPressEvent(event)
+
+    def setCards(self, cardsList: list):
+        self.setRowCount(0)
+        manaValues = [0, 0, 0, 0, 0, 0, 0]  # 0, 1, 2, 3, 4, 5, 6+
+        cardCount = 0
+        totalPrice = 0
+        colorPie = {}
+        typePie = {}
+        legalities = {}
+        for qty, card in cardsList:
+            self.insertRow(self.rowCount())
+            card.update({"qty": qty})
+            self._addOneLine(card)
+            # manaCost
+            # TODO ignore lands
+            if card["cmc"] > 6:
+                manaValues[6] = manaValues[6] + qty
+            else:
+                manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
+            # cardCount
+            cardCount += qty
+            # cardPrice
+            cardPrice = utils.getFromDict(card, ["prices", constants.CURRENCY[0]])
+            if cardPrice is not None:
+                totalPrice += qty * float(cardPrice)
+            # colorPie
+            # TODO ignore lands
+            colorIdentity = "".join(sorted("".join(card["color_identity"])))
+            if colorIdentity in colorPie.keys():
+                colorPie[colorIdentity] += qty
+            else:
+                colorPie.update({colorIdentity: qty})
+            # typePie
+            if "—" in card["type_line"]:
+                cardType = card["type_line"].split("—")[0].rstrip()
+            else:
+                cardType = card["type_line"]
+            if cardType in typePie.keys():
+                typePie[cardType] += qty
+            else:
+                typePie.update({cardType: qty})
+            # legality
+            for format, legality in card["legalities"].items():
+                if legality not in ["legal", "not_legal", "restricted", "banned"]:
+                    raise NotImplementedError(f"{legality=} is an unupported legality type")
+                elif format in legalities.keys():
+                    # TODO handle "restricted"
+                    if legality == "legal" and legalities[format] == "legal":
+                        ...
+                    else:
+                        legalities[format] = "not_legal"
+                else:
+                    legalities.update({format: legality})
+                # TODO: Handle card numbers, and format specific restrictions.
+
+        updateDict = {
+            "manaValues": manaValues,
+            "cardCount": cardCount,
+            "totalPrice": totalPrice,
+            "colorPie": colorPie,
+            "typePie": typePie,
+            "legalities": legalities
+        }
+        # TODO only trigger for cardStack
+        qt.findAttrInParents(self, "decklist").infoPanel.updateValues(updateDict)
