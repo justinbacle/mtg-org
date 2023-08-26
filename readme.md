@@ -10,7 +10,7 @@ Hence this "MTG Organizer" project (name will change for sure)
 
 ## Features & Current status
 
-Still early development but the basic features are already here
+Still development but most features are already here
 
 Here are the lists of things I'd like to have included in this project : 
 
@@ -32,7 +32,7 @@ Here are the lists of things I'd like to have included in this project :
 
 - Card data rely on a cache, which is manually stored for now, this cache is not yet updated when a set comes out. Manual solution for now is to clean the cache manually but plan to implement a cache update system that could be triggered when a new set is out.
 - Some sets are not displayed properly if the sets icons and fonts are not available, this should be added in an update feature later
-- Mana cost is not repported correctly for non-basic mana types (phyrexian, hybrid, ...) as well as for dual sided cards
+- Mana cost is not repported correctly for non-basic mana types (phyrexian, hybrid, ...)
 
 ## Requirements
 
@@ -61,8 +61,10 @@ then run the main program
 - Where are my decks and collection saved ?
     - (currently) your decks and collections are stored in your homefolder in a mtgorg.db file (which is basically a json file) which contains the most minimal data to store your deck
 
-- Where is the cache stored
+- Where is the cache stored ?
     - as for above question, the cache is stored in your homefolder, in a mtgorg_cache.db file, feel free to remove this file to clean the cache.
 
-- Search is slow
+- Search/Import is slow
     - contrary to most other card organizers, this app does not store the entire dataset of card, and only stores data as you request it. This has the added benefit of not needing you to download the entire datasets before starting to organize your decks.
+    This can result on slow operations (especially when importing big collections of cards) if your netwok connection is limited.
+    - There are plans to allow for full offline operations, but this is not the main focus for now
