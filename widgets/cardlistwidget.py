@@ -55,9 +55,10 @@ class CardListWidget(QtWidgets.QTableWidget):
                 else:
                     text = utils.getFromDict(cardData, column.split("."))
                 # mana cost handling
+                if "card_faces" in cardData.keys():
+                    if column == "mana_cost":
+                        text = cardData["card_faces"][0][column]
                 # TODO handle split/phyrexian mana
-                # TODO handle mana of dual faced cards ?
-                # TODO better handle parent thing
                 if column == "mana_cost":
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
                         qt.findAttrInParents(self, "manaFontId")
@@ -183,25 +184,24 @@ class CardStackListWidget(CardListWidget):
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
             self._addOneLine(card)
-            # manaCost
-            # TODO ignore lands
-            if card["cmc"] > 6:
-                manaValues[6] = manaValues[6] + qty
-            else:
-                manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
+            if not card["type_line"].startswith("Land") and not card["type_line"].startswith("Basic Land"):
+                # manaCost
+                if card["cmc"] > 6:
+                    manaValues[6] = manaValues[6] + qty
+                else:
+                    manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
+                # colorPie
+                colorIdentity = "".join(sorted("".join(card["color_identity"])))
+                if colorIdentity in colorPie.keys():
+                    colorPie[colorIdentity] += qty
+                else:
+                    colorPie.update({colorIdentity: qty})
             # cardCount
             cardCount += qty
             # cardPrice
             cardPrice = utils.getFromDict(card, ["prices", constants.CURRENCY[0]])
             if cardPrice is not None:
                 totalPrice += qty * float(cardPrice)
-            # colorPie
-            # TODO ignore lands
-            colorIdentity = "".join(sorted("".join(card["color_identity"])))
-            if colorIdentity in colorPie.keys():
-                colorPie[colorIdentity] += qty
-            else:
-                colorPie.update({colorIdentity: qty})
             # typePie
             if "—" in card["type_line"]:
                 cardType = card["type_line"].split("—")[0].rstrip()

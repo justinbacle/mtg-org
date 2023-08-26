@@ -113,9 +113,9 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en"):
     return returnId
 
 
-def getCardById(id: str):
+def getCardById(id: str, force: bool = False):
     card = connector.getCard(id)
-    if card is None:  # card not in Cache
+    if force or card is None:  # card not in Cache
         if constants.USE_BULK_FILES:
             card = list(filter(lambda x: x["id"] == id, getBulkData()))[0]
         else:

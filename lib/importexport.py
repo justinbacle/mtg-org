@@ -13,7 +13,7 @@ import os
 sys.path.append(os.getcwd())  # FIXME Remove
 
 import connector  # noqa E402
-from lib import utils, scryfall  # noqa E402
+from lib import utils, scryfall, qt  # noqa E402
 
 
 class exportDialog(QtWidgets.QDialog):
@@ -67,7 +67,7 @@ class exportDialog(QtWidgets.QDialog):
         if self.exportTypeSelector_cardmarketRB.isChecked():
             for qty, cardId in self.cardList:
                 card = connector.getCard(cardId)['data']
-                if self.exportOptions_discardSetCB:
+                if self.exportOptions_discardSetCB.isChecked():
                     exportTxt += f"{qty} {card['name']}\n"
                 else:
                     exportTxt += f"{qty} {card['name']} ({card['set_name']})\n"
@@ -205,7 +205,7 @@ class SetChooserDialog(QtWidgets.QDialog):
             _button = QtWidgets.QPushButton()
             _button.setFont(
                 QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                    self.parent().parent().parent().parent().parent().keyruneFontId)))
+                    qt.findAttrInParents(self, "keyruneFontId"))))
             _button.setStyleSheet("QPushButton{font-size: 20px;font-family: Keyrune; font-weight: normal}")
             _button.setText(utils.setSetsText([set]) + " " + set)
             _button.clicked.connect(self.onSetButtonPushed)

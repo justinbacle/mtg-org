@@ -200,9 +200,12 @@ def getCard(cardId) -> dict:
 
 
 def saveCard(cardId, cardData) -> None:
-    getCacheDB().table(constants.CARDS_TABLE_NAME).insert(
-        {"data": cardData, "id": cardId}
-    )
+    if len(getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)) == 0:
+        getCacheDB().table(constants.CARDS_TABLE_NAME).insert(
+            {"data": cardData, "id": cardId}
+        )
+    else:
+        updateCard(cardId, cardData)
 
 
 def updateCard(cardId, updateDict: dict) -> None:

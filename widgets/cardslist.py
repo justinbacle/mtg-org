@@ -204,7 +204,7 @@ class InfoWidget(QtWidgets.QWidget):
         self.colorPieSeries.clear()
         for color, qty in updateDict["colorPie"].items():
             if color != "":
-                _slice = QtCharts.QPieSlice(color, qty)
+                _slice = QtCharts.QPieSlice(f"{color}: {qty}", qty)
             else:
                 _slice = QtCharts.QPieSlice("colorless", qty)
             _slice.setLabelVisible()
@@ -214,7 +214,7 @@ class InfoWidget(QtWidgets.QWidget):
         # typePie
         self.typePieSeries.clear()
         for type, qty in updateDict["typePie"].items():
-            _slice = QtCharts.QPieSlice(type, qty)
+            _slice = QtCharts.QPieSlice(f"{type}: {qty}", qty)
             _slice.setLabelVisible()
             self.typePieSeries.append(_slice)
 

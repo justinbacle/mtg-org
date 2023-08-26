@@ -20,12 +20,13 @@ Here are the lists of things I'd like to have included in this project :
 | Advanced Search through MTG database | Planned, not started |
 | Support for other languages than EN | POC with French OK|
 |Organizing cards in decks & collections| Done |
-|Add deck visualizations and tools| Not started|
+|Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs|
 |Import| MTGA, CSV(Urza Gatherer, and all supported on mtggoldfish), MTGO(.dek) |
-|Export| Not started|
+|Export| Started : export to cardmarket decklist|
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
 |Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK |
+|Offline mode| WIP, added basic support for bulk files|
 
 ## Known issues
 
@@ -34,6 +35,7 @@ Here are the lists of things I'd like to have included in this project :
 - Mana cost is not repported correctly for non-basic mana types (phyrexian, hybrid, ...) as well as for dual sided cards
 
 ## Requirements
+
 > Python 3.10+
 
 ## Install / Usage

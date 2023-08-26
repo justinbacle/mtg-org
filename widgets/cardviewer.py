@@ -37,7 +37,7 @@ class CardViewer(QtWidgets.QWidget):
         # Card Name + Mana
         self.nameLabel = QtWidgets.QLabel("Name")
         self.mainLayout.addWidget(self.nameLabel, line.val(), 0)
-        self.manacostLabel = QtWidgets.QLabel("{M}{A}{N}{A}{0}")
+        self.manacostLabel = QtWidgets.QLabel()
         self.mainLayout.addWidget(self.manacostLabel, line.postinc(), 1)
 
         # Set icon + Name + Year
@@ -57,24 +57,30 @@ class CardViewer(QtWidgets.QWidget):
         self.cardImgGraphicsView = qt.ResizingGraphicsView()
         self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform)
         self.mainLayout.addWidget(self.cardImgGraphicsView, line.postinc(), 0, 1, 2)
-        # TODO add button or shortcut to reload/redownload card
+        self.reloadCardShortcut = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+R'), self)
+        self.reloadCardShortcut.activated.connect(self.on_reloadCardData)
 
         # Card Link
         self.scryfallUriLabel = QtWidgets.QLabel("uri")
         self.scryfallUriLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
-        self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
+        self.scryfallUriLabel.setOpenExternalLinks(True)
+        # self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
         self.mainLayout.addWidget(self.scryfallUriLabel, line.val(), 0)
 
         # Card price
         self.avgPriceLabel = QtWidgets.QLabel("price")
         self.mainLayout.addWidget(self.avgPriceLabel, line.postinc(), 1)
 
+    def on_reloadCardData(self):
+        scryfall.getCardById(self.card["id"], force=True)
+        self.display(self.card["id"])
+
     def on_add(self):
         # TODO check when already present to raise qty instead of adding other line
-        self.parent().parent().parent().decklist.cardsList.addCard(self.card)
+        qt.findAttrInParents(self, "decklist").cardsList.addCard(self.card)
 
     def on_scryfallLinkClicked(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.card['related_uris']['gatherer']))
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.uri))
 
     def on_randomCardPBClicked(self):
         self.display(scryfall.getRandomCard()["id"])
@@ -97,7 +103,7 @@ class CardViewer(QtWidgets.QWidget):
         if self.manacostLabel.font().family() != "Mana":
             self.manacostLabel.setFont(
                 QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                    self.parent().parent().parent().manaFontId)))
+                    qt.findAttrInParents(self, "manaFontId"))))
 
     def colorSetIcon(self, data: QtCore.QByteArray, rarity: str = "C"):
         if rarity in constants.RARITIES.keys():
@@ -176,13 +182,11 @@ class CardViewer(QtWidgets.QWidget):
             url = QtCore.QUrl.fromUserInput(imageUri)
             self.imgDownloader.start_download(url, cardId)
 
-        # scrifall uri
+        # gatherer/scryfall uri
         try:
-            self.scryfallUriLabel.setText(f"<a href={self.card['related_uris']['gatherer']}>Gatherer Link</a>")
+            self.scryfallUriLabel.setText(f"<a href=\"{self.card['related_uris']['gatherer']}\">Gatherer Link</a>")
         except KeyError:
-            self.scryfallUriLabel.setText(f"<a href={self.card['scryfall_uri']}>Scryfall Link</a>")
-        self.scryfallUriLabel.linkActivated.disconnect(self.on_scryfallLinkClicked)
-        self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
+            self.scryfallUriLabel.setText(f"<a href=\"{self.card['scryfall_uri']}\">Scryfall Link</a>")
 
         # price
         self.avgPriceLabel.setText(
