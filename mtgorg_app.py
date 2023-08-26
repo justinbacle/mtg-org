@@ -39,10 +39,16 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         if config.THEME == "material":
             qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '0'})
 
-        iconPath = Path("resources/icons/mirari.png").as_posix()
-        icon = QtGui.QIcon()
-        icon.addFile(iconPath)
-        self.app.setWindowIcon(icon)
+        if utils.isWin():
+            iconPath = Path("resources/icons/mirari.png").as_posix()
+            icon = QtGui.QIcon()
+            icon.addFile(iconPath)
+            self.app.setWindowIcon(icon)
+        elif utils.isLinux():
+            # FIXME: not working, only seeing wayland's "W" icon
+            ...
+        else:
+            ...
         self.setWindowTitle("MTG Organizer")
         if utils.isWin():
             import ctypes
