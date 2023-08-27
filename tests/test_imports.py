@@ -14,7 +14,7 @@ Name,Type,Color,Rarity,Author,Power,Toughness,Mana cost,Converted mana cost,Coun
 "Mystical Tutor","Instant",Blue,Uncommon,"David O'Connor",0,0,(U),1,1,0,0,3.46‎€,3.46‎€,80,"Mirage",MIR,3571,3351,,0,"1xGood","","",5159,8131,5d98101f-e32a-4a4a-a649-faa920d111ee
 "Vampiric Tutor","Instant",Black,Rare,"Gary Leach",0,0,(B),1,1,0,0,27.76‎€,27.76‎€,72,"Visions",VIS,3863,3629,,0,"1xGood","","",5954,8423,0a07cba3-2e8d-48ec-a6f8-4d2edfcd833d
 "Worldly Tutor","Instant",Green,Uncommon,"David O'Connor",0,0,(G),1,1,0,0,9.01‎€,9.01‎€,255,"Mirage",MIR,3644,3424,,0,"1xGood","","",5300,8204,f00115bc-b551-4bf5-a121-bebb37201575
-"""
+"""  # noqa E501
 URZA_GATHERER_DECKLIST = [
     ['1', '881e5922-b464-4a1a-b074-664bd6c0a7f6'],
     ['1', 'cbac1d27-15e2-4e2f-82ab-625a16e096cb'],
@@ -36,7 +36,7 @@ DECKBOX_CSV = """Count,Tradelist Count,Name,Edition,Card Number,Condition,Langua
 4,4,Angel of Serenity,Return to Ravnica,1,Near Mint,English,,,,,,,,
 1,1,Ashen Rider,Theros,187,Near Mint,English,,,,,,,,
 1,0,Anax and Cymede,Theros,186,Near Mint,English,foil,,,,,,,
-"""
+"""  # noqa E501
 DECKBOX_DECKLIST = [
     ['4', 'f10d82f7-7759-457e-a9bb-f9a5bd968f82'],
     ['1', '602e43b1-1b1c-4eb1-be0a-61b673646c6f'],
@@ -46,7 +46,7 @@ DECKBOX_DECKLIST = [
 DECKED_BUILDER_CSV = """Total Qty,Reg Qty,Foil Qty,Card,Set,Mana Cost,Card Type,Color,Rarity,Mvid,Single Price,Single Foil Price,Total Price,Price Source,Notes
 3,2,1,Black Sun's Zenith,Mirrodin Besieged,XBB,Sorcery,Black,Rare,214061,1.00,6.25,7.25,cardshark,
 1,1,0,Snapcaster Mage,Innistrad,1U,Creature  - Human Wizard,Blue,Rare,227676,26.60,115.00,141.60,cardshark,
-"""
+"""  # noqa E501
 DECKED_BUILDER_DECKLIST = [
     [1, '03bdcf52-50b8-42c0-9665-931d83f5f314'],
     [1, '9e5b279e-4670-4a1e-87d0-3cab7e4f9e58']
@@ -57,7 +57,8 @@ PUCATRADE_CSV = """Count,Name,Edition,Rarity,Expansion Symbol,Points,Foil,Condit
 8,Rattleclaw Mystic,Khans of Tarkir,RARE,KTK,194,0,"Near Mint","English",HAVE,"11/29/2014","11/29/2014","11/30/2014",25942
 1,Opulent Palace,Khans of Tarkir,UNCOMMON,KTK,461,1,"Near Mint","English",HAVE,"11/29/2014","11/29/2014","11/30/2014",25928
 1,Tasigur the Golden Fang,Fate Reforged,RARE,FRF,1045,1,"Near Mint","English",HAVE,"1/24/2015","1/24/2015","2/03/2015",270
-1,Tasigur the Golden Fang,Fate Reforged,RARE,FRF,1045,1,"Near Mint","English",HAVE,"1/24/2015","1/24/2015","2/03/2015",270"""
+1,Tasigur the Golden Fang,Fate Reforged,RARE,FRF,1045,1,"Near Mint","English",HAVE,"1/24/2015","1/24/2015","2/03/2015",270
+"""  # noqa E501
 PUCATRADE_DECKLIST = [
     ['1', 'ece3bcdd-cb33-4923-b919-ba57a327d3cd'],
     ['8', '4fb6c2e0-eeaa-4d60-aab7-2b8c739a9278'],
@@ -81,7 +82,8 @@ MTG_GOLDFISH_DECKLIST = [
 TCGPLAYER_CSV = """Quantity,Name,Simple Name,Set,Card Number,Set Code,Printing,Condition,Language,Rarity,Product ID,SKU
 1,Verdant Catacombs,Verdant Catacombs,Zendikar,229,ZEN,Normal,Near Mint,English,Rare,33470,315319
 1,Graven Cairns,Graven Cairns,Zendikar Expeditions,28,EXP,Foil,Near Mint,English,Mythic,110729,3042202
-1,Olivia Voldaren,Olivia Voldaren,Innistrad,215,ISD,Foil,Near Mint,English,Mythic,52181,500457"""
+1,Olivia Voldaren,Olivia Voldaren,Innistrad,215,ISD,Foil,Near Mint,English,Mythic,52181,500457
+"""
 TCGPLAYER_DECKLIST = [
     ['1', '7abd2723-2851-4f1a-b2d0-dfcb526472c3'],
     ['1', 'a3028c5b-2f81-4aee-9455-ebb0bd81ccaa'],
