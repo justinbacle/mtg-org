@@ -10,3 +10,4 @@ dotmap
 tqdm
 requests
 beautifulsoup4
+fuzzywuzzy
