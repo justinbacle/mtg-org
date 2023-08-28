@@ -44,6 +44,24 @@ class CardListWidget(QtWidgets.QTableWidget):
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
             self._addOneLine(card)
+        self.formatManaCells()
+
+    def formatManaCells(self):
+        for i, column in enumerate(self.columns):
+            if column == "mana_cost":
+                for j in range(self.rowCount()):
+                    manaCostStr = self.item(j, i).text()
+                    self.item(j, i).setText("")
+                    [manaCostStr := manaCostStr.replace(a, b) for a, b in utils.MANA_FONT_CONVERSION_DICT.items()]
+                    _label = QtWidgets.QLabel(utils.setManaText(manaCostStr))
+                    with open("resources/fonts/mana/mana.css", "r") as f:
+                        css = f.readlines()
+                    _label.setTextFormat(QtCore.Qt.TextFormat.RichText)
+                    _label.setStyleSheet("\n".join(css))
+                    _label.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                        qt.findAttrInParents(self, "manaFontId")
+                    )))
+                    self.setCellWidget(j, i, _label)
 
     def getCardTableItem(self, cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
         dataList = []
@@ -180,6 +198,7 @@ class CardStackListWidget(CardListWidget):
         colorPie = {}
         typePie = {}
         legalities = {}
+        totalCmc = 0
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
@@ -190,6 +209,7 @@ class CardStackListWidget(CardListWidget):
                     manaValues[6] = manaValues[6] + qty
                 else:
                     manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
+                totalCmc += int(card["cmc"])
                 # colorPie
                 colorIdentity = "".join(sorted("".join(card["color_identity"])))
                 if colorIdentity in colorPie.keys():
@@ -228,6 +248,7 @@ class CardStackListWidget(CardListWidget):
         updateDict = {
             "manaValues": manaValues,
             "cardCount": cardCount,
+            "totalCmc": totalCmc,
             "totalPrice": totalPrice,
             "colorPie": colorPie,
             "typePie": typePie,

@@ -154,10 +154,11 @@ def getColor(coloridentity: str) -> tuple:
             r.append(BASICCOLORS[color][0])
             g.append(BASICCOLORS[color][1])
             b.append(BASICCOLORS[color][2])
-        for color in [r, g, b]:
-            color = int(sum(color) / len(color))
+        r = int(sum(r) / len(r))
+        g = int(sum(g) / len(g))
+        b = int(sum(b) / len(b))
 
-        return (r[0], g[0], b[0])
+        return (r, g, b)
     else:
         return (128, 128, 128)
 
@@ -213,7 +214,20 @@ def updateKeyRuneSymbols():
         outfile.write(json.dumps(equDict, indent=4))
 
 
+def updateManaFontSymbols():
+    ...
+
+
 # -------------------------------- Font equiv -------------------------------- #
+
+
+MANA_FONT_CONVERSION_DICT = {
+    "{W}": '<i class="ms ms-w"></i>',
+    "{U}": '<i class="ms ms-u"></i>',
+    "{B}": '<i class="ms ms-b"></i>',
+    "{R}": '<i class="ms ms-r"></i>',
+    "{G}": '<i class="ms ms-g"></i>',
+}
 
 
 MANA_SYMBOLS = {

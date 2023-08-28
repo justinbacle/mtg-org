@@ -1,7 +1,7 @@
 import logging
 import typing
 from pathlib import Path
-from PySide6 import QtGui, QtWidgets, QtSvg, QtCore
+from PySide6 import QtGui, QtWidgets, QtSvg, QtCore, QtCharts
 
 from lib import system
 
@@ -178,3 +178,8 @@ class FlowLayout(QtWidgets.QLayout):
             line_height = max(line_height, item.sizeHint().height())
 
         return y + line_height - rect.y()
+
+
+def getChartsTheme():
+    theme = QtCharts.QChart.ChartTheme.ChartThemeDark
+    return theme

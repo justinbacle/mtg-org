@@ -111,12 +111,20 @@ class DeckStatsWidget(QtWidgets.QWidget):
         self.totalPriceLabel = QtWidgets.QLabel()
         self.mainLayout.addWidget(self.totalPriceLabel, 1, 1)
 
+        self._totalCmcLabel = QtWidgets.QLabel("Total CMC")
+        self.mainLayout.addWidget(self._totalCmcLabel, 2, 0)
+        self.totalCmcLabel = QtWidgets.QLabel()
+        self.mainLayout.addWidget(self.totalCmcLabel, 2, 1)
+
     def setData(self, dataDict):
         self.cardCountLabel.setText(
             str(dataDict["cardCount"])
         )
         self.totalPriceLabel.setText(
             str(round(dataDict["totalPrice"], 2)) + constants.CURRENCY[1]
+        )
+        self.totalCmcLabel.setText(
+            str(round(dataDict["totalCmc"], 2))
         )
 
 
@@ -145,6 +153,7 @@ class InfoWidget(QtWidgets.QWidget):
         self.manaChart = QtCharts.QChart()
         self.manaChart.setTitle("Mana repartition")
         self.manaChart.addSeries(self.manaBarSeries)
+        self.manaChart.setTheme(qt.getChartsTheme())
         # Axes
         self.manaCategories = ["0", "1", "2", "3", "4", "5", "6+"]
         self.manaAxisX = QtCharts.QBarCategoryAxis()
@@ -165,6 +174,7 @@ class InfoWidget(QtWidgets.QWidget):
 
         # Color repartition
         self.colorPieChart = QtCharts.QChart()
+        self.colorPieChart.setTheme(qt.getChartsTheme())
         self.colorPieChart.createDefaultAxes()
         self.colorPieSeries = QtCharts.QPieSeries()
         self.colorPieChart.addSeries(self.colorPieSeries)
@@ -181,6 +191,7 @@ class InfoWidget(QtWidgets.QWidget):
 
         # Card type repartition
         self.typePieChart = QtCharts.QChart()
+        self.typePieChart.setTheme(qt.getChartsTheme())
         self.typePieChart.createDefaultAxes()
         self.typePieSeries = QtCharts.QPieSeries()
         self.typePieChart.addSeries(self.typePieSeries)
@@ -206,7 +217,7 @@ class InfoWidget(QtWidgets.QWidget):
             if color != "":
                 _slice = QtCharts.QPieSlice(f"{color}: {qty}", qty)
             else:
-                _slice = QtCharts.QPieSlice("colorless", qty)
+                _slice = QtCharts.QPieSlice(f"colorless: {qty}", qty)
             _slice.setLabelVisible()
             _color = utils.getColor(color)
             _slice.setColor(QtGui.QColor(_color[0], _color[1], _color[2]))

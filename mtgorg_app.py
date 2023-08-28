@@ -79,9 +79,18 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.setupUi()
 
     def updateResources(self):
+        # Keyrune (set icons)
         keyruneFontUrl = "https://github.com/andrewgioia/keyrune/raw/master/fonts/keyrune.ttf"
         utils.downloadFileFromUrl(keyruneFontUrl, Path("resources/fonts/keyrune/keyrune.ttf"))
         utils.updateKeyRuneSymbols()
+        # Mana font
+        manaFontUrl = "https://github.com/andrewgioia/mana/raw/master/fonts/mana.ttf"
+        utils.downloadFileFromUrl(manaFontUrl, Path("resources/fonts/mana/mana.ttf"))
+        utils.updateManaFontSymbols()
+        manaCssUrl = "https://github.com/andrewgioia/mana/raw/master/css/mana.css"
+        utils.downloadFileFromUrl(manaCssUrl, Path("resources/fonts/mana/mana.css"))
+        # manaCssMapUrl = "https://github.com/andrewgioia/mana/raw/master/css/mana.css.map"
+        # utils.downloadFileFromUrl(manaCssMapUrl, Path("resources/fonts/mana/mana.css.map"))
 
     def setupUi(self):
         self.centralWidget = QtWidgets.QWidget()
