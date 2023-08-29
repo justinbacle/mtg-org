@@ -164,26 +164,11 @@ def getColor(coloridentity: str) -> tuple:
 
 
 def setManaText(inputStr) -> str:
-    # import re
-    # Mana
-    # if len(re.findall(r"{(\d)}", inputStr)) > 0:
-    #     for match in re.findall(r"{(\d)}", inputStr):
-    #         inputStr = inputStr.replace("{" + match + "}", match)
-    #         inputStr = re.fin(r"{(\d)}", r"\g<1>", inputStr)  #noqa E800
-
-    # for mana_symbol, replacement in MANA_SYMBOLS.items():
-    #     _pre = "<font face=\"Mana\">"
-    #     _post = "</font>"
-    #     if mana_symbol in inputStr:
-    #         inputStr = inputStr.replace(mana_symbol, replacement)
-
-    # NDPMTG
-    # TODO change qtablewidget item NDPMTG_SYMBOLS so that it can host a qlabel with multiple fonts ?
-    # for mana_symbol, replacement in NDPMTG_SYMBOLS.items():
-    #     _pre = "<font face=\"NDPMTG\">"
-    #     _post = "</font>"
-    #     if mana_symbol in inputStr:
-    #         inputStr = inputStr.replace(mana_symbol, replacement)
+    # NDPMTG / Proxyglyph
+    for k, v in PROXYGLYPH_SYMBOLS.items():
+        inputStr = inputStr.replace(k, v)
+    # remove plain circle background symbols, not needed
+    inputStr = inputStr.replace("Q", "").replace("o", "").replace("q", "")
     return inputStr
 
 
@@ -220,34 +205,31 @@ def updateManaFontSymbols():
 
 # -------------------------------- Font equiv -------------------------------- #
 
-
-MANA_FONT_CONVERSION_DICT = {
-    "{W}": '<i class="ms ms-w"></i>',
-    "{U}": '<i class="ms ms-u"></i>',
-    "{B}": '<i class="ms ms-b"></i>',
-    "{R}": '<i class="ms ms-r"></i>',
-    "{G}": '<i class="ms ms-g"></i>',
-}
-
-
-MANA_SYMBOLS = {
-    "{W}": "&#xe600;",
-    "{U}": "&#xe601;",
-    "{B}": "&#xe602;",
-    "{R}": "&#xe603;",
-    "{G}": "&#xe604;"
-}
-
 # Dictionary of symbols as they appear in oracle text, and their corresponding symbols to look correct in NDPMTG font
-NDPMTG_SYMBOLS = {
+# From https://github.com/MrTeferi/Proxyshop/blob/main/src/constants.py
+PROXYGLYPH_SYMBOLS = {
     "{W/P}": "Qp",
     "{U/P}": "Qp",
     "{B/P}": "Qp",
     "{R/P}": "Qp",
     "{G/P}": "Qp",
+    "{W/U/P}": "Qqyz",
+    "{U/B/P}": "Qqyz",
+    "{B/R/P}": "Qqyz",
+    "{R/G/P}": "Qqyz",
+    "{G/W/P}": "Qqyz",
+    "{W/B/P}": "Qqyz",
+    "{B/G/P}": "Qqyz",
+    "{G/U/P}": "Qqyz",
+    "{U/R/P}": "Qqyz",
+    "{R/W/P}": "Qqyz",
+    "{A}": "oi",
     "{E}": "e",
     "{T}": "ot",
     "{X}": "ox",
+    "{Y}": "oY",
+    "{Z}": "oZ",
+    "{∞}": "o∞",
     "{0}": "o0",
     "{1}": "o1",
     "{2}": "o2",
@@ -265,6 +247,9 @@ NDPMTG_SYMBOLS = {
     "{14}": "oE",
     "{15}": "oF",
     "{16}": "oG",
+    "{17}": "oÅ",
+    "{18}": "oÆ",
+    "{19}": "oÃ",
     "{20}": "oK",
     "{W}": "ow",
     "{U}": "ou",

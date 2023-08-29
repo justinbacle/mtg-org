@@ -71,9 +71,11 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.updateResources()
 
         # Set Font
+        # Mana not needed anymore ?
         self.manaFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/mana/mana.ttf")  # Mana font
         self.ndpmtgFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/NDPMTG.ttf")  # NDPMTG font (halfs)
         self.keyruneFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/keyrune/keyrune.ttf")  # Set font
+        self.proxyglyphFontId = QtGui.QFontDatabase.addApplicationFont("resources/fontsProxyglyph.ttf")  # better NDPMTG
 
         # Load frontend
         self.setupUi()
@@ -91,6 +93,11 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         utils.downloadFileFromUrl(manaCssUrl, Path("resources/fonts/mana/mana.css"))
         # manaCssMapUrl = "https://github.com/andrewgioia/mana/raw/master/css/mana.css.map"
         # utils.downloadFileFromUrl(manaCssMapUrl, Path("resources/fonts/mana/mana.css.map"))
+        ndpmtgFontUrl = "https://github.com/chilli-axe/mtg-photoshop-automation/raw/master/NDPMTG.ttf"
+        utils.downloadFileFromUrl(ndpmtgFontUrl, Path("resources/fonts/NDPMTG.ttf"))
+        # Proxygliyph (better npdmtg ?)
+        proxyglyphFontUrl = "https://github.com/MrTeferi/Proxyshop/raw/main/fonts/Proxyglyph.ttf"
+        utils.downloadFileFromUrl(proxyglyphFontUrl, Path("resources/fontsProxyglyph.ttf"))
 
     def setupUi(self):
         self.centralWidget = QtWidgets.QWidget()

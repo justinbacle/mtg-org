@@ -44,24 +44,6 @@ class CardListWidget(QtWidgets.QTableWidget):
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
             self._addOneLine(card)
-        self.formatManaCells()
-
-    def formatManaCells(self):
-        for i, column in enumerate(self.columns):
-            if column == "mana_cost":
-                for j in range(self.rowCount()):
-                    manaCostStr = self.item(j, i).text()
-                    self.item(j, i).setText("")
-                    [manaCostStr := manaCostStr.replace(a, b) for a, b in utils.MANA_FONT_CONVERSION_DICT.items()]
-                    _label = QtWidgets.QLabel(utils.setManaText(manaCostStr))
-                    with open("resources/fonts/mana/mana.css", "r") as f:
-                        css = f.readlines()
-                    _label.setTextFormat(QtCore.Qt.TextFormat.RichText)
-                    _label.setStyleSheet("\n".join(css))
-                    _label.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        qt.findAttrInParents(self, "manaFontId")
-                    )))
-                    self.setCellWidget(j, i, _label)
 
     def getCardTableItem(self, cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
         dataList = []
@@ -76,12 +58,12 @@ class CardListWidget(QtWidgets.QTableWidget):
                 if "card_faces" in cardData.keys():
                     if column == "mana_cost":
                         text = cardData["card_faces"][0][column]
-                # TODO handle split/phyrexian mana
                 if column == "mana_cost":
-                    item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        qt.findAttrInParents(self, "manaFontId")
-                    )))
-                    text = utils.setManaText(str(text))
+                    font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                        qt.findAttrInParents(self, "proxyglyphFontId")))
+                    font.setPointSize(14)
+                    item.setFont(font)
+                    text = utils.setManaText(text)
                 # Set(s) handling
                 if column == "sets" and "sets" in cardData.keys():
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(

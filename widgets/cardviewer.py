@@ -36,6 +36,7 @@ class CardViewer(QtWidgets.QWidget):
 
         # Card Name + Mana
         self.nameLabel = QtWidgets.QLabel("Name")
+        self.nameLabel.setStyleSheet("font-size: 16pt;")
         self.mainLayout.addWidget(self.nameLabel, line.val(), 0)
         self.manacostLabel = QtWidgets.QLabel()
         self.mainLayout.addWidget(self.manacostLabel, line.postinc(), 1)
@@ -101,9 +102,10 @@ class CardViewer(QtWidgets.QWidget):
 
     def setManaFont(self):
         if self.manacostLabel.font().family() != "Mana":
-            self.manacostLabel.setFont(
-                QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                    qt.findAttrInParents(self, "manaFontId"))))
+            font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                qt.findAttrInParents(self, "proxyglyphFontId")))
+            font.setPointSize(24)
+            self.manacostLabel.setFont(font)
 
     def colorSetIcon(self, data: QtCore.QByteArray, rarity: str = "C"):
         if rarity in constants.RARITIES.keys():
@@ -124,7 +126,12 @@ class CardViewer(QtWidgets.QWidget):
         else:
             self.nameLabel.setText(self.card["name"])
 
-        self.manacostLabel.setText(utils.setManaText(utils.getFromDict(self.card, ["mana_cost"], "")))
+        if "card_faces" in self.card.keys():
+            manaCost = self.card["card_faces"][0]["mana_cost"]
+        else:
+            manaCost = self.card["mana_cost"]
+
+        self.manacostLabel.setText(utils.setManaText(manaCost))
         self.setManaFont()
 
         setIconSvgData = qt.fileData(scryfall.getSetSvg(self.card["set_id"]))
