@@ -58,12 +58,12 @@ class CardListWidget(QtWidgets.QTableWidget):
                 if "card_faces" in cardData.keys():
                     if column == "mana_cost":
                         text = cardData["card_faces"][0][column]
-                # TODO handle split/phyrexian mana
                 if column == "mana_cost":
-                    item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        qt.findAttrInParents(self, "manaFontId")
-                    )))
-                    text = utils.setManaText(str(text))
+                    font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                        qt.findAttrInParents(self, "proxyglyphFontId")))
+                    font.setPointSize(14)
+                    item.setFont(font)
+                    text = utils.setManaText(text)
                 # Set(s) handling
                 if column == "sets" and "sets" in cardData.keys():
                     item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
@@ -180,6 +180,7 @@ class CardStackListWidget(CardListWidget):
         colorPie = {}
         typePie = {}
         legalities = {}
+        totalCmc = 0
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
@@ -190,6 +191,7 @@ class CardStackListWidget(CardListWidget):
                     manaValues[6] = manaValues[6] + qty
                 else:
                     manaValues[int(card["cmc"])] = manaValues[int(card["cmc"])] + qty
+                totalCmc += int(card["cmc"])
                 # colorPie
                 colorIdentity = "".join(sorted("".join(card["color_identity"])))
                 if colorIdentity in colorPie.keys():
@@ -228,6 +230,7 @@ class CardStackListWidget(CardListWidget):
         updateDict = {
             "manaValues": manaValues,
             "cardCount": cardCount,
+            "totalCmc": totalCmc,
             "totalPrice": totalPrice,
             "colorPie": colorPie,
             "typePie": typePie,
