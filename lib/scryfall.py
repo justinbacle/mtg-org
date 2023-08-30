@@ -163,7 +163,7 @@ def getSetSymbol(setId):
 
 
 def getSetSvg(setId):
-    setIconFilePath = Path(f"resources/icons/sets/{setId}.svg")
+    setIconFilePath = constants.DEFAULT_SET_ICONS_LOCATION / f"{setId}.svg"
     if not (setIconFilePath.is_file() and os.access(setIconFilePath, os.R_OK)):
         if constants.USE_BULK_FILES:  # TODO preload set icons
             logging.error(f"Missing local data for {setId=}")
@@ -188,7 +188,7 @@ def getOnlineSetData():
     return setsData
 
 
-# @cache_to_disk(1)
+@cache_to_disk(1)
 def getSets(force: bool = False) -> list:
     setsJsonPath = Path(constants.DEFAULT_INFOS_LOCATION) / "sets.json"
     setsData = None

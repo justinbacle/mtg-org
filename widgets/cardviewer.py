@@ -1,7 +1,6 @@
 from PySide6 import QtWidgets, QtGui, QtCore, QtNetwork, QtSvgWidgets
-
+import logging
 import urllib
-from pathlib import Path
 
 import sys
 import os
@@ -111,6 +110,7 @@ class CardViewer(QtWidgets.QWidget):
         if rarity in constants.RARITIES.keys():
             color = constants.RARITIES[rarity]["color"]
         else:
+            logging.warning(f"could not find color for {rarity=}")
             color = "#00F"
         if "#000" not in data:  # adding the path filling if not present
             splitText = "/></svg>"
@@ -178,7 +178,7 @@ class CardViewer(QtWidgets.QWidget):
                 self.card, ["card_faces", cardFace, "image_uris", config.IMG_SIZE])
 
         if isCardImageCached(cardId) and not _hasManyFaces or config.IMG_DOWNLOAD_METHOD == "direct":
-            cardImgPath = Path("resources/images/cards/") / cardId
+            cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
             image = QtGui.QImage()
             image.load(cardImgPath.as_posix())
             self.displayPixmapCard(image, cardId)
@@ -230,18 +230,18 @@ class ImageDownloader(QtCore.QObject):
 
 
 def isCardImageCached(cardId) -> bool:
-    cardImgPath = Path("resources/images/cards/") / cardId
+    cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
     return cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)
 
 
 def getCardImageFromUrl(url, cardId) -> str:
-    cardImgPath = Path("resources/images/cards/") / cardId
+    cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
     if not (cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)):
         urllib.request.urlretrieve(url, cardImgPath)
     return cardImgPath
 
 
 def saveCardImg(image: QtGui.QImage, cardId: str):
-    path = Path("resources/images/cards/") / cardId
+    path = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
     writer = QtGui.QImageWriter(path.as_posix(), format=QtCore.QByteArray("jpg"))
     writer.write(image)

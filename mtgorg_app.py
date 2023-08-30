@@ -86,6 +86,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             constants.DEFAULT_BULK_FOLDER_LOCATION,
             constants.DEFAULT_INFOS_LOCATION,
             constants.DEFAULT_FONTS_LOCATION,
+            constants.DEFAULT_SET_ICONS_LOCATION,
+            constants.DEFAULT_CARDIMAGES_LOCATION
         ]
         for userFolder in userFolders:
             if not userFolder.is_dir():
@@ -167,13 +169,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             self.decklist.cardsList.clear()
 
 
-def initFolders():
-    os.makedirs("resources/icons/sets", exist_ok=True)
-    os.makedirs("resources/images/cards", exist_ok=True)
-
-
 if __name__ == '__main__':
-    initFolders()
     logger = logging.getLogger(__name__)
     window = MTGORG_GUI()
     window.showMaximized()
