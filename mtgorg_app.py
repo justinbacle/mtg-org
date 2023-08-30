@@ -102,17 +102,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         KEYRUNE_EQU_FILE = constants.DEFAULT_FONTS_LOCATION / "keyrune.json"
         if not KEYRUNE_EQU_FILE.is_file():
             utils.updateKeyRuneSymbols()
-        # Mana font
-        # manaFontUrl = "https://github.com/andrewgioia/mana/raw/master/fonts/mana.ttf"
-        # utils.downloadFileFromUrl(manaFontUrl, Path("resources/fonts/mana/mana.ttf"))
-        # utils.updateManaFontSymbols()
-        # manaCssUrl = "https://github.com/andrewgioia/mana/raw/master/css/mana.css"
-        # utils.downloadFileFromUrl(manaCssUrl, Path("resources/fonts/mana/mana.css"))
-        # manaCssMapUrl = "https://github.com/andrewgioia/mana/raw/master/css/mana.css.map"
-        # utils.downloadFileFromUrl(manaCssMapUrl, Path("resources/fonts/mana/mana.css.map"))
-        # ndpmtgFontUrl = "https://github.com/chilli-axe/mtg-photoshop-automation/raw/master/NDPMTG.ttf"
-        # utils.downloadFileFromUrl(ndpmtgFontUrl, Path("resources/fonts/NDPMTG.ttf"))
-        # Proxygliyph (better npdmtg ?)
+        # Proxygliyph (better npdmtg)
         PROXYGLIYPH_FONT_FILEPATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
         if not PROXYGLIYPH_FONT_FILEPATH.is_file():
             proxyglyphFontUrl = "https://github.com/MrTeferi/Proxyshop/raw/main/fonts/Proxyglyph.ttf"
