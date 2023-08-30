@@ -16,6 +16,7 @@ import connector
 
 from lib import qt, utils
 import config
+import constants
 
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
@@ -67,37 +68,53 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             qt.selectPalette(self.app)
 
         # Update resources
-        # TODO set update every X days or new set available
+        self.initUserFolders()
         self.updateResources()
 
         # Set Font
-        # Mana not needed anymore ?
-        self.manaFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/mana/mana.ttf")  # Mana font
-        self.ndpmtgFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/NDPMTG.ttf")  # NDPMTG font (halfs)
-        self.keyruneFontId = QtGui.QFontDatabase.addApplicationFont("resources/fonts/keyrune/keyrune.ttf")  # Set font
-        self.proxyglyphFontId = QtGui.QFontDatabase.addApplicationFont("resources/fontsProxyglyph.ttf")  # better NDPMTG
+        KEYRUNE_FONT_PATH = constants.DEFAULT_FONTS_LOCATION / "keyrune.ttf"
+        self.keyruneFontId = QtGui.QFontDatabase.addApplicationFont(KEYRUNE_FONT_PATH.as_posix())  # Set font
+        PROXYGLYPH_FONT_PATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
+        self.proxyglyphFontId = QtGui.QFontDatabase.addApplicationFont(PROXYGLYPH_FONT_PATH.as_posix())  # better NDPMTG
 
         # Load frontend
         self.setupUi()
 
+    def initUserFolders(self):
+        userFolders = [
+            constants.DEFAULT_ROOT_USER_FOLDER,
+            constants.DEFAULT_BULK_FOLDER_LOCATION,
+            constants.DEFAULT_INFOS_LOCATION,
+            constants.DEFAULT_FONTS_LOCATION,
+        ]
+        for userFolder in userFolders:
+            if not userFolder.is_dir():
+                os.makedirs(userFolder)
+
     def updateResources(self):
         # Keyrune (set icons)
-        keyruneFontUrl = "https://github.com/andrewgioia/keyrune/raw/master/fonts/keyrune.ttf"
-        utils.downloadFileFromUrl(keyruneFontUrl, Path("resources/fonts/keyrune/keyrune.ttf"))
-        utils.updateKeyRuneSymbols()
+        KEYRUNE_FONT_FILEPATH = constants.DEFAULT_FONTS_LOCATION / "keyrune.ttf"
+        if not KEYRUNE_FONT_FILEPATH.is_file():
+            keyruneFontUrl = "https://github.com/andrewgioia/keyrune/raw/master/fonts/keyrune.ttf"
+            utils.downloadFileFromUrl(keyruneFontUrl, KEYRUNE_FONT_FILEPATH)
+        KEYRUNE_EQU_FILE = constants.DEFAULT_FONTS_LOCATION / "keyrune.json"
+        if not KEYRUNE_EQU_FILE.is_file():
+            utils.updateKeyRuneSymbols()
         # Mana font
-        manaFontUrl = "https://github.com/andrewgioia/mana/raw/master/fonts/mana.ttf"
-        utils.downloadFileFromUrl(manaFontUrl, Path("resources/fonts/mana/mana.ttf"))
-        utils.updateManaFontSymbols()
-        manaCssUrl = "https://github.com/andrewgioia/mana/raw/master/css/mana.css"
-        utils.downloadFileFromUrl(manaCssUrl, Path("resources/fonts/mana/mana.css"))
+        # manaFontUrl = "https://github.com/andrewgioia/mana/raw/master/fonts/mana.ttf"
+        # utils.downloadFileFromUrl(manaFontUrl, Path("resources/fonts/mana/mana.ttf"))
+        # utils.updateManaFontSymbols()
+        # manaCssUrl = "https://github.com/andrewgioia/mana/raw/master/css/mana.css"
+        # utils.downloadFileFromUrl(manaCssUrl, Path("resources/fonts/mana/mana.css"))
         # manaCssMapUrl = "https://github.com/andrewgioia/mana/raw/master/css/mana.css.map"
         # utils.downloadFileFromUrl(manaCssMapUrl, Path("resources/fonts/mana/mana.css.map"))
-        ndpmtgFontUrl = "https://github.com/chilli-axe/mtg-photoshop-automation/raw/master/NDPMTG.ttf"
-        utils.downloadFileFromUrl(ndpmtgFontUrl, Path("resources/fonts/NDPMTG.ttf"))
+        # ndpmtgFontUrl = "https://github.com/chilli-axe/mtg-photoshop-automation/raw/master/NDPMTG.ttf"
+        # utils.downloadFileFromUrl(ndpmtgFontUrl, Path("resources/fonts/NDPMTG.ttf"))
         # Proxygliyph (better npdmtg ?)
-        proxyglyphFontUrl = "https://github.com/MrTeferi/Proxyshop/raw/main/fonts/Proxyglyph.ttf"
-        utils.downloadFileFromUrl(proxyglyphFontUrl, Path("resources/fontsProxyglyph.ttf"))
+        PROXYGLIYPH_FONT_FILEPATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
+        if not PROXYGLIYPH_FONT_FILEPATH.is_file():
+            proxyglyphFontUrl = "https://github.com/MrTeferi/Proxyshop/raw/main/fonts/Proxyglyph.ttf"
+            utils.downloadFileFromUrl(proxyglyphFontUrl, PROXYGLIYPH_FONT_FILEPATH)
 
     def setupUi(self):
         self.centralWidget = QtWidgets.QWidget()

@@ -2,13 +2,18 @@ from pathlib import Path
 
 QSPLITTER_HANDLE_WIDTH = 8
 
-DEFAULT_DB_LOCATION = Path.home() / ".mtgo" / "mtg_org.db"
-DEFAULT_CACHE_DB_LOCATION = Path.home() / ".mtgo" / "mtg_org_cache.db"
-DEFAULT_BULK_FOLDER_LOCATION = Path.home() / ".mtgo" / "scryfall_bulk"
+DEFAULT_ROOT_USER_FOLDER = Path.home() / ".mtgo"
+DEFAULT_DB_LOCATION = DEFAULT_ROOT_USER_FOLDER / "mtg_org.db"
+DEFAULT_CACHE_DB_LOCATION = DEFAULT_ROOT_USER_FOLDER / "mtg_org_cache.db"
+DEFAULT_BULK_FOLDER_LOCATION = DEFAULT_ROOT_USER_FOLDER / "scryfall_bulk"
+DEFAULT_INFOS_LOCATION = DEFAULT_ROOT_USER_FOLDER / "infos"
+DEFAULT_FONTS_LOCATION = DEFAULT_ROOT_USER_FOLDER / "fonts"
 
 DECKS_TABLE_NAME = "Decks"
 COLLECTIONS_TABLE_NAME = "Collections"
 CARDS_TABLE_NAME = "Cards"
+
+TIME_FORMAT_STR = "%Y-%m-%d %H:%M:%S"
 
 USE_BULK_FILES = False  # TODO let use choose from gui
 # FIXME imports test require False (or full cards list) to work

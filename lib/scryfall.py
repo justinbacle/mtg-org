@@ -180,10 +180,37 @@ def getSetReleaseYear(setId):
     return releaseDate.split("-")[0]
 
 
-@cache_to_disk(1)
-def getSets() -> list:
-    sets = scrython.Sets()
-    return sets.scryfallJson["data"]
+def getOnlineSetData():
+    setsData = {
+        "_date": datetime.datetime.now().strftime(constants.TIME_FORMAT_STR),
+        "sets": scrython.Sets().scryfallJson["data"]
+    }
+    return setsData
+
+
+# @cache_to_disk(1)
+def getSets(force: bool = False) -> list:
+    setsJsonPath = Path(constants.DEFAULT_INFOS_LOCATION) / "sets.json"
+    setsData = None
+    if not setsJsonPath.is_file():
+        setsData = getOnlineSetData()
+        utils.saveJson(setsData, setsJsonPath)
+    else:
+        setsData = utils.loadJson(setsJsonPath)
+    if setsJsonPath.is_file() and setsData is not None:
+        savedTime = datetime.datetime.strptime(setsData["_date"], constants.TIME_FORMAT_STR)
+        if datetime.datetime.now() - savedTime > datetime.timedelta(days=29):
+            logging.warning("Sets data are a month old, trying to update")
+            try:
+                setsData = getOnlineSetData()
+            except Exception as e:
+                logging.error(e)
+            else:
+                utils.saveJson(setsData, setsJsonPath)
+        else:
+            if setsData is not None:
+                setsData = utils.loadJson(setsJsonPath)
+    return setsData["sets"]
 
 
 @cache_to_disk(1)

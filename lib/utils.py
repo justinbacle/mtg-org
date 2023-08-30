@@ -1,3 +1,4 @@
+import os
 import requests
 import functools
 import operator
@@ -7,6 +8,8 @@ import platform
 from pathlib import Path
 import html
 from bs4 import BeautifulSoup
+
+import constants
 
 
 # --------------------------------- Platform --------------------------------- #
@@ -55,6 +58,15 @@ def loadJson(jsonPath: str | Path):
         return json.loads(file_contents)
     else:
         return None
+
+
+def saveJson(dataDict: dict, jsonPath: str | Path):
+    if not isinstance(jsonPath, Path):
+        jsonPath = Path(jsonPath)
+    if not jsonPath.parent.is_dir():
+        os.makedirs(jsonPath.parent)
+    with open(jsonPath, "w") as file:
+        file.write(json.dumps(dataDict, indent=4))
 
 
 def downloadFileFromUrl(url: str, location: Path):
@@ -173,15 +185,13 @@ def setManaText(inputStr) -> str:
 
 
 def setSetsText(sets: list):
+    KEYRUNE_EQU_PATH = constants.DEFAULT_FONTS_LOCATION / "keyrune.json"
+    KEYRUNE_SYMBOLS = loadJson(KEYRUNE_EQU_PATH)
     setsStr = ""
     for set in sets:
         if getFromDict(KEYRUNE_SYMBOLS, [set]) is not None:
             setsStr += html.unescape(getFromDict(KEYRUNE_SYMBOLS, [set]))
     return setsStr
-
-
-KEYRUNE_EQU_PATH = "resources/fonts/keyrune/keyrune.json"
-KEYRUNE_SYMBOLS = loadJson(KEYRUNE_EQU_PATH)
 
 
 def updateKeyRuneSymbols():
@@ -195,7 +205,7 @@ def updateKeyRuneSymbols():
             set = str(equ.contents[1]).strip().replace("ss-", "")
             keyRuneCode = str(equ.contents[2]).replace("amp;", "").replace("<code>", "").replace("</code>", "")
             equDict.update({set: keyRuneCode})
-    with open(KEYRUNE_EQU_PATH, "w") as outfile:
+    with open(constants.DEFAULT_FONTS_LOCATION / "keyrune.json", "w") as outfile:
         outfile.write(json.dumps(equDict, indent=4))
 
 
