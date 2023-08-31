@@ -68,3 +68,14 @@ then run the main program
     - contrary to most other card organizers, this app does not store the entire dataset of card, and only stores data as you request it. This has the added benefit of not needing you to download the entire datasets before starting to organize your decks.
     This can result on slow operations (especially when importing big collections of cards) if your netwok connection is limited.
     - There are plans to allow for full offline operations, but this is not the main focus for now
+
+## Credits
+
+- Andrew Gioia : [Keyrune](https://github.com/andrewgioia/keyrune) : expansion symbols (used under GPL 3.0 license)
+- MrTeferi : [Proxyshop](https://github.com/MrTeferi/Proxyshop) : proxygliyph font mana symbols (Mozilla public license 2.0)
+- NandaScott : [Scrython](https://github.com/NandaScott/Scrython) : Python wrapper for scryfall requests (MIT License)
+- WotC, card creators, artists, and MTG community for everything MTG.
+
+## Licence
+
+I have absolutely no idea all of this works, I'm not a software engineer and do not have a law degree. From what I understand, this code should be GPL v3 compatible (since it uses parts which are MIT/GPL3/MPL2) but I would prefer to seek help from the community before choosing a licence.
