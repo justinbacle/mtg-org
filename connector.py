@@ -33,6 +33,8 @@ def getCacheDB(location: Path = constants.DEFAULT_CACHE_DB_LOCATION) -> TinyDB:
         return TinyDB(location.as_posix())
 
 
+# -------------------------------- COLLECTIONS ------------------------------- #
+
 def createCollection(collName, cardList: list = []):
     if getCollection(collName) is None:
         getDB().table(constants.COLLECTIONS_TABLE_NAME).insert(
@@ -58,6 +60,61 @@ def renameCollection(previousCollName, newCollName):
     getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
         coll, Query().name == previousCollName
     )
+
+
+def getCollectionsList() -> list:
+    collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).all()
+    return collections
+
+
+def getCollection(collectionName) -> Deck:
+    collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).search(Query().name == collectionName)
+    if len(collections) == 1:
+        return collections[0]
+    else:
+        return None
+
+
+def addCardToCollection(collectionName, qty, cardId):
+    collection = getCollection(collectionName)
+    cardList = collection["cardList"]
+    # If card not in collection
+    if len([_[0] for _ in cardList if _[1] == cardId]) == 0:
+        collection.update(
+            {"cardList": cardList + [(qty, cardId)]}
+        )
+        getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
+            collection, Query().name == collectionName
+        )
+    else:
+        previousQty = [_[0] for _ in cardList if _[1] == cardId][0]
+        changeCardCollectionQty(collectionName, previousQty + 1, cardId)
+
+
+def changeCardCollectionQty(collectionName, qty, cardId):
+    collection = getCollection(collectionName)
+    cardList = collection["cardList"]
+    for card in cardList:
+        if card[1] == cardId:
+            card[0] = qty
+    collection["cardList"] = cardList
+    getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
+        collection, Query().name == collectionName
+    )
+
+
+def removeCardFromCollection(collectionName, cardId):
+    collection = getCollection(collectionName)
+    cardList = collection["cardList"]
+    collection["cardList"] = [_ for _ in cardList if _[1] != cardId]
+    getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
+        collection, Query().name == collectionName
+    )
+
+
+# ----------------------------------- DECKS ---------------------------------- #
+# TODO: handle commander/sideboard etc in card list
+# cardlist : (qty, id) ->  (qty, id, zone)
 
 
 def createDeck(deckName, cardList: list = []):
@@ -98,19 +155,6 @@ def getDeck(deckName) -> Deck:
         return decks[0]
 
 
-def getCollectionsList() -> list:
-    collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).all()
-    return collections
-
-
-def getCollection(collectionName) -> Deck:
-    collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).search(Query().name == collectionName)
-    if len(collections) == 1:
-        return collections[0]
-    else:
-        return None
-
-
 def addCardToDeck(deckName, qty, cardId):
     deck = getDeck(deckName)
     cardList = deck["cardList"]
@@ -149,41 +193,7 @@ def removeCardFromDeck(deckName, cardId):
     )
 
 
-def addCardToCollection(collectionName, qty, cardId):
-    collection = getCollection(collectionName)
-    cardList = collection["cardList"]
-    # If card not in collection
-    if len([_[0] for _ in cardList if _[1] == cardId]) == 0:
-        collection.update(
-            {"cardList": cardList + [(qty, cardId)]}
-        )
-        getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
-            collection, Query().name == collectionName
-        )
-    else:
-        previousQty = [_[0] for _ in cardList if _[1] == cardId][0]
-        changeCardCollectionQty(collectionName, previousQty + 1, cardId)
-
-
-def changeCardCollectionQty(collectionName, qty, cardId):
-    collection = getCollection(collectionName)
-    cardList = collection["cardList"]
-    for card in cardList:
-        if card[1] == cardId:
-            card[0] = qty
-    collection["cardList"] = cardList
-    getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
-        collection, Query().name == collectionName
-    )
-
-
-def removeCardFromCollection(collectionName, cardId):
-    collection = getCollection(collectionName)
-    cardList = collection["cardList"]
-    collection["cardList"] = [_ for _ in cardList if _[1] != cardId]
-    getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
-        collection, Query().name == collectionName
-    )
+# ----------------------------------- CACHE ---------------------------------- #
 
 
 def getCard(cardId) -> dict:

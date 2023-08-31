@@ -98,7 +98,7 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en"):
     while reprintsDict["has_more"]:
         reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
         ids += [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
-    correctEnId = ids[0]  # Todo handle mutiple matches (e.g. basic lands)
+    correctEnId = ids[0]  # TODO handle mutiple matches (e.g. basic lands)
     if lang != "en":
         try:
             foundCard = scrython.cards.Collector(
@@ -165,7 +165,7 @@ def getSetSymbol(setId):
 def getSetSvg(setId):
     setIconFilePath = constants.DEFAULT_SET_ICONS_LOCATION / f"{setId}.svg"
     if not (setIconFilePath.is_file() and os.access(setIconFilePath, os.R_OK)):
-        if constants.USE_BULK_FILES:  # TODO preload set icons
+        if constants.USE_BULK_FILES:  # TODO preload set icons ?
             logging.error(f"Missing local data for {setId=}")
         else:
             svgData = utils.getUrlData(getSetSymbol(setId))
