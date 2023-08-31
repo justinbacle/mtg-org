@@ -30,9 +30,9 @@ Here are the lists of things I'd like to have included in this project :
 
 ## Known issues
 
-- Card data rely on a cache, which is manually stored for now, this cache is not yet updated when a set comes out. Manual solution for now is to clean the cache manually but plan to implement a cache update system that could be triggered when a new set is out.
-- Some sets are not displayed properly if the sets icons and fonts are not available, this should be added in an update feature later
-- Mana cost is not repported correctly for non-basic mana types (phyrexian, hybrid, ...)
+- Card data rely on a cache, which is manually stored for now, this cache is not yet updated when a set comes out. Manual solution for now is to clean the cache manually but I plan to implement a cache update system that could be triggered when a new set is out.
+- On some instances, card art may not be correct if scrolling through cards quickly. This is caused by a race condition when requesting multiple images on a poor connection to the web. I added a "Ctrl+R" shortcut to force reload currently selected card for now.
+- On some heavy operations (like importing a large collection) GUI may freeze while it loads data. I will implement loading bars / spinners at some point soon to keep the GUI responive on heavy operations.
 
 ## Requirements
 
