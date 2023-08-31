@@ -87,7 +87,7 @@ class CardViewer(QtWidgets.QWidget):
 
     def displayPixmapCard(self, image, cardId: str = None):
         # Save
-        if not isCardImageCached(cardId):
+        if not isCardImageCached(cardId):  # TODO enable to force
             saveCardImg(image, cardId)
         # display
         self.cardImgPixMap = QtGui.QPixmap.fromImage(image)

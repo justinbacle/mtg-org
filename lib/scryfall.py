@@ -5,6 +5,7 @@ from pathlib import Path
 from cache_to_disk import cache_to_disk
 from tqdm import tqdm
 from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results
+import aiohttp
 
 import scrython.cards
 from scrython.foundation import ScryfallError
@@ -67,7 +68,8 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
 
     try:
         scryfallReq = scrython.cards.Search(q=q, **kwargs)
-    except ScryfallError as e:
+    except (ScryfallError, aiohttp.client_exceptions.ClientConnectorError) as e:
+        # TODO display error msg, not connected to internet (suggest using bulk file)
         logging.warning(e)
     else:
         for cardJson in scryfallReq.scryfallJson["data"]:
