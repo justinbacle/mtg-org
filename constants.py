@@ -40,7 +40,25 @@ CURRENCY = [
     "eur", "€"
 ]
 
-LANG = ["en", "fr"]
+LANGS = {  # Default one on top
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "ru": "Russian",
+    "zhs": "Simplified Chinese",
+    "zht": "Traditional Chinese",
+    # "he": "Hebrew",  # 1 card
+    # "la": "Latin",  # 1 card
+    # "grc": "Ancient Greek",  # 1 card, Not working ?
+    # "ar": "Arabic",  # 1 card
+    # "sa": "Sanskrit",  # 1 card
+    "ph": "Phyrexian"
+}
 
 IMPORT_FORMATS = [
     "MTGO .dek",

@@ -18,7 +18,7 @@ Here are the lists of things I'd like to have included in this project :
 | --- | --- |
 | Basic Search through MTG database | Done |
 | Advanced Search through MTG database | Planned, not started |
-| Support for other languages than EN | POC with French OK|
+| Support for other languages than EN | Card handling done in all available MTG languages, GUI translations not handled (yet)|
 |Organizing cards in decks & collections| Done |
 |Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs (Legality WIP)|
 |Import| MTGA, CSV(Urza Gatherer, and all supported on mtggoldfish), MTGO(.dek) |

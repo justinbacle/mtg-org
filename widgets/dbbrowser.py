@@ -61,9 +61,9 @@ class SearchForm(QtWidgets.QWidget):
         self.mainLayout.addRow("Name", self.nameField)
 
         self.langCB = QtWidgets.QComboBox()
-        for lang in constants.LANG:
-            self.langCB.addItem(lang)
-        self.langCB.setCurrentText("en")
+        for langName in constants.LANGS.values():
+            self.langCB.addItem(langName)
+        self.langCB.setCurrentText(list(constants.LANGS.values())[0])
         self.mainLayout.addRow("Lang", self.langCB)
 
         self.extrasCB = QtWidgets.QCheckBox("Include Extras")
@@ -77,9 +77,11 @@ class SearchForm(QtWidgets.QWidget):
         self.find.emit(self.getSearchData())
 
     def getSearchData(self):
+        langName = self.langCB.currentText()
+        langCode = list(constants.LANGS.keys())[list(constants.LANGS.values()).index(langName)]
         searchData = {
             "name": self.nameField.text(),
             "include_extras": self.extrasCB.isChecked(),
-            "lang": self.langCB.currentText()
+            "lang": langCode
         }
         return searchData
