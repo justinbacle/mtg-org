@@ -14,7 +14,7 @@ class CardsList(QtWidgets.QWidget):
     # Display currently selected deck/collection
     def __init__(self, parent=None, **kwargs):
         super(CardsList, self).__init__(parent=parent, **kwargs)
-
+        self.sortBy = None
         self.initUi()
 
     def initUi(self):
@@ -65,33 +65,38 @@ class CardsList(QtWidgets.QWidget):
         else:
             selectedItem = None
 
-    def on_sortByType(self):
-        cardsList = self.cardsList.cardStack
-        cardsList.sort(key=lambda x: x[1]["type_line"])
+    def sort(self, key: str = None):
+        if key is None:
+            key = self.sortBy
+        else:
+            self.sortBy = key
+        if key == "prices":
+            cardsList = self.cardsList.cardStack
+            cardsList.sort(
+                key=lambda x: float(
+                    utils.getFromDict(
+                        x[1], [key, constants.CURRENCY[0]], 0
+                    ) if utils.getFromDict(
+                        x[1], [key, constants.CURRENCY[0]], 0
+                    ) is not None else 0
+                )
+            )
+        else:
+            cardsList = self.cardsList.cardStack
+            cardsList.sort(key=lambda x: x[1][key])
         self.cardsList.setCards(cardsList)
+
+    def on_sortByType(self):
+        self.sort("type_line")
 
     def on_sortByPrice(self):
-        cardsList = self.cardsList.cardStack
-        cardsList.sort(
-            key=lambda x: float(
-                utils.getFromDict(
-                    x[1], ["prices", constants.CURRENCY[0]], 0
-                ) if utils.getFromDict(
-                    x[1], ["prices", constants.CURRENCY[0]], 0
-                ) is not None else 0
-            )
-        )
-        self.cardsList.setCards(cardsList)
+        self.sort("prices")
 
     def on_sortByName(self):
-        cardsList = self.cardsList.cardStack
-        cardsList.sort(key=lambda x: x[1]["name"])
-        self.cardsList.setCards(cardsList)
+        self.sort("name")
 
     def on_sortByCmc(self):
-        cardsList = self.cardsList.cardStack
-        cardsList.sort(key=lambda x: x[1]["cmc"])
-        self.cardsList.setCards(cardsList)
+        self.sort("cmc")
 
 
 class DeckStatsWidget(QtWidgets.QWidget):

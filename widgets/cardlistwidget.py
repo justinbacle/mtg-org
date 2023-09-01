@@ -118,6 +118,7 @@ class CardStackListWidget(CardListWidget):
         else:
             ...
         self.cardStack.append((1, card))
+        self.parent().sort()
         self.updateCardListInfos()
 
     def removeOne(self):
@@ -147,6 +148,7 @@ class CardStackListWidget(CardListWidget):
                 self.setCardList(collection["cardList"])
             else:
                 ...
+        self.parent().sort()
 
     def addOne(self):
         selectedLine = self.selectedIndexes()[0]

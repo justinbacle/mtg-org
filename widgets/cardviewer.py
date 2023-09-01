@@ -19,7 +19,7 @@ class CardViewer(QtWidgets.QWidget):
         self.setupUi()
         if config.IMG_DOWNLOAD_METHOD == "qt":
             self.imgDownloader = ImageDownloader()
-            self.imgDownloader.finished.connect(self.displayPixmapCard)
+            self.imgDownloader.finished.connect(self.saveCardImg)
 
     def setupUi(self):
         self.mainLayout = QtWidgets.QGridLayout(self)
@@ -73,7 +73,10 @@ class CardViewer(QtWidgets.QWidget):
 
     def on_reloadCardData(self):
         scryfall.getCardById(self.card["id"], force=True)
-        self.display(self.card["id"])
+        if utils.getFromDict(self.card, ["image_uris"], None) is not None:
+            # TODO fix whan dual faced card download fixed
+            imageUri = utils.getFromDict(self.card, ["image_uris", config.IMG_SIZE])
+            self.downloadCardImg(imageUri, self.card["id"])
 
     def on_add(self):
         # TODO check when already present to raise qty instead of adding other line
@@ -85,10 +88,12 @@ class CardViewer(QtWidgets.QWidget):
     def on_randomCardPBClicked(self):
         self.display(scryfall.getRandomCard()["id"])
 
-    def displayPixmapCard(self, image, cardId: str = None):
-        # Save
-        if not isCardImageCached(cardId):  # TODO enable to force
-            saveCardImg(image, cardId)
+    def saveCardImg(self, image, cardId):
+        logging.info(f"saved image for {cardId=}")
+        saveCardImg(image, cardId)
+        self.displayPixmapCard(image)
+
+    def displayPixmapCard(self, image):
         # display
         self.cardImgPixMap = QtGui.QPixmap.fromImage(image)
         if self.cardImgGraphicsView.scene() is None:
@@ -178,16 +183,16 @@ class CardViewer(QtWidgets.QWidget):
                 self.card, ["card_faces", cardFace, "image_uris", config.IMG_SIZE])
 
         if isCardImageCached(cardId) and not _hasManyFaces or config.IMG_DOWNLOAD_METHOD == "direct":
+            # TODO handle cache for multi face cards
             cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
             image = QtGui.QImage()
             image.load(cardImgPath.as_posix())
-            self.displayPixmapCard(image, cardId)
+            self.displayPixmapCard(image)
         elif config.IMG_DOWNLOAD_METHOD == "qt":
             if self.cardImgGraphicsView.scene() is not None:
                 if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
                     self.cardImgGraphicsView.scene().clear()
-            url = QtCore.QUrl.fromUserInput(imageUri)
-            self.imgDownloader.start_download(url, cardId)
+                self.downloadCardImg(imageUri, cardId)
 
         # gatherer/scryfall uri
         try:
@@ -199,6 +204,10 @@ class CardViewer(QtWidgets.QWidget):
         self.avgPriceLabel.setText(
             str(utils.getFromDict(self.card, ["prices", constants.CURRENCY[0]])) + " " + constants.CURRENCY[1]
         )
+
+    def downloadCardImg(self, imageUri, cardId):
+        url = QtCore.QUrl.fromUserInput(imageUri)
+        self.imgDownloader.start_download(url, cardId)
 
     def on_cardflip(self):
         self.display(self.card["id"], cardFace=(self.cardFace+1) % 2)

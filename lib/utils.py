@@ -284,5 +284,6 @@ PROXYGLYPH_SYMBOLS = {
     "{2/G}": "QqWV",
     "{S}": "omn",
     "{Q}": "ol",
-    "{CHAOS}": "?"
+    "{CHAOS}": "?",
+    "{1000000}": "10000000"  # Gleemax exception, since symbol not available / not pretty
 }
