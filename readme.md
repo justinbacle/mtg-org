@@ -1,6 +1,6 @@
 # MTG Organizer
 
-![](/resources/readme/Screenshot_20230622_174225.png)
+![](/resources/readme/screenshot.png)
 
 ## Why another card organizer
 
