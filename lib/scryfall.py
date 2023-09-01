@@ -56,13 +56,15 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
     kwargs = {}
     if "lang" not in searchDict.keys():
         searchDict.update({"lang": "any"})
-
     q = ""
     for k, v in searchDict.items():
         if k in SEARCH_DICT_KEYS:
             kwargs.update({k: v})
         elif k == "name" and exact:  # https://scryfall.com/docs/syntax#exact
             q += "!\"" + v + "\" "
+        elif k == "colors":
+            if v is not None:
+                q += v + " "
         else:
             q += k + ":" + v + " "
 

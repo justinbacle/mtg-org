@@ -133,7 +133,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.cardBrowsersSplitter.addWidget(self.decklist)
 
         # Bottom one is DB browser
-        self.dbBrowser = DbBrowser()
+        self.dbBrowser = DbBrowser(parent=self)
         self.dbBrowser.cardSelected.connect(self.on_dbBrowserCardSelected)
         self.cardBrowsersSplitter.addWidget(self.dbBrowser)
 

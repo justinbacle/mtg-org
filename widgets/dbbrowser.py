@@ -1,10 +1,11 @@
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtCore, QtGui
 
 import sys
 import os
+
 sys.path.append(os.getcwd())  # FIXME Remove
 
-from lib import scryfall  # noqa E402
+from lib import scryfall, qt, utils  # noqa E402
 from widgets.cardlistwidget import CardListWidget  # noqa E402
 
 import constants  # noqa E402
@@ -23,7 +24,7 @@ class DbBrowser(QtWidgets.QWidget):
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.setLayout(self.mainLayout)
         # Form on the left for search terms ?
-        self.searchForm = SearchForm()
+        self.searchForm = SearchForm(parent=self)
         self.searchForm.setMaximumWidth(300)
         self.searchForm.find.connect(self.on_searchRequest)
         self.mainLayout.addWidget(self.searchForm)
@@ -66,12 +67,15 @@ class SearchForm(QtWidgets.QWidget):
         self.langCB.setCurrentText(list(constants.LANGS.values())[0])
         self.mainLayout.addRow("Lang", self.langCB)
 
+        self.manaColorSelectorWidget = ManaColorSelectorWidget(parent=self)
+        self.mainLayout.addRow("Colors", self.manaColorSelectorWidget)
+
         self.extrasCB = QtWidgets.QCheckBox("Include Extras")
         self.mainLayout.addRow("Extras", self.extrasCB)
 
         self.searchButton = QtWidgets.QPushButton("Search")
         self.searchButton.clicked.connect(self.on_searchAction)
-        self.mainLayout.addWidget(self.searchButton)
+        self.mainLayout.addRow(self.searchButton)
 
     def on_searchAction(self):
         self.find.emit(self.getSearchData())
@@ -79,9 +83,105 @@ class SearchForm(QtWidgets.QWidget):
     def getSearchData(self):
         langName = self.langCB.currentText()
         langCode = list(constants.LANGS.keys())[list(constants.LANGS.values()).index(langName)]
+        colors = self.manaColorSelectorWidget.get()
         searchData = {
             "name": self.nameField.text(),
             "include_extras": self.extrasCB.isChecked(),
-            "lang": langCode
+            "lang": langCode,
+            "colors": colors
         }
         return searchData
+
+
+class ManaColorSelectorWidget(QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.mainLayout = QtWidgets.QHBoxLayout()
+        self.setLayout(self.mainLayout)
+
+        self.colorManaWidgets = {}
+        for color in "WUBRG":
+            self.colorManaWidgets.update({color: ManaColorWidget(color, parent=self)})
+        for colorWidget in self.colorManaWidgets.values():
+            self.mainLayout.addWidget(colorWidget)
+
+    def get(self) -> str:
+        exclude = ""
+        colors = ""
+        for color, widget in self.colorManaWidgets.items():
+            if widget.state == "Not":
+                exclude += color
+            elif widget.state != "NS":
+                colors += color
+        text = ""
+        if colors != "":
+            text += f"c:{colors.lower()}"
+        if exclude != "":
+            for color in exclude:
+                text += f" -c:{color.lower()}"
+
+        return text
+
+
+class ManaColorWidget(QtWidgets.QWidget):
+
+    STATES = ["NS", "May", "Not"]
+    # TODO : handle "must" contain
+
+    TOOLTIPS = {
+        "NS": "Not selected",
+        "May": "May contain",
+        "Must": "Must contain",
+        "Not": "Doesn't contain"
+    }
+
+    HALF_MANA_EQU = {
+        "W": "L",
+        "U": "M",
+        "B": "N",
+        "R": "O",
+        "G": "P",
+    }
+
+    def __init__(self, color: str, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+        self.color = color
+        self.mainLayout = QtWidgets.QHBoxLayout()
+        # self.mainLayout = QtWidgets.QStackedLayout()
+        self.setLayout(self.mainLayout)
+        self.state = self.STATES[0]
+        self.manaSymbolLabel = QtWidgets.QLabel("")
+        self.mainLayout.addWidget(self.manaSymbolLabel)
+        self.font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+            qt.findAttrInParents(self, "proxyglyphFontId")))
+        self.font.setPointSize(16)
+        self.mainLayout.setContentsMargins(0, 0, 0, 0)
+        self.draw()
+
+    def draw(self):
+        if self.state in ["NS", "May", "Must" "Not"]:
+            text = self.color.lower()
+            self.manaSymbolLabel.setText(text)
+        else:  # May is half symbol  NOT USED
+            text = self.HALF_MANA_EQU[self.color]
+            self.manaSymbolLabel.setText(text)
+        self.manaSymbolLabel.setFont(self.font)
+
+        if self.state in ["NS"]:
+            self.manaSymbolLabel.setStyleSheet(
+                "color: black; font-family: Proxyglyph; font: 32px")
+        elif self.state in ["Not"]:
+            self.manaSymbolLabel.setStyleSheet(
+                "color: red; font-family: Proxyglyph; font: 32px")
+        else:
+            self.manaSymbolLabel.setStyleSheet(
+                "font-family: Proxyglyph; font: 32px")
+        self.setToolTip(self.TOOLTIPS[self.state])
+
+    def mousePressEvent(self, event):
+        previousStateIndex = self.STATES.index(self.state)
+        if previousStateIndex >= len(self.STATES) - 1:
+            self.state = self.STATES[0]
+        else:
+            self.state = self.STATES[previousStateIndex + 1]
+        self.draw()

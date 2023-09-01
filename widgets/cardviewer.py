@@ -105,7 +105,7 @@ class CardViewer(QtWidgets.QWidget):
         self.cardImgGraphicsView.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
 
     def setManaFont(self):
-        if self.manacostLabel.font().family() != "Mana":
+        if self.manacostLabel.font().family() != "Proxyglyph":
             font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
                 qt.findAttrInParents(self, "proxyglyphFontId")))
             font.setPointSize(24)
