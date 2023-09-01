@@ -73,6 +73,13 @@ class SearchForm(QtWidgets.QWidget):
         self.extrasCB = QtWidgets.QCheckBox("Include Extras")
         self.mainLayout.addRow("Extras", self.extrasCB)
 
+        self.typeCB = QtWidgets.QComboBox()
+        self.typeCB.addItem("")
+        for cardType in constants.MAIN_CARD_TYPES:
+            self.typeCB.addItem(cardType)
+        self.typeCB.setCurrentText("")
+        self.mainLayout.addRow("Main card type", self.typeCB)
+
         self.searchButton = QtWidgets.QPushButton("Search")
         self.searchButton.clicked.connect(self.on_searchAction)
         self.mainLayout.addRow(self.searchButton)
@@ -88,7 +95,8 @@ class SearchForm(QtWidgets.QWidget):
             "name": self.nameField.text(),
             "include_extras": self.extrasCB.isChecked(),
             "lang": langCode,
-            "colors": colors
+            "colors": colors,
+            "types": [self.typeCB.currentText()],
         }
         return searchData
 

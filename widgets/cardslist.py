@@ -152,7 +152,7 @@ class InfoWidget(QtWidgets.QWidget):
         # Data series
         self.manaBarSeries = QtCharts.QBarSeries()
         self.manaDataSet = QtCharts.QBarSet("Mana Cost")
-        self.manaDataSet.append([1, 2, 3, 4, 5, 6, 7])
+        self.manaDataSet.append([0, 0, 0, 0, 0, 0, 0])
         self.manaBarSeries.append(self.manaDataSet)
         self.manaBarSeries.append(self.manaDataSet)
         self.manaChart = QtCharts.QChart()

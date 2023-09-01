@@ -65,3 +65,7 @@ IMPORT_FORMATS = [
     "MTG Arena",
     "CSV"
 ]
+
+MAIN_CARD_TYPES = [
+    "creature", "land", "instant", "sorcery", "artifact", "enchantment", "planeswalker", "tribal"
+]

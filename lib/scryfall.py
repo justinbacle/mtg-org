@@ -65,6 +65,10 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
         elif k == "colors":
             if v is not None:
                 q += v + " "
+        elif k == "types":
+            for type in v:
+                if type != "":
+                    q += "t:" + type
         else:
             q += k + ":" + v + " "
 
