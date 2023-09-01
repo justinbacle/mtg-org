@@ -80,6 +80,24 @@ class SearchForm(QtWidgets.QWidget):
         self.typeCB.setCurrentText("")
         self.mainLayout.addRow("Main card type", self.typeCB)
 
+        # TODO add free field for subtypes (-t:) to be merged with maintype
+
+        # TODO add card text search (-o: in scryfall)
+
+        # TODO add > = < CMC
+
+        # TODO add power/toughness/loyalty when creature / planeswalker is selected (pow/tou/loy)
+
+        # TODO add rarity selector (r:)
+
+        # TODO add set selector (in:)
+
+        # TODO add format legality (f:)
+
+        # TODO add min/max price filter
+
+        # TODO add support for tagger tags (atag: / otag:)
+
         self.searchButton = QtWidgets.QPushButton("Search")
         self.searchButton.clicked.connect(self.on_searchAction)
         self.mainLayout.addRow(self.searchButton)
