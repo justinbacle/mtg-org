@@ -70,9 +70,6 @@ class SearchForm(QtWidgets.QWidget):
         self.manaColorSelectorWidget = ManaColorSelectorWidget(parent=self)
         self.mainLayout.addRow("Colors", self.manaColorSelectorWidget)
 
-        self.extrasCB = QtWidgets.QCheckBox("Include Extras")
-        self.mainLayout.addRow("Extras", self.extrasCB)
-
         self.typeCB = QtWidgets.QComboBox()
         self.typeCB.addItem("")
         for cardType in constants.MAIN_CARD_TYPES:
@@ -101,12 +98,22 @@ class SearchForm(QtWidgets.QWidget):
         self.rarityCB.addItems(["", "common", "uncommon", "rare", "mythic"])
         self.mainLayout.addRow("Rarity", self.rarityCB)
 
+        self.setSelectorWidget = qt.ExtendedComboBox()
+        sets = scryfall.getSets()
+        for set in sets:
+            setYear = scryfall.getSetReleaseYear(set["id"])
+            text = f"{set['name']} ({set['code'].upper()}) - {setYear}"
+            self.setSelectorWidget.addItem(text)
+        self.setSelectorWidget.addItem("")
+        self.setSelectorWidget.setCurrentText("")
+        self.mainLayout.addRow("Set", self.setSelectorWidget)
         # TODO add power/toughness/loyalty when creature / planeswalker is selected (pow/tou/loy)
-        # TODO add set selector (in:)
         # TODO add format legality (f:)
         # TODO add min/max price filter
         # TODO add support for tagger tags (atag: / otag:)
         # TODO put in scrollable widget (QScrollArea)
+        self.extrasCB = QtWidgets.QCheckBox("Include Extras")
+        self.mainLayout.addRow("Extras", self.extrasCB)
 
         self.searchButton = QtWidgets.QPushButton("Search")
         self.searchButton.clicked.connect(self.on_searchAction)
@@ -119,6 +126,8 @@ class SearchForm(QtWidgets.QWidget):
         langName = self.langCB.currentText()
         langCode = list(constants.LANGS.keys())[list(constants.LANGS.values()).index(langName)]
         colors = self.manaColorSelectorWidget.get()
+        setText = self.setSelectorWidget.currentText()
+        set = setText.split("(")[1].split(")")[0]
         searchData = {
             "name": self.nameField.text(),
             "include_extras": self.extrasCB.isChecked(),
@@ -128,6 +137,7 @@ class SearchForm(QtWidgets.QWidget):
             "oracle": self.oracleTextLE.text(),
             "cmc": (self.cmcWidgetCB.currentText(), self.cmcWidgetValue.text()),
             "rarity": self.rarityCB.currentText(),
+            "in": set,
         }
         return searchData
 

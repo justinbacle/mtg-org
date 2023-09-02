@@ -16,7 +16,7 @@ Here are the lists of things I'd like to have included in this project :
 
 | Feature | Status |
 | --- | --- |
-| Search through MTG database | Name, Colors, Type done. Others to add |
+| Search through MTG database | Name, Colors, Type, Set, Rarity, CMC, Oracle text done. Others to add |
 | Support for other languages than EN | Card handling done in all available MTG languages, GUI translations not handled (yet)|
 |Organizing cards in decks & collections| Done |
 |Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs (Legality WIP)|
