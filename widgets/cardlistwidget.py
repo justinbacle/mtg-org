@@ -66,14 +66,18 @@ class CardListWidget(QtWidgets.QTableWidget):
                     text = utils.setManaText(text)
                 # Set(s) handling
                 if column == "sets" and "sets" in cardData.keys():
-                    item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                    font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
                         qt.findAttrInParents(self, "keyruneFontId")
-                    )))
+                    ))
+                    font.setPointSize(14)
+                    item.setFont(font)
                     text = utils.setSetsText(text)
                 if column == "set" and "set" in cardData.keys():
-                    item.setFont(QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                    font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
                         qt.findAttrInParents(self, "keyruneFontId")
-                    )))
+                    ))
+                    font.setPointSize(14)
+                    item.setFont(font)
                     text = utils.setSetsText([text])
                 if column == "price":
                     text = utils.getFromDict(cardData, ["prices", constants.CURRENCY[0]])
