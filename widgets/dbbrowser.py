@@ -97,9 +97,11 @@ class SearchForm(QtWidgets.QWidget):
         self.cmcWidgetLayout.addWidget(self.cmcWidgetValue)
         self.mainLayout.addRow("CMC", self.cmcWidget)
 
-        # TODO add power/toughness/loyalty when creature / planeswalker is selected (pow/tou/loy)
+        self.rarityCB = QtWidgets.QComboBox()
+        self.rarityCB.addItems(["", "common", "uncommon", "rare", "mythic"])
+        self.mainLayout.addRow("Rarity", self.rarityCB)
 
-        # TODO add rarity selector (r:)
+        # TODO add power/toughness/loyalty when creature / planeswalker is selected (pow/tou/loy)
 
         # TODO add set selector (in:)
 
@@ -127,7 +129,8 @@ class SearchForm(QtWidgets.QWidget):
             "colors": colors,
             "types": [self.typeCB.currentText()],
             "oracle": self.oracleTextLE.text(),
-            "cmc": (self.cmcWidgetCB.currentText(), self.cmcWidgetValue.text())
+            "cmc": (self.cmcWidgetCB.currentText(), self.cmcWidgetValue.text()),
+            "rarity": self.rarityCB.currentText(),
         }
         return searchData
 

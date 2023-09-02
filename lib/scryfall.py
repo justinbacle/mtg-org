@@ -80,8 +80,9 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
             if v[1] != "":
                 q += "mv" + v[0] + v[1] + " "
         else:
-            q += k + ":" + v + " "
-        print(f"{q=} {kwargs=}")
+            if v != "":
+                q += k + ":" + v + " "
+    print(f"{q=} {kwargs=}")
     try:
         scryfallReq = scrython.cards.Search(q=q, **kwargs)
     except (ScryfallError, aiohttp.client_exceptions.ClientConnectorError) as e:
