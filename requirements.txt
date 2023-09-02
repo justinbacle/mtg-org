@@ -11,3 +11,5 @@ tqdm
 requests
 beautifulsoup4
 fuzzywuzzy
+PyInstaller
+pyinstaller-hooks-contrib
