@@ -1,6 +1,9 @@
 __pycache__
+*.spec
 
 venv
 _local/
 .vscode
 
+build/
+dist/
