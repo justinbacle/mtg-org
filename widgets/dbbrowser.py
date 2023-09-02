@@ -102,14 +102,11 @@ class SearchForm(QtWidgets.QWidget):
         self.mainLayout.addRow("Rarity", self.rarityCB)
 
         # TODO add power/toughness/loyalty when creature / planeswalker is selected (pow/tou/loy)
-
         # TODO add set selector (in:)
-
         # TODO add format legality (f:)
-
         # TODO add min/max price filter
-
         # TODO add support for tagger tags (atag: / otag:)
+        # TODO put in scrollable widget (QScrollArea)
 
         self.searchButton = QtWidgets.QPushButton("Search")
         self.searchButton.clicked.connect(self.on_searchAction)
@@ -189,7 +186,7 @@ class ManaColorWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self.color = color
         self.mainLayout = QtWidgets.QHBoxLayout()
-        # self.mainLayout = QtWidgets.QStackedLayout()
+        # self.mainLayout = QtWidgets.QStackedLayout()  # If interesting to strike down mana symbol on "not" ?
         self.setLayout(self.mainLayout)
         self.state = self.STATES[0]
         self.manaSymbolLabel = QtWidgets.QLabel("")
