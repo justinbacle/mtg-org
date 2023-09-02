@@ -60,18 +60,28 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
     for k, v in searchDict.items():
         if k in SEARCH_DICT_KEYS:
             kwargs.update({k: v})
-        elif k == "name" and exact:  # https://scryfall.com/docs/syntax#exact
-            q += "!\"" + v + "\" "
+        elif k == "name":
+            if v != "":
+                if exact:  # https://scryfall.com/docs/syntax#exact
+                    q += "!\"" + v + "\" "
+                else:
+                    q += "\"" + v + "\" "
         elif k == "colors":
-            if v is not None:
+            if v is not None:  # already comes formatted correctly
                 q += v + " "
         elif k == "types":
             for type in v:
                 if type != "":
                     q += "t:" + type
+        elif k == "oracle":
+            if v != "":
+                q += k + ":\"" + v + "\" "
+        elif k == "cmc":
+            if v[1] != "":
+                q += "mv" + v[0] + v[1] + " "
         else:
             q += k + ":" + v + " "
-
+        print(f"{q=} {kwargs=}")
     try:
         scryfallReq = scrython.cards.Search(q=q, **kwargs)
     except (ScryfallError, aiohttp.client_exceptions.ClientConnectorError) as e:

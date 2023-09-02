@@ -11,5 +11,6 @@ tqdm
 requests
 beautifulsoup4
 fuzzywuzzy
+python-Levenshtein
 PyInstaller
 pyinstaller-hooks-contrib

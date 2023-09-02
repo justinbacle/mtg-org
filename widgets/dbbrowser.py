@@ -82,9 +82,20 @@ class SearchForm(QtWidgets.QWidget):
 
         # TODO add free field for subtypes (-t:) to be merged with maintype
 
-        # TODO add card text search (-o: in scryfall)
+        self.oracleTextLE = QtWidgets.QLineEdit()
+        self.oracleTextLE.returnPressed.connect(self.on_searchAction)
+        self.mainLayout.addRow("Oracle text", self.oracleTextLE)
 
-        # TODO add > = < CMC
+        self.cmcWidget = QtWidgets.QWidget()
+        self.cmcWidgetLayout = QtWidgets.QHBoxLayout()
+        self.cmcWidget.setLayout(self.cmcWidgetLayout)
+        self.cmcWidgetCB = QtWidgets.QComboBox()
+        self.cmcWidgetCB.addItems(["=", ">", "<"])
+        self.cmcWidgetLayout.addWidget(self.cmcWidgetCB)
+        self.cmcWidgetValue = QtWidgets.QLineEdit()
+        self.cmcWidgetValue.setValidator(QtGui.QIntValidator(0, 15))
+        self.cmcWidgetLayout.addWidget(self.cmcWidgetValue)
+        self.mainLayout.addRow("CMC", self.cmcWidget)
 
         # TODO add power/toughness/loyalty when creature / planeswalker is selected (pow/tou/loy)
 
@@ -115,6 +126,8 @@ class SearchForm(QtWidgets.QWidget):
             "lang": langCode,
             "colors": colors,
             "types": [self.typeCB.currentText()],
+            "oracle": self.oracleTextLE.text(),
+            "cmc": (self.cmcWidgetCB.currentText(), self.cmcWidgetValue.text())
         }
         return searchData
 
