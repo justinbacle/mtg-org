@@ -9,7 +9,6 @@ sys.path.append(os.getcwd())  # FIXME Remove
 from lib import scryfall, utils, qt  # noqa E402
 
 import constants  # noqa E402
-import config  # noqa E402
 
 
 class CardViewer(QtWidgets.QWidget):
@@ -17,7 +16,7 @@ class CardViewer(QtWidgets.QWidget):
     def __init__(self, parent=None, **kwargs):
         super(CardViewer, self).__init__(parent=parent, **kwargs)
         self.setupUi()
-        if config.IMG_DOWNLOAD_METHOD == "qt":
+        if constants.IMG_DOWNLOAD_METHOD == "qt":
             self.imgDownloader = ImageDownloader()
             self.imgDownloader.finished.connect(self.saveCardImg)
 
@@ -75,7 +74,7 @@ class CardViewer(QtWidgets.QWidget):
         scryfall.getCardById(self.card["id"], force=True)
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
             # TODO fix whan dual faced card download fixed
-            imageUri = utils.getFromDict(self.card, ["image_uris", config.IMG_SIZE])
+            imageUri = utils.getFromDict(self.card, ["image_uris", constants.IMG_SIZE])
             self.downloadCardImg(imageUri, self.card["id"])
 
     def on_add(self):
@@ -174,21 +173,21 @@ class CardViewer(QtWidgets.QWidget):
         self.cardFace = cardFace
         _hasManyFaces = False
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
-            imageUri = utils.getFromDict(self.card, ["image_uris", config.IMG_SIZE])
+            imageUri = utils.getFromDict(self.card, ["image_uris", constants.IMG_SIZE])
         else:
             if len(self.card['card_faces']) > 1:
                 _hasManyFaces = True
                 self.cardFaceChooser.setVisible(True)
             imageUri = utils.getFromDict(
-                self.card, ["card_faces", cardFace, "image_uris", config.IMG_SIZE])
+                self.card, ["card_faces", cardFace, "image_uris", constants.IMG_SIZE])
 
-        if isCardImageCached(cardId) and not _hasManyFaces or config.IMG_DOWNLOAD_METHOD == "direct":
+        if isCardImageCached(cardId) and not _hasManyFaces or constants.IMG_DOWNLOAD_METHOD == "direct":
             # TODO handle cache for multi face cards
             cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
             image = QtGui.QImage()
             image.load(cardImgPath.as_posix())
             self.displayPixmapCard(image)
-        elif config.IMG_DOWNLOAD_METHOD == "qt":
+        elif constants.IMG_DOWNLOAD_METHOD == "qt":
             if self.cardImgGraphicsView.scene() is not None:
                 if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
                     self.cardImgGraphicsView.scene().clear()

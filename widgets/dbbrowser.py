@@ -201,7 +201,7 @@ class ManaColorWidget(QtWidgets.QWidget):
         self.draw()
 
     def draw(self):
-        if self.state in ["NS", "May", "Must" "Not"]:
+        if self.state in ["NS", "May", "Must", "Not"]:
             text = self.color.lower()
             self.manaSymbolLabel.setText(text)
         else:  # May is half symbol  NOT USED

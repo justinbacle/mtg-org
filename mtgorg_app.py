@@ -15,7 +15,6 @@ from widgets.cardslist import CardsList
 import connector
 
 from lib import qt, utils
-import config
 import constants
 
 
@@ -37,7 +36,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         self.setStatusBar(self.statusbar)
 
-        if config.THEME == "material":
+        if constants.THEME == "material":
             qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '0'})
 
         if utils.isWin():
@@ -64,7 +63,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             logging.error("Unhandled system platform")
             ...
 
-        if config.THEME == "fusion":
+        if constants.THEME == "fusion":
             qt.selectPalette(self.app)
 
         # Update resources

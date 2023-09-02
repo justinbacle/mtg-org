@@ -15,7 +15,6 @@ import os
 sys.path.append(os.getcwd())  # FIXME Remove
 
 import connector  # noqa E402
-from card import Card  # noqa E402
 from lib import utils  # noqa E402
 import constants  # noqa E402
 
@@ -29,6 +28,11 @@ SEARCH_DICT_KEYS = [
     'include_multilingual',
     'page',
 ]
+
+
+class Card(dict):
+    def __init__(self, dataDict):
+        super().__init__(dataDict)
 
 
 def searchCards(searchDict: dict, exact: bool = False):
