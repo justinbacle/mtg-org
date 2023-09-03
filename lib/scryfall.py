@@ -6,7 +6,6 @@ from cache_to_disk import cache_to_disk
 from tqdm import tqdm
 from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results
 import aiohttp
-import lxml.etree
 import requests
 import re
 
