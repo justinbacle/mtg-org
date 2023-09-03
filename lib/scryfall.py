@@ -75,6 +75,8 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
         elif k in ["colors", "price"]:
             if v is not None:  # already comes formatted correctly
                 q += v + " "
+        elif k in ["pow", "tou", "loy"]:
+            q += k + v + " "
         elif k == "types":
             for type in v:
                 if type != "":
@@ -161,7 +163,7 @@ def getCardByMTGOId(mtgoId: int) -> dict:
     return cardData
 
 
-def getRandomCard() -> str:
+def getRandomCard() -> dict:
     return scrython.Random().scryfallJson
 
 
@@ -288,3 +290,10 @@ def getTaggerTags():
             else:
                 atags.append(tag)
     return atags, otags
+
+
+@cache_to_disk(1)
+def getFormats() -> list:
+    card = getRandomCard()  # TODO handle offline mode
+    formats = card["legalities"].keys()
+    return list(formats)

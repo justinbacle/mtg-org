@@ -84,6 +84,7 @@ class SearchForm(QtWidgets.QWidget):
         for cardType in constants.MAIN_CARD_TYPES:
             self.typeCB.addItem(cardType)
         self.typeCB.setCurrentText("")
+        self.typeCB.currentTextChanged.connect(self.on_mainTypeChange)
         self.mainLayout.addRow("Main type", self.typeCB)
 
         self.otherTypeCB = QtWidgets.QLineEdit()
@@ -121,8 +122,54 @@ class SearchForm(QtWidgets.QWidget):
         self.setSelectorWidget.addItem("")
         self.setSelectorWidget.setCurrentText("")
         self.mainLayout.addRow("Set", self.setSelectorWidget)
-        # TODO add power/toughness/loyalty when creature / planeswalker is selected (pow/tou/loy)
-        # TODO add format legality (f:)
+
+        self.formatLegalWidget = qt.ExtendedComboBox()
+        self.formatLegalWidget.addItems(scryfall.getFormats())
+        self.formatLegalWidget.addItem("")
+        self.formatLegalWidget.setCurrentText("")
+        self.mainLayout.addRow("Legality", self.formatLegalWidget)
+
+        self.creaturePowerWidget = QtWidgets.QWidget()
+        self.creaturePowerWidgetLayout = QtWidgets.QHBoxLayout()
+        self.creaturePowerWidgetLayout.setContentsMargins(0, 0, 0, 0)
+        self.creaturePowerWidget.setLayout(self.creaturePowerWidgetLayout)
+        self.creaturePowerWidgetCB = QtWidgets.QComboBox()
+        self.creaturePowerWidgetCB.setMinimumWidth(64)
+        self.creaturePowerWidgetCB.addItems(["<", "=", ">"])
+        self.creaturePowerWidgetLayout.addWidget(self.creaturePowerWidgetCB)
+        self.creaturePowerWidgetLE = QtWidgets.QLineEdit()
+        self.creaturePowerWidgetLE.setValidator(QtGui.QIntValidator(0, 20))
+        self.creaturePowerWidgetLayout.addWidget(self.creaturePowerWidgetLE)
+        self.mainLayout.addRow("Power", self.creaturePowerWidget)
+        self.creaturePowerRow = self.mainLayout.rowCount() - 1
+
+        self.creatureToughnessWidget = QtWidgets.QWidget()
+        self.creatureToughnessWidgetLayout = QtWidgets.QHBoxLayout()
+        self.creatureToughnessWidgetLayout.setContentsMargins(0, 0, 0, 0)
+        self.creatureToughnessWidget.setLayout(self.creatureToughnessWidgetLayout)
+        self.creatureToughnessWidgetCB = QtWidgets.QComboBox()
+        self.creatureToughnessWidgetCB.setMinimumWidth(64)
+        self.creatureToughnessWidgetCB.addItems(["<", "=", ">"])
+        self.creatureToughnessWidgetLayout.addWidget(self.creatureToughnessWidgetCB)
+        self.creatureToughnessWidgetLE = QtWidgets.QLineEdit()
+        self.creatureToughnessWidgetLE.setValidator(QtGui.QIntValidator(0, 20))
+        self.creatureToughnessWidgetLayout.addWidget(self.creatureToughnessWidgetLE)
+        self.mainLayout.addRow("Toughness", self.creatureToughnessWidget)
+        self.creatureToughnessRow = self.mainLayout.rowCount() - 1
+
+        self.planeswalkerLoyaltyWidget = QtWidgets.QWidget()
+        self.planeswalkerLoyaltyWidgetLayout = QtWidgets.QHBoxLayout()
+        self.planeswalkerLoyaltyWidgetLayout.setContentsMargins(0, 0, 0, 0)
+        self.planeswalkerLoyaltyWidget.setLayout(self.planeswalkerLoyaltyWidgetLayout)
+        self.planeswalkerLoyaltyWidgetCB = QtWidgets.QComboBox()
+        self.planeswalkerLoyaltyWidgetCB.setMinimumWidth(64)
+        self.planeswalkerLoyaltyWidgetCB.addItems(["<", "=", ">"])
+        self.planeswalkerLoyaltyWidgetLayout.addWidget(self.planeswalkerLoyaltyWidgetCB)
+        self.planeswalkerLoyaltyWidgetLE = QtWidgets.QLineEdit()
+        self.planeswalkerLoyaltyWidgetLE.setValidator(QtGui.QIntValidator(0, 20))
+        self.planeswalkerLoyaltyWidgetLayout.addWidget(self.planeswalkerLoyaltyWidgetLE)
+        self.mainLayout.addRow("Loyalty", self.planeswalkerLoyaltyWidget)
+        self.planeswalkerLoyaltyRow = self.mainLayout.rowCount() - 1
 
         self.priceWidget = QtWidgets.QWidget()
         self.priceWidgetLayout = QtWidgets.QHBoxLayout()
@@ -158,8 +205,30 @@ class SearchForm(QtWidgets.QWidget):
         self.searchButton.clicked.connect(self.on_searchAction)
         self.mainLayout.addRow(self.searchButton)
 
+        self.on_mainTypeChange()
+
     def on_searchAction(self):
         self.find.emit(self.getSearchData())
+
+    def on_mainTypeChange(self):
+        if self.typeCB.currentText() == "creature":
+            self.mainLayout.setRowVisible(self.creaturePowerRow, True)
+            self.mainLayout.setRowVisible(self.creatureToughnessRow, True)
+            self.mainLayout.setRowVisible(self.planeswalkerLoyaltyRow, False)
+            self.planeswalkerLoyaltyWidgetLE.setText("")
+        elif self.typeCB.currentText() == "planeswalker":
+            self.mainLayout.setRowVisible(self.creaturePowerRow, False)
+            self.creaturePowerWidgetLE.setText("")
+            self.mainLayout.setRowVisible(self.creatureToughnessRow, False)
+            self.creatureToughnessWidgetLE.setText("")
+            self.mainLayout.setRowVisible(self.planeswalkerLoyaltyRow, True)
+        else:
+            self.mainLayout.setRowVisible(self.creaturePowerRow, False)
+            self.creaturePowerWidgetLE.setText("")
+            self.mainLayout.setRowVisible(self.creatureToughnessRow, False)
+            self.creatureToughnessWidgetLE.setText("")
+            self.mainLayout.setRowVisible(self.planeswalkerLoyaltyRow, False)
+            self.planeswalkerLoyaltyWidgetLE.setText("")
 
     def getSearchData(self):
         langName = self.langCB.currentText()
@@ -187,7 +256,23 @@ class SearchForm(QtWidgets.QWidget):
             "price": price,
             "atag": self.atagECB.currentText(),
             "otag": self.otagECB.currentText(),
+            "f": self.formatLegalWidget.currentText(),
         }
+
+        if self.typeCB.currentText() == "creature":
+            searchData.update(
+                {
+                    "pow": self.creaturePowerWidgetCB.currentText() + self.creaturePowerWidgetLE.text(),
+                    "tou": self.creatureToughnessWidgetCB.currentText() + self.creatureToughnessWidgetLE.text(),
+                }
+            )
+        elif self.typeCB.currentText() == "planeswalker":
+            searchData.update(
+                {"loy": self.planeswalkerLoyaltyWidgetCB.currentText() + self.planeswalkerLoyaltyWidgetLE.text()}
+            )
+        else:
+            ...
+
         return searchData
 
 

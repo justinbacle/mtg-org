@@ -191,7 +191,7 @@ class CardViewer(QtWidgets.QWidget):
             if self.cardImgGraphicsView.scene() is not None:
                 if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
                     self.cardImgGraphicsView.scene().clear()
-                self.downloadCardImg(imageUri, cardId)
+            self.downloadCardImg(imageUri, cardId)
 
         # gatherer/scryfall uri
         try:

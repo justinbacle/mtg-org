@@ -218,6 +218,7 @@ def updateManaFontSymbols():
 # Dictionary of symbols as they appear in oracle text, and their corresponding symbols to look correct in NDPMTG font
 # From https://github.com/MrTeferi/Proxyshop/blob/main/src/constants.py
 PROXYGLYPH_SYMBOLS = {
+    # TODO: handle half mana symbols (un-sets)
     "{W/P}": "Qp",
     "{U/P}": "Qp",
     "{B/P}": "Qp",

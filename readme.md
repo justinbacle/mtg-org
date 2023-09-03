@@ -16,9 +16,9 @@ Here are the lists of things I'd like to have included in this project :
 
 | Feature | Status |
 | --- | --- |
-| Search through MTG database | Name, Colors, Type, Set, Rarity, CMC, Oracle text done. Others to add |
+| Search through MTG database | Done: Name, Colors, Type(s), Set, Rarity, CMC, Oracle text, tagger tags, Format, Power/Toughness/Loyalty|
 | Support for other languages than EN | Card handling done in all available MTG languages, GUI translations not handled (yet)|
-|Organizing cards in decks & collections| Done |
+|Organizing cards in decks & collections| Done. Missing drag/drop between collections/decks |
 |Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs (Legality WIP)|
 |Import| MTGA, CSV(Urza Gatherer, and all supported on mtggoldfish), MTGO(.dek) |
 |Export| Started : export to cardmarket decklist|
@@ -32,10 +32,14 @@ Here are the lists of things I'd like to have included in this project :
 - Card data rely on a cache, which is manually stored for now, this cache is not yet updated when a set comes out. Manual solution for now is to clean the cache manually but I plan to implement a cache update system that could be triggered when a new set is out.
 - On some instances, card art may not be correct if scrolling through cards quickly. This is caused by a race condition when requesting multiple images on a poor connection to the web. I added a "Ctrl+R" shortcut to force reload currently selected card for now.
 - On some heavy operations (like importing a large collection) GUI may freeze while it loads data. I will implement loading bars / spinners at some point soon to keep the GUI responive on heavy operations.
+- Missing half-mana symbols (un-sets)
+- Missing 1,000,000 mana symbol (Gleemax)
+- Missing phyrexian font handling
 
 ## Requirements
 
 > Python 3.10+
+> pip modules listed in requirements.txt
 
 ## Install / Usage
 
