@@ -6,6 +6,9 @@ from cache_to_disk import cache_to_disk
 from tqdm import tqdm
 from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results
 import aiohttp
+import lxml.etree
+import requests
+import re
 
 import scrython.cards
 from scrython.foundation import ScryfallError
@@ -264,3 +267,25 @@ def downloadBulkData():
     # https://api.scryfall.com/bulk-data
     # sends list of bulk data with link
     ...
+
+
+def getTaggerTags():
+    url = "https://scryfall.com/docs/tagger-tags"
+    text = requests.get(url).text
+    textLines = text.split("\n")
+    isFunctionnal = False
+    atags = []
+    otags = []
+    isAfterHeader = False
+    for textLine in textLines:
+        if re.match(r".*<h2>.*</h2>.*", textLine):
+            isFunctionnal = "functional" in textLine
+            isAfterHeader = True
+        elif isAfterHeader and re.match(r".*<a href=\"/search\?.*>(.*)<.a>.*", textLine):
+            # '<a href="/search?q=art%3Ainkwell&amp;unique=art">inkwell</a>'
+            tag = re.match(r".*<a href=\"/search\?.*>(.*)<.a>.*", textLine).groups()[0]
+            if isFunctionnal:
+                otags.append(tag)
+            else:
+                atags.append(tag)
+    return atags, otags

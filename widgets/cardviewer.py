@@ -33,7 +33,7 @@ class CardViewer(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.addToCurrentPB, line.postinc(), 1)
 
         # Card Name + Mana
-        self.nameLabel = QtWidgets.QLabel("Name")
+        self.nameLabel = QtWidgets.QLabel("")
         self.nameLabel.setStyleSheet("font-size: 16pt;")
         self.mainLayout.addWidget(self.nameLabel, line.val(), 0)
         self.manacostLabel = QtWidgets.QLabel()

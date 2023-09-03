@@ -23,15 +23,24 @@ class DbBrowser(QtWidgets.QWidget):
     def initUi(self):
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.setLayout(self.mainLayout)
-        # Form on the left for search terms ?
+
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
+        self.mainLayout.addWidget(self.splitter)
+
         self.searchForm = SearchForm(parent=self)
-        self.searchForm.setMaximumWidth(300)
+        # self.searchForm.setMaximumWidth(300)
+        self.searchForm.setMinimumWidth(300)
         self.searchForm.find.connect(self.on_searchRequest)
-        self.mainLayout.addWidget(self.searchForm)
+        self.qscroll = QtWidgets.QScrollArea()
+        self.qscroll.setWidgetResizable(True)
+        self.qscroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.qscroll.setWidget(self.searchForm)
+        self.splitter.addWidget(self.qscroll)
         # QListWidget on the right for results
         self.dbResultsList = CardListWidget()
         self.dbResultsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
-        self.mainLayout.addWidget(self.dbResultsList)
+        self.splitter.addWidget(self.dbResultsList)
+        self.splitter.setSizes([300, 600])
 
     def on_searchRequest(self, searchDict: dict):
         req = scryfall.searchCards(searchDict)
@@ -126,8 +135,18 @@ class SearchForm(QtWidgets.QWidget):
         self.priceWidgetLayout.addWidget(self.priceWidgetValue)
         self.mainLayout.addRow("Price (" + constants.CURRENCY[1] + ")", self.priceWidget)
 
-        # TODO add support for tagger tags (atag: / otag:)
-        # TODO put in scrollable widget (QScrollArea)
+        atags, otags = scryfall.getTaggerTags()
+        self.atagECB = qt.ExtendedComboBox()
+        self.atagECB.addItems(atags)
+        self.atagECB.setCurrentText("")
+        self.atagECB.setToolTip("From scyfall Tagger community project")
+        self.mainLayout.addRow("Art tag", self.atagECB)
+        self.otagECB = qt.ExtendedComboBox()
+        self.otagECB.addItems(otags)
+        self.otagECB.setCurrentText("")
+        self.otagECB.setToolTip("From scyfall Tagger community project")
+        self.mainLayout.addRow("Oracle tag", self.otagECB)
+
         self.extrasCB = QtWidgets.QCheckBox("Include Extras")
         self.mainLayout.addRow("Extras", self.extrasCB)
 
@@ -161,7 +180,9 @@ class SearchForm(QtWidgets.QWidget):
             "cmc": (self.cmcWidgetCB.currentText(), self.cmcWidgetValue.text()),
             "rarity": self.rarityCB.currentText(),
             "in": set,
-            "price": price
+            "price": price,
+            "atag": self.atagECB.currentText(),
+            "otag": self.otagECB.currentText(),
         }
         return searchData
 
