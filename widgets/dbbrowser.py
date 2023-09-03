@@ -84,9 +84,12 @@ class SearchForm(QtWidgets.QWidget):
         for cardType in constants.MAIN_CARD_TYPES:
             self.typeCB.addItem(cardType)
         self.typeCB.setCurrentText("")
-        self.mainLayout.addRow("Main card type", self.typeCB)
+        self.mainLayout.addRow("Main type", self.typeCB)
 
-        # TODO add free field for subtypes (-t:) to be merged with maintype
+        self.otherTypeCB = QtWidgets.QLineEdit()
+        self.otherTypeCB.returnPressed.connect(self.on_searchAction)
+        self.otherTypeCB.setToolTip("Free input types/subtypes separated by spaces")
+        self.mainLayout.addRow("Other type(s)", self.otherTypeCB)
 
         self.oracleTextLE = QtWidgets.QLineEdit()
         self.oracleTextLE.returnPressed.connect(self.on_searchAction)
@@ -130,6 +133,7 @@ class SearchForm(QtWidgets.QWidget):
         self.priceWidgetCB.addItems(["<", ">"])
         self.priceWidgetLayout.addWidget(self.priceWidgetCB)
         self.priceWidgetValue = QtWidgets.QLineEdit()
+        self.priceWidgetValue.returnPressed.connect(self.on_searchAction)
         validator = QtGui.QRegularExpressionValidator(QtCore.QRegularExpression(r"\d+(\.(\d)+)*"))
         self.priceWidgetValue.setValidator(validator)
         self.priceWidgetLayout.addWidget(self.priceWidgetValue)
@@ -175,7 +179,7 @@ class SearchForm(QtWidgets.QWidget):
             "include_extras": self.extrasCB.isChecked(),
             "lang": langCode,
             "colors": colors,
-            "types": [self.typeCB.currentText()],
+            "types": [self.typeCB.currentText()] + self.otherTypeCB.text().split(" "),
             "oracle": self.oracleTextLE.text(),
             "cmc": (self.cmcWidgetCB.currentText(), self.cmcWidgetValue.text()),
             "rarity": self.rarityCB.currentText(),

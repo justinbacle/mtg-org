@@ -78,7 +78,7 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
         elif k == "types":
             for type in v:
                 if type != "":
-                    q += "t:" + type
+                    q += "t:" + type + " "
         elif k == "oracle":
             if v != "":
                 q += k + ":\"" + v + "\" "
