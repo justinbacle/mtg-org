@@ -3,7 +3,7 @@ from pathlib import Path
 # ------------------------------------ QT ------------------------------------ #
 THEME = "material"  # ["fusion", "material"]
 IMG_DOWNLOAD_METHOD = "qt"  # ["direct", "qt"]
-IMG_SIZE = "large"  # small, normal, large, png
+IMG_SIZE = "normal"  # small, normal, large, png
 QSPLITTER_HANDLE_WIDTH = 8
 
 # ----------------------------------- PATHS ---------------------------------- #
@@ -40,6 +40,7 @@ RARITIES = {
     "mythic": {
         "color": "#F40"
     }
+    # TODO handle "special" rarity
 }
 
 CURRENCY = [

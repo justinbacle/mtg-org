@@ -70,7 +70,7 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
                     q += "!\"" + v + "\" "
                 else:
                     q += "\"" + v + "\" "
-        elif k == "colors":
+        elif k in ["colors", "price"]:
             if v is not None:  # already comes formatted correctly
                 q += v + " "
         elif k == "types":

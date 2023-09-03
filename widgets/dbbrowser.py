@@ -85,9 +85,11 @@ class SearchForm(QtWidgets.QWidget):
 
         self.cmcWidget = QtWidgets.QWidget()
         self.cmcWidgetLayout = QtWidgets.QHBoxLayout()
+        self.cmcWidgetLayout.setContentsMargins(0, 0, 0, 0)
         self.cmcWidget.setLayout(self.cmcWidgetLayout)
         self.cmcWidgetCB = QtWidgets.QComboBox()
         self.cmcWidgetCB.addItems(["=", ">", "<"])
+        self.cmcWidgetCB.setMinimumWidth(64)
         self.cmcWidgetLayout.addWidget(self.cmcWidgetCB)
         self.cmcWidgetValue = QtWidgets.QLineEdit()
         self.cmcWidgetValue.setValidator(QtGui.QIntValidator(0, 15))
@@ -109,7 +111,21 @@ class SearchForm(QtWidgets.QWidget):
         self.mainLayout.addRow("Set", self.setSelectorWidget)
         # TODO add power/toughness/loyalty when creature / planeswalker is selected (pow/tou/loy)
         # TODO add format legality (f:)
-        # TODO add min/max price filter
+
+        self.priceWidget = QtWidgets.QWidget()
+        self.priceWidgetLayout = QtWidgets.QHBoxLayout()
+        self.priceWidgetLayout.setContentsMargins(0, 0, 0, 0)
+        self.priceWidget.setLayout(self.priceWidgetLayout)
+        self.priceWidgetCB = QtWidgets.QComboBox()
+        self.priceWidgetCB.setMinimumWidth(64)
+        self.priceWidgetCB.addItems(["<", ">"])
+        self.priceWidgetLayout.addWidget(self.priceWidgetCB)
+        self.priceWidgetValue = QtWidgets.QLineEdit()
+        validator = QtGui.QRegularExpressionValidator(QtCore.QRegularExpression(r"\d+(\.(\d)+)*"))
+        self.priceWidgetValue.setValidator(validator)
+        self.priceWidgetLayout.addWidget(self.priceWidgetValue)
+        self.mainLayout.addRow("Price (" + constants.CURRENCY[1] + ")", self.priceWidget)
+
         # TODO add support for tagger tags (atag: / otag:)
         # TODO put in scrollable widget (QScrollArea)
         self.extrasCB = QtWidgets.QCheckBox("Include Extras")
@@ -127,7 +143,14 @@ class SearchForm(QtWidgets.QWidget):
         langCode = list(constants.LANGS.keys())[list(constants.LANGS.values()).index(langName)]
         colors = self.manaColorSelectorWidget.get()
         setText = self.setSelectorWidget.currentText()
-        set = setText.split("(")[1].split(")")[0]
+        if "(" and ")" in setText:
+            set = setText.split("(")[1].split(")")[0]
+        else:
+            set = ""
+        if self.priceWidgetValue.text() != "":
+            price = constants.CURRENCY[0] + self.priceWidgetCB.currentText() + self.priceWidgetValue.text()
+        else:
+            price = None
         searchData = {
             "name": self.nameField.text(),
             "include_extras": self.extrasCB.isChecked(),
@@ -138,6 +161,7 @@ class SearchForm(QtWidgets.QWidget):
             "cmc": (self.cmcWidgetCB.currentText(), self.cmcWidgetValue.text()),
             "rarity": self.rarityCB.currentText(),
             "in": set,
+            "price": price
         }
         return searchData
 
