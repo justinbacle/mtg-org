@@ -18,7 +18,7 @@ Here are the lists of things I'd like to have included in this project :
 | --- | --- |
 | Search through MTG database | Done: Name, Colors, Type(s), Set, Rarity, CMC, Oracle text, tagger tags, Format, Power/Toughness/Loyalty|
 | Support for other languages than EN | Card handling done in all available MTG languages, GUI translations not handled (yet)|
-|Organizing cards in decks & collections| Done. Missing drag/drop between collections/decks |
+|Organizing cards in decks & collections| Done. Missing drag/drop between collections/decks, missing sideboard/commander support |
 |Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs (Legality WIP)|
 |Import| MTGA, CSV(Urza Gatherer, and all supported on mtggoldfish), MTGO(.dek) |
 |Export| Started : export to cardmarket decklist|

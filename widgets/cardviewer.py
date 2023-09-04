@@ -130,6 +130,16 @@ class CardViewer(QtWidgets.QWidget):
         else:
             self.nameLabel.setText(self.card["name"])
 
+        if self.card["lang"] == "ph":
+            # phyrexianFont = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+            #     qt.findAttrInParents(self, "phyrexianFontId")
+            # ))
+            # self.nameLabel.setFont(phyrexianFont)
+            self.nameLabel.setStyleSheet("font-size: 16pt; font-family: Phyrexian;")
+        else:
+            # TODO put default font
+            self.nameLabel.setStyleSheet("font-size: 16pt;")
+
         if "card_faces" in self.card.keys():
             manaCost = self.card["card_faces"][0]["mana_cost"]
         else:

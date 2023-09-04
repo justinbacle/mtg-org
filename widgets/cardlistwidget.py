@@ -53,6 +53,11 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                 item = QtWidgets.QTableWidgetItem()
                 if column == "name" and "printed_name" in cardData.keys():
                     text = utils.getFromDict(cardData, ["printed_name"])
+                    if cardData["lang"] == "ph":
+                        phyrexianFont = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                            qt.findAttrInParents(self, "phyrexianFontId")
+                        ))
+                        item.setFont(phyrexianFont)
                 else:
                     text = utils.getFromDict(cardData, column.split("."))
                 if column == "qty":
