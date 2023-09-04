@@ -95,8 +95,8 @@ class CardViewer(QtWidgets.QWidget):
     def displayPixmapCard(self, image):
         # display
         self.cardImgPixMap = QtGui.QPixmap.fromImage(image)
-        if self.cardImgGraphicsView.scene() is None:
-            self.cardImgGraphicsView.setScene(QtWidgets.QGraphicsScene())
+        self.scene = QtWidgets.QGraphicsScene()
+        self.cardImgGraphicsView.setScene(self.scene)
         if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
             self.cardImgGraphicsView.scene().clear()
         self.cardImgGraphicsView.scene().addPixmap(self.cardImgPixMap)
