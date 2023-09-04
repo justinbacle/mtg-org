@@ -50,7 +50,7 @@ class DbBrowser(QtWidgets.QWidget):
     def on_dbSelectChanged(self):
         if len(self.dbResultsList.selectedItems()) == 1:
             selectedItem = self.dbResultsList.selectedItems()[0]
-            self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["id"])
+            self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["data"]["id"])
         else:
             selectedItem = None
 

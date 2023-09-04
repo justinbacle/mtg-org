@@ -47,8 +47,7 @@ class CardsList(QtWidgets.QWidget):
         self.cardsListLayout.addWidget(self.cardsListButtonBox)
         self.cardsList = CardStackListWidget(parent=self)
         self.cardsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
-        self.cardsList.currentItemChanged.connect(self.cardsList.on_currentItemChanged)
-        self.cardsList.cellEntered.connect(self.cardsList.on_cellEntered)
+        self.cardsList.itemChanged.connect(self.cardsList.on_itemChanged)
         self.cardsListLayout.addWidget(self.cardsList)
         self.splitter.addWidget(self.cardsListWidget)
 
@@ -63,7 +62,7 @@ class CardsList(QtWidgets.QWidget):
     def on_dbSelectChanged(self):
         if len(self.cardsList.selectedItems()) == 1:
             selectedItem = self.cardsList.selectedItems()[0]
-            self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["id"])
+            self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["data"]["id"])
         else:
             selectedItem = None
 

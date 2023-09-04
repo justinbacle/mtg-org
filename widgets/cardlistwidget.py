@@ -55,11 +55,12 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                 else:
                     text = utils.getFromDict(cardData, column.split("."))
                 if column == "qty":
-                    flag = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsEditable
+                    flag = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled | \
+                        QtCore.Qt.ItemFlag.ItemIsEditable
                     item.setFlags(flag)
                 else:
                     flag = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
-                    item.setFlags(flag)('')
+                    item.setFlags(flag)
                 # mana cost handling
                 if "card_faces" in cardData.keys():
                     if column == "mana_cost":
@@ -92,7 +93,7 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                     else:
                         text = "?"
                 item.setData(QtCore.Qt.DisplayRole, text)
-                item.setData(QtCore.Qt.UserRole, cardData)
+                item.setData(QtCore.Qt.UserRole, {"data": cardData, "column": column})
                 dataList.append(item)
         return dataList
 
@@ -110,16 +111,17 @@ class CardStackListWidget(CardSearchListWidget):
         self.setHorizontalHeaderLabels(self.columns)
         self.setMouseTracking(True)
 
-    def on_cellEntered(self, row, column):
-        # not used
-        ...
-
-    def on_currentItemChanged(currentItem, previousItem):
-        # TODO set qty of current card / remove if empty
-        # ? needs modifying itemData to indicate that qty is being changed (and not something else)
+    def on_itemChanged(self, item):
         # TODO prepare for user info (commander/sideboard/maybeboard etc...)
-        print(currentItem.text() + "->" + previousItem.text())
-        ...
+        if len(self.selectedItems()) == 1:
+            if item.data(QtCore.Qt.UserRole)["column"] == "qty":
+                previousQty = item.data(QtCore.Qt.UserRole)["data"]["qty"]
+                newQty = int(item.text())
+                if previousQty != newQty:
+                    if previousQty > newQty:
+                        self.removeQty(previousQty - newQty)
+                    else:
+                        self.addQty(newQty - previousQty)
 
     def setCardList(self, cardList: connector.Deck | connector.Collection):
         self.setRowCount(0)
@@ -143,17 +145,17 @@ class CardStackListWidget(CardSearchListWidget):
         self.parent().sort()
         self.updateCardListInfos()
 
-    def removeOne(self):
+    def removeQty(self, qty: int):
         selectedLine = self.selectedIndexes()[0]
-        selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)
+        selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)["data"]
         stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
-        if selectedCard["qty"] > 1:
+        if selectedCard["qty"] > qty:
             if stackType == "deck":
-                connector.changeCardDeckQty(stackName, selectedCard["qty"] - 1, selectedCard["id"])
+                connector.changeCardDeckQty(stackName, selectedCard["qty"] - qty, selectedCard["id"])
                 deck = connector.getDeck(stackName)
                 self.setCardList(deck["cardList"])
             elif stackType == "collection":
-                connector.changeCardCollectionQty(stackName, selectedCard["qty"] - 1, selectedCard["id"])
+                connector.changeCardCollectionQty(stackName, selectedCard["qty"] - qty, selectedCard["id"])
                 collection = connector.getCollection(stackName)
                 self.setCardList(collection["cardList"])
             else:
@@ -172,16 +174,16 @@ class CardStackListWidget(CardSearchListWidget):
                 ...
         self.parent().sort()
 
-    def addOne(self):
+    def addQty(self, qty: int):
         selectedLine = self.selectedIndexes()[0]
-        selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)
+        selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)["data"]
         stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if stackType == "deck":
-            connector.changeCardDeckQty(stackName, selectedCard["qty"] + 1, selectedCard["id"])
+            connector.changeCardDeckQty(stackName, selectedCard["qty"] + qty, selectedCard["id"])
             deck = connector.getDeck(stackName)
             self.setCardList(deck["cardList"])
         elif stackType == "collection":
-            connector.changeCardCollectionQty(stackName, selectedCard["qty"] + 1, selectedCard["id"])
+            connector.changeCardCollectionQty(stackName, selectedCard["qty"] + qty, selectedCard["id"])
             collection = connector.getCollection(stackName)
             self.setCardList(collection["cardList"])
         else:
@@ -190,9 +192,9 @@ class CardStackListWidget(CardSearchListWidget):
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == QtCore.Qt.Key_Minus:
-            self.removeOne()
+            self.removeQty(qty=1)
         elif event.key() == QtCore.Qt.Key_Plus:
-            self.addOne()
+            self.addQty(qty=1)
         else:
             return super().keyPressEvent(event)
 
