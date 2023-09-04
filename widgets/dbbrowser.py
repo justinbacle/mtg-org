@@ -6,7 +6,7 @@ import os
 sys.path.append(os.getcwd())  # FIXME Remove
 
 from lib import scryfall, qt, utils  # noqa E402
-from widgets.cardlistwidget import CardListWidget  # noqa E402
+from widgets.cardlistwidget import CardSearchListWidget  # noqa E402
 
 import constants  # noqa E402
 
@@ -37,7 +37,7 @@ class DbBrowser(QtWidgets.QWidget):
         self.qscroll.setWidget(self.searchForm)
         self.splitter.addWidget(self.qscroll)
         # QListWidget on the right for results
-        self.dbResultsList = CardListWidget()
+        self.dbResultsList = CardSearchListWidget()
         self.dbResultsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
         self.splitter.addWidget(self.dbResultsList)
         self.splitter.setSizes([300, 600])

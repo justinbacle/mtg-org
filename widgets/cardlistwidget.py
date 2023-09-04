@@ -9,7 +9,7 @@ COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
 USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
 
 
-class CardListWidget(QtWidgets.QTableWidget):
+class CardSearchListWidget(QtWidgets.QTableWidget):
     def __init__(self, parent=None, columns=COLUMNS) -> None:
         super().__init__(parent)
         self.columns = columns
@@ -27,7 +27,7 @@ class CardListWidget(QtWidgets.QTableWidget):
 
     def _addOneLine(self, card: dict):
         for i, tableItem in enumerate(self.getCardTableItem(card, columns=self.columns)):
-            tableItem.setFlags(tableItem.flags() ^ QtCore.Qt.ItemIsEditable)
+            # tableItem.setFlags(tableItem.flags() ^ QtCore.Qt.ItemIsEditable)
             self.setItem(self.rowCount() - 1, i, tableItem)
 
     def dragEnterEvent(self, event):
@@ -54,6 +54,12 @@ class CardListWidget(QtWidgets.QTableWidget):
                     text = utils.getFromDict(cardData, ["printed_name"])
                 else:
                     text = utils.getFromDict(cardData, column.split("."))
+                if column == "qty":
+                    flag = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsEditable
+                    item.setFlags(flag)
+                else:
+                    flag = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
+                    item.setFlags(flag)('')
                 # mana cost handling
                 if "card_faces" in cardData.keys():
                     if column == "mana_cost":
@@ -91,10 +97,10 @@ class CardListWidget(QtWidgets.QTableWidget):
         return dataList
 
 
-class CardStackListWidget(CardListWidget):
+class CardStackListWidget(CardSearchListWidget):
     # similar to the cardListWidget but whith specific data about qties, user comments, etc...
     def __init__(self, parent=None, columns=USER_COLUMNS) -> None:
-        super().__init__(parent, columns=columns)
+        super().__init__(parent=parent, columns=columns)
         self.columns = columns
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
@@ -102,6 +108,18 @@ class CardStackListWidget(CardListWidget):
         self.verticalHeader().setVisible(False)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
         self.setHorizontalHeaderLabels(self.columns)
+        self.setMouseTracking(True)
+
+    def on_cellEntered(self, row, column):
+        # not used
+        ...
+
+    def on_currentItemChanged(currentItem, previousItem):
+        # TODO set qty of current card / remove if empty
+        # ? needs modifying itemData to indicate that qty is being changed (and not something else)
+        # TODO prepare for user info (commander/sideboard/maybeboard etc...)
+        print(currentItem.text() + "->" + previousItem.text())
+        ...
 
     def setCardList(self, cardList: connector.Deck | connector.Collection):
         self.setRowCount(0)

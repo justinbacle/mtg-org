@@ -45,8 +45,10 @@ class CardsList(QtWidgets.QWidget):
         self.cardsListButton_cmc.clicked.connect(self.on_sortByCmc)
         self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_cmc)
         self.cardsListLayout.addWidget(self.cardsListButtonBox)
-        self.cardsList = CardStackListWidget()
+        self.cardsList = CardStackListWidget(parent=self)
         self.cardsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
+        self.cardsList.currentItemChanged.connect(self.cardsList.on_currentItemChanged)
+        self.cardsList.cellEntered.connect(self.cardsList.on_cellEntered)
         self.cardsListLayout.addWidget(self.cardsList)
         self.splitter.addWidget(self.cardsListWidget)
 
