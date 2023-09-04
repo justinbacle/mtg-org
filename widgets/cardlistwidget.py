@@ -15,10 +15,11 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
         self.columns = columns
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         # self.setSortingEnabled(True)  # TODO bugs on add/delete line ?
         self.setColumnCount(len(self.columns))
         self.verticalHeader().setVisible(False)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)  # ? Not working with selection
         self.setHorizontalHeaderLabels(self.columns)
 
     def updateCardListInfos(self):
