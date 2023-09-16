@@ -1,12 +1,7 @@
 from PySide6 import QtWidgets, QtCore
 
 import connector
-
-import sys
-import os
-sys.path.append(os.getcwd())  # FIXME Remove
-
-from lib import importexport  # noqa E402
+from lib import importexport
 
 
 class CardStackSelector(QtWidgets.QWidget):

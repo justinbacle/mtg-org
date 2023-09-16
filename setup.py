@@ -1,10 +1,7 @@
-import os
+from setuptools import setup, find_packages
 
-paths = [
-]
-
-if __name__ == "__main__":
-
-    for path in paths:
-        if not os.path.exists(path.as_posix()):
-            os.makedirs(path)
+setup(
+    name='mtgorg',
+    version='0.1',
+    packages=find_packages(include=['mtgorg'])
+)

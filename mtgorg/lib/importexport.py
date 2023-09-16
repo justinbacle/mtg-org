@@ -6,14 +6,9 @@ import io
 import pyperclip
 import lxml.etree
 
-import constants
-
-import sys
-import os
-sys.path.append(os.getcwd())  # FIXME Remove
-
-import connector  # noqa E402
-from lib import utils, scryfall, qt  # noqa E402
+from mtgorg import constants
+from mtgorg import connector
+from mtgorg.lib import utils, scryfall, qt
 
 
 class exportDialog(QtWidgets.QDialog):

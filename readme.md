@@ -55,9 +55,9 @@ Clone this repo, then when in the folder, install dependencies
 then run the main program
 
 - windows
-    - > py mtgorg_app.py
+    - > py mtgorg/mtgorg_app.py
 - linux/mac (venv)
-    - >venv/bin/python mtgorg_app.py
+    - >venv/bin/python mtgorg/mtgorg_app.py
 
 ## F.A.Q.
 

@@ -1,9 +1,4 @@
-
-import sys
-import os
-sys.path.append(os.getcwd())  # FIXME Remove
-
-from lib import importexport  # noqa E402
+from mtgorg.lib import importexport  # noqa E402
 
 
 URZA_GATHERER_CSV = """

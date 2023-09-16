@@ -2,9 +2,9 @@ import logging
 from tinydb import TinyDB, Query
 from pathlib import Path
 
-from lib import system
+from mtgorg.lib import system
 
-import constants
+from mtgorg import constants
 
 
 class Collection(dict):

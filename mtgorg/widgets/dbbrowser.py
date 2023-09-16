@@ -1,14 +1,8 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 
-import sys
-import os
-
-sys.path.append(os.getcwd())  # FIXME Remove
-
-from lib import scryfall, qt, utils  # noqa E402
-from widgets.cardlistwidget import CardSearchListWidget  # noqa E402
-
-import constants  # noqa E402
+from lib import scryfall, qt
+from widgets.cardlistwidget import CardSearchListWidget
+import constants
 
 
 class DbBrowser(QtWidgets.QWidget):

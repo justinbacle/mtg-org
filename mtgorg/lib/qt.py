@@ -3,7 +3,7 @@ import typing
 from pathlib import Path
 from PySide6 import QtGui, QtWidgets, QtSvg, QtCore, QtCharts
 
-from lib import system
+from mtgorg.lib import system
 
 
 def selectPalette(app):

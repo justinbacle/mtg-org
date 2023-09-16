@@ -1,14 +1,10 @@
 from PySide6 import QtWidgets, QtGui, QtCore, QtNetwork, QtSvgWidgets
 import logging
 import urllib
-
-import sys
 import os
-sys.path.append(os.getcwd())  # FIXME Remove
 
-from lib import scryfall, utils, qt  # noqa E402
-
-import constants  # noqa E402
+from lib import scryfall, utils, qt
+import constants
 
 
 class CardViewer(QtWidgets.QWidget):

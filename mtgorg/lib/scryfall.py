@@ -8,17 +8,14 @@ from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results
 import aiohttp
 import requests
 import re
+import os
 
 import scrython.cards
 from scrython.foundation import ScryfallError
 
-import sys
-import os
-sys.path.append(os.getcwd())  # FIXME Remove
-
-import connector  # noqa E402
-from lib import utils  # noqa E402
-import constants  # noqa E402
+from mtgorg import connector
+from mtgorg.lib import utils
+from mtgorg import constants
 
 
 SEARCH_DICT_KEYS = [
