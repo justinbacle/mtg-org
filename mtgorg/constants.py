@@ -39,8 +39,10 @@ RARITIES = {
     },
     "mythic": {
         "color": "#F40"
+    },
+    "special": {
+        "color": "#748"
     }
-    # TODO handle "special" rarity
 }
 
 CURRENCY = [
