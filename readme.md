@@ -57,6 +57,8 @@ Clone this repo, then when in the folder, install dependencies
 - linux/mac (with a venv already set)
     - >venv/bin/python -m pip install -r requirements.txt
 
+(you may have to add "py -m pip install -e ." because of the weird way python modules work, haven't figured that out yet)
+
 then run the main program
 
 - windows
