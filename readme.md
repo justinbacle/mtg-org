@@ -34,7 +34,12 @@ Here are the lists of things I'd like to have included in this project :
 - On some heavy operations (like importing a large collection) GUI may freeze while it loads data. I will implement loading bars / spinners at some point soon to keep the GUI responive on heavy operations.
 - Missing half-mana symbols (un-sets)
 - Missing 1,000,000 mana symbol (Gleemax)
-- Missing phyrexian font handling
+- Partial phyrexian font handling
+- Bug on sorting / removal
+- Handling image with multiple pictures (e.g. Urza's mine) and alternate art
+- Missing button to clear all search terms
+- Add tooltip to view card translations
+- Show english name when browsing other languages
 
 ## Requirements
 

@@ -205,6 +205,7 @@ class SearchForm(QtWidgets.QWidget):
         self.find.emit(self.getSearchData())
 
     def on_mainTypeChange(self):
+        # TODO setRowVisible() only available on lates pyside6 versions
         if self.typeCB.currentText() == "creature":
             self.mainLayout.setRowVisible(self.creaturePowerRow, True)
             self.mainLayout.setRowVisible(self.creatureToughnessRow, True)
