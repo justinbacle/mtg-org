@@ -4,7 +4,7 @@
 
 ## Why another card organizer
 
-I've been using MTG Assistant for a bit, it's clunky, outdated, but mostly works. I'd like to help improve it, but I have no wish to learn a new code langage.
+I've been using [Magic Assistant](https://sourceforge.net/projects/mtgbrowser/) for a bit, it's clunky, outdated, but mostly works. I'd like to help improve it, but I have no wish to learn a new code langage.
 I've looked at other solutions, but found them to be either out of date, unmaintained, behind a paywall, or just missing important features.
 Hence this "MTG Organizer" project (name will change for sure)
 
