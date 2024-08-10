@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -14,9 +14,9 @@
         },
         {
             "name": "Python: MTGOrg",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceRoot}/mtgorg_app.py",
+            "program": "${workspaceRoot}/mtgorg/mtgorg_app.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

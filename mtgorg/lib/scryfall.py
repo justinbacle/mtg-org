@@ -241,23 +241,38 @@ def getSets(force: bool = False) -> list:
 def getBulkData():  # TODO load into a tinyDB object ?
     bulkFiles = os.listdir(constants.DEFAULT_BULK_FOLDER_LOCATION)
     if len(bulkFiles) == 0:
-        logging.error("no bulk files available")  # TODO prompt to download bulk file
-        raise NotImplementedError
-    else:
-        # Expected name : default-cards-20230813090443.json
-        mostRecent = (datetime.datetime(datetime.MINYEAR, 1, 1), None)  # (date, filename)
-        for bulkFile in bulkFiles:
-            parts = bulkFile.split("-")
-            bulkType = parts[0]  # Expected : oracle, unique, default, all
-            assert bulkType in ["default", "all"]
-            itemType = parts[1]  # Expected : cards, artwork (unwanted)
-            assert itemType == "cards"
-            date = datetime.datetime.strptime(parts[2].split(".")[0], "%Y%m%d%H%M%S")
-            if date > mostRecent[0]:
-                mostRecent = (date, bulkFile)
-        # TODO warn user if bulk data is outdated
-        with open(constants.DEFAULT_BULK_FOLDER_LOCATION / bulkFile, 'r') as _f:
-            data = json.load(_f)
+        logging.error("no bulk files available. Downloading default bulk.")  # TODO prompt to download bulk file
+        bulkURL = "https://api.scryfall.com/bulk-data"
+        bulkDataJson = json.loads(requests.get(bulkURL).content)["data"]
+        bulkInfo = None
+        for _bulkInfo in bulkDataJson:
+            if _bulkInfo["type"] == "default_cards":
+                bulkInfo = _bulkInfo
+                break
+        dlUrl = bulkInfo["download_uri"]
+        r = requests.get(dlUrl, stream=True)
+        localPath = Path(constants.DEFAULT_BULK_FOLDER_LOCATION) / dlUrl.split("/")[-1]
+        with open(localPath.as_posix(), mode="wb") as file:
+            for chunk in r.iter_content(chunk_size=10 * 1024):
+                file.write(chunk)
+        bulkFiles = os.listdir(constants.DEFAULT_BULK_FOLDER_LOCATION)
+
+    # Expected name : default-cards-20230813090443.json
+    mostRecent = (datetime.datetime(datetime.MINYEAR, 1, 1), None)  # (date, filename)
+    for bulkFile in bulkFiles:
+        parts = bulkFile.split("-")
+        bulkType = parts[0]  # Expected : oracle, unique, default, all
+        assert bulkType in ["default", "all"]
+        itemType = parts[1]  # Expected : cards, artwork (unwanted)
+        assert itemType == "cards"
+        date = datetime.datetime.strptime(parts[2].split(".")[0], "%Y%m%d%H%M%S")
+        if date > mostRecent[0]:
+            mostRecent = (date, bulkFile)
+    # TODO warn user if bulk data is outdated
+    # ! FIXME handle reading of unicode chars : 暴
+    with open(constants.DEFAULT_BULK_FOLDER_LOCATION / bulkFile, 'r') as _f:
+        data = json.load(_f)
+
     return data
 
 
