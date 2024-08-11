@@ -244,7 +244,7 @@ class SearchForm(QtWidgets.QWidget):
             "lang": langCode,
             "colors": colors,
             "types": [self.typeCB.currentText()] + self.otherTypeCB.text().split(" "),
-            "oracle": self.oracleTextLE.text(),
+            "oracle": self.oracleTextLE.text(),  # TODO handle regex search
             "cmc": (self.cmcWidgetCB.currentText(), self.cmcWidgetValue.text()),
             "rarity": self.rarityCB.currentText(),
             "in": set,
@@ -255,16 +255,17 @@ class SearchForm(QtWidgets.QWidget):
         }
 
         if self.typeCB.currentText() == "creature":
-            searchData.update(
-                {
-                    "pow": self.creaturePowerWidgetCB.currentText() + self.creaturePowerWidgetLE.text(),
-                    "tou": self.creatureToughnessWidgetCB.currentText() + self.creatureToughnessWidgetLE.text(),
-                }
-            )
+            if self.creaturePowerWidgetLE.text() != "":
+                searchData.update(
+                    {"pow": self.creaturePowerWidgetCB.currentText() + self.creaturePowerWidgetLE.text()})
+            if self.creatureToughnessWidgetLE.text() != "":
+                searchData.update(
+                    {"tou": self.creatureToughnessWidgetCB.currentText() + self.creatureToughnessWidgetLE.text()})
         elif self.typeCB.currentText() == "planeswalker":
-            searchData.update(
-                {"loy": self.planeswalkerLoyaltyWidgetCB.currentText() + self.planeswalkerLoyaltyWidgetLE.text()}
-            )
+            if self.planeswalkerLoyaltyWidgetLE.text() != "":
+                searchData.update(
+                    {"loy": self.planeswalkerLoyaltyWidgetCB.currentText() + self.planeswalkerLoyaltyWidgetLE.text()}
+                )
         else:
             ...
 

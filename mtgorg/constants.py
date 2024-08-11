@@ -23,7 +23,7 @@ CARDS_TABLE_NAME = "Cards"
 TIME_FORMAT_STR = "%Y-%m-%d %H:%M:%S"
 
 # ------------------------------- Local/Online ------------------------------- #
-USE_BULK_FILES = True  # TODO let use choose from gui
+USE_BULK_FILES = False  # TODO let use choose from gui
 # FIXME imports test require False (or full cards list) to work
 
 # ------------------------------------ MTG ----------------------------------- #
