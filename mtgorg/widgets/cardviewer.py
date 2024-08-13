@@ -58,6 +58,7 @@ class CardViewer(QtWidgets.QWidget):
         # Oracle text
         self.cardOracleTextLabel = QtWidgets.QTextEdit()
         self.cardOracleTextLabel.setReadOnly(True)
+        self.cardOracleTextLabel.setMaximumHeight(160)
         self.mainLayout.addWidget(self.cardOracleTextLabel, line.postinc(), 0, 1, 2)
 
         # Card Link
