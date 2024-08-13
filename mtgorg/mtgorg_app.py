@@ -28,7 +28,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         def on_log(record: logging.LogRecord):
             timeStr = datetime.datetime.now().strftime("%H:%M:%S")
-            logMsg = f"[{timeStr}] {record.levelname}: {record.msg}"
+            logMsg = f"[{timeStr}] {record.levelname}: {record.msg} ({record.filename}:{record.lineno})"
             # TODO show log level with color with self.statusbar.setStyleSheet
             self.statusbar.showMessage(logMsg)
 

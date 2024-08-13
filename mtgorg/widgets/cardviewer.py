@@ -55,6 +55,11 @@ class CardViewer(QtWidgets.QWidget):
         self.reloadCardShortcut = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+R'), self)
         self.reloadCardShortcut.activated.connect(self.on_reloadCardData)
 
+        # Oracle text
+        self.cardOracleTextLabel = QtWidgets.QTextEdit()
+        self.cardOracleTextLabel.setReadOnly(True)
+        self.mainLayout.addWidget(self.cardOracleTextLabel, line.postinc(), 0, 1, 2)
+
         # Card Link
         self.scryfallUriLabel = QtWidgets.QLabel("uri")
         self.scryfallUriLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
@@ -108,15 +113,19 @@ class CardViewer(QtWidgets.QWidget):
 
     def colorSetIcon(self, data: QtCore.QByteArray, rarity: str = "C"):
         if rarity in constants.RARITIES.keys():
-            color = constants.RARITIES[rarity]["color"]
+            try:
+                color = constants.RARITIES[rarity]["color"]
+            except TypeError:
+                logging.warning()
         else:
             logging.warning(f"could not find color for {rarity=}")
             color = "#00F"
-        if "#000" not in data:  # adding the path filling if not present
-            splitText = "/></svg>"
-            fillText = " fill=\"#000\" fill-rule=\"nonzero\""
-            data = data.split(splitText)[0] + fillText + splitText
-        data = data.replace("#000", color)
+        if data is not None:
+            if "#000" not in data:  # adding the path filling if not present
+                splitText = "/></svg>"
+                fillText = " fill=\"#000\" fill-rule=\"nonzero\""
+                data = data.split(splitText)[0] + fillText + splitText
+            data = data.replace("#000", color)
         return data
 
     def display(self, cardId: str, cardFace: int = 0):
@@ -145,13 +154,14 @@ class CardViewer(QtWidgets.QWidget):
         self.setManaFont()
 
         setIconSvgData = qt.fileData(scryfall.getSetSvg(self.card["set_id"]))
+        # TODO setIconSvgData = None when not available
         setIconSvgData = self.colorSetIcon(setIconSvgData, self.card["rarity"])
         self.setIconSvg.load(QtCore.QByteArray(setIconSvgData))
         self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
 
         try:
             self.setSelect.currentIndexChanged.disconnect()
-        except RuntimeError:
+        except (RuntimeError, RuntimeWarning):
             ...
         self.setSelect.clear()
 
@@ -187,7 +197,10 @@ class CardViewer(QtWidgets.QWidget):
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", cardFace, "image_uris", constants.IMG_SIZE])
 
-        if isCardImageCached(cardId) and not _hasManyFaces or constants.IMG_DOWNLOAD_METHOD == "direct":
+        if constants.USE_BULK_FILES and not isCardImageCached(cardId):
+            # Ignore
+            ...
+        elif isCardImageCached(cardId) and not _hasManyFaces or constants.IMG_DOWNLOAD_METHOD == "direct":
             # TODO handle cache for multi face cards
             cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
             image = QtGui.QImage()
@@ -198,6 +211,13 @@ class CardViewer(QtWidgets.QWidget):
                 if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
                     self.cardImgGraphicsView.scene().clear()
             self.downloadCardImg(imageUri, cardId)
+
+        # Oracle text
+        text = self.card['type_line'] + "\n"
+        if "power" in self.card.keys():
+            text += self.card["power"] + "/" + self.card["toughness"] + "\n"
+        text += self.card['oracle_text'] + "\n"
+        self.cardOracleTextLabel.setText(text)
 
         # gatherer/scryfall uri
         try:

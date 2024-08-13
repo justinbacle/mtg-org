@@ -237,3 +237,14 @@ def test_MTGO_DEK_import():
     importer = importexport.MTGO_DEK_importer()
     importer.loadInput(MTGO_DEK)
     assert importer.deckList == MTGO_DEK_DECKLIST
+
+
+EDHREC_URL = "https://edhrec.com/deckpreview/0qIYCFl_tMPMnmGV0swWeg"
+
+EDHREC_PLAYLIST = []
+
+
+def test_EDHREC_import():
+    importer = importexport.EDHRec_importer()
+    importer.loadInput(EDHREC_URL)
+    assert importer.deckList == EDHREC_PLAYLIST

@@ -64,6 +64,7 @@ def fileData(path: str | Path) -> str:
         stream.close()
     else:
         logging.error(stream.errorString())
+        js = None
     return js
 
 

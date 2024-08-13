@@ -5,6 +5,7 @@ import csv
 import io
 import pyperclip
 import lxml.etree
+import requests
 
 from mtgorg import constants
 from mtgorg import connector
@@ -229,6 +230,15 @@ class importer:
             connector.createCollection(deckName, self.deckList)
         else:
             raise NotImplementedError
+
+
+class EDHRec_importer(importer):
+    """
+    Example link : https://edhrec.com/deckpreview/0qIYCFl_tMPMnmGV0swWeg
+    """
+    def loadInput(self, url) -> bool:
+        r = requests.get(url)
+        r.text
 
 
 class MTGA_importer(importer):

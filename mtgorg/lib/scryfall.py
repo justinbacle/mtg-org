@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from cache_to_disk import cache_to_disk
 from tqdm import tqdm
-from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results
+from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results  # noqa F401
 import aiohttp
 import requests
 import re
@@ -48,9 +48,13 @@ def searchCardsLocal(searchDict: dict, exact: bool = False):
     else:
         logging.error("not implemented yet using bulk data, only looking for close names")
         cards = []
-        for id, name in tqdm([(_["id"], _["name"]) for _ in getBulkData()]):
-            if fuzz.ratio(searchDict["name"], name) >= 60:
+        _bulkData = getBulkData()
+        for id, name in tqdm([(_["id"], _["name"]) for _ in _bulkData]):
+            if searchDict["name"].lower() in name.lower():
                 cards.append(getCardById(id))
+            # ? Fuzzy search too long ?
+            # if fuzz.ratio(searchDict["name"], name) >= 60:
+            #     cards.append(getCardById(id))
         return cards
 
 
@@ -270,7 +274,7 @@ def getBulkData():  # TODO load into a tinyDB object ?
             mostRecent = (date, bulkFile)
     # TODO warn user if bulk data is outdated
     # ! FIXME handle reading of unicode chars : 暴
-    with open(constants.DEFAULT_BULK_FOLDER_LOCATION / bulkFile, 'r') as _f:
+    with open(constants.DEFAULT_BULK_FOLDER_LOCATION / bulkFile, 'r', encoding="utf-8") as _f:
         data = json.load(_f)
 
     return data
