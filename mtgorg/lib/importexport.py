@@ -165,6 +165,10 @@ class importDialog(QtWidgets.QDialog):
         elif format == "CSV":
             self.importer = CSV_importer(self)
             isValid, errorMsg = self.importer.loadInput(self.textEdit.toPlainText(), autoSet=autoset)
+        elif format == "EDHRec url":
+            # TODO use url import button ?
+            self.importer = EDHRec_importer(self)
+            isValid, errorMsg = self.importer.loadInput(self.textEdit.toPlainText())
         else:
             raise NotImplementedError
         if isValid:

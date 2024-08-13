@@ -73,7 +73,8 @@ LANGS = {  # Default one on top
 IMPORT_FORMATS = [
     "MTGO .dek",
     "MTG Arena",
-    "CSV"
+    "CSV",
+    "EDHRec url",
 ]
 
 MAIN_CARD_TYPES = [
