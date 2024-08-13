@@ -6,6 +6,8 @@ import io
 import pyperclip
 import lxml.etree
 import requests
+from bs4 import BeautifulSoup
+import urllib
 
 from mtgorg import constants
 from mtgorg import connector
@@ -235,10 +237,38 @@ class importer:
 class EDHRec_importer(importer):
     """
     Example link : https://edhrec.com/deckpreview/0qIYCFl_tMPMnmGV0swWeg
+    ! Basic Lands + Number of lands not included
     """
     def loadInput(self, url) -> bool:
+        isValid = True
+        errorMsg = ""
+
         r = requests.get(url)
-        r.text
+        # look for <div id="card-body">...</div>
+        soup = BeautifulSoup(r.text, 'html.parser')
+        for equ in soup.find_all('div'):
+            if "class" in equ.attrs.keys() and equ.attrs["class"] == ["card-body"]:
+                _rawList = str(equ.contents[0]).split("?c=1")[1].split("%0D%0A1")
+                break
+        _rawList[-1] = _rawList[-1].split("&amp;")[0]
+        _rawList = [_.lstrip("+") for _ in _rawList]
+        # _rawList = [ftfy.fix_text(_) for _ in _rawList]
+        _rawList = [urllib.parse.unquote(_, encoding='utf-8', errors='replace') for _ in _rawList]
+        _rawList = [_.replace("+", " ") for _ in _rawList]
+
+        self.deckList = []
+        for _rawCardName in _rawList:
+            cards = scryfall.searchCards({"name": _rawCardName}, exact=True)
+            if len(cards) == 0:
+                isValid = False
+                errorMsg += f"\ncould not find {_rawCardName=}"
+            elif len(cards) == 1:
+                self.deckList.append([1, cards[0]["id"]])
+            else:
+                logging.error(f"found multiple matches for {_rawCardName=}")
+                print(cards)
+                # ask user ?
+        return isValid, errorMsg
 
 
 class MTGA_importer(importer):
