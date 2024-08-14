@@ -174,7 +174,14 @@ def getSetData(setId, dataKey):
     if len(possibleSets) == 1:
         return possibleSets[0][dataKey]
     else:
-        raise IndexError("Set ID could not be found")
+        logging.error("Set ID could not be found. Maybe set cache is not up to date. Updating...")
+        allSets = getSets(force=True)
+        possibleSets = [_ for _ in allSets if _["id"] == setId]
+        if len(possibleSets) == 1:
+            return possibleSets[0][dataKey]
+        else:
+            logging.error(f"Could not find set for {setId=}")
+            return None
 
 
 def getSetDataByCode(setCode, dataKey):
@@ -183,7 +190,14 @@ def getSetDataByCode(setCode, dataKey):
     if len(possibleSets) == 1:
         return possibleSets[0][dataKey]
     else:
-        raise IndexError("Set code could not be found")
+        logging.error("Set code could not be found. Maybe set cache is not up to date. Updating...")
+        allSets = getSets(force=True)
+        possibleSets = [_ for _ in allSets if _["code"] == setCode]
+        if len(possibleSets) == 1:
+            return possibleSets[0][dataKey]
+        else:
+            logging.error(f"Could not find set for {setCode=}")
+            return None
 
 
 def getSetSymbol(setId):
@@ -205,7 +219,7 @@ def getSetSvg(setId):
 
 def getSetReleaseYear(setId):
     releaseDate = getSetData(setId, "released_at")
-    return releaseDate.split("-")[0]
+    return None if releaseDate is None else releaseDate.split("-")[0]
 
 
 def getOnlineSetData():
@@ -216,11 +230,11 @@ def getOnlineSetData():
     return setsData
 
 
-@cache_to_disk(1)
+# @cache_to_disk(1)
 def getSets(force: bool = False) -> list:
     setsJsonPath = Path(constants.DEFAULT_INFOS_LOCATION) / "sets.json"
     setsData = None
-    if not setsJsonPath.is_file():
+    if force or not setsJsonPath.is_file():
         setsData = getOnlineSetData()
         utils.saveJson(setsData, setsJsonPath)
     else:

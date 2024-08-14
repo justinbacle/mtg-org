@@ -147,11 +147,13 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
     def on_decklistCardSelected(self, cardId: str):
         self.dbBrowser.dbResultsList.clearSelection()
-        self.cardViewer.display(cardId)
+        if not self.cardViewer.display(cardId):
+            self.cardViewer.display(cardId, forceRefresh=True)
 
     def on_dbBrowserCardSelected(self, cardId: str):
         self.decklist.cardsList.clearSelection()
-        self.cardViewer.display(cardId)
+        if not self.cardViewer.display(cardId):
+            self.cardViewer.display(cardId, forceRefresh=True)
 
     def on_cardStackChange(self, cardStack: connector.Deck | connector.Collection):
         if cardStack is not None:

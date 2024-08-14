@@ -129,8 +129,9 @@ class CardViewer(QtWidgets.QWidget):
             data = data.replace("#000", color)
         return data
 
-    def display(self, cardId: str, cardFace: int = 0):
-        self.card = scryfall.getCardById(cardId)
+    def display(self, cardId: str, cardFace: int = 0, forceRefresh: bool = False):
+        self.card = scryfall.getCardById(cardId, force=forceRefresh)
+        valid = True
         if "printed_name" in self.card.keys():
             self.nameLabel.setText(self.card["printed_name"])
         else:
@@ -173,8 +174,11 @@ class CardViewer(QtWidgets.QWidget):
         sets = []
         for setCode in self.card["sets"]:
             setName = scryfall.getSetDataByCode(setCode, 'name')
-            setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(setCode, 'id'))
-            sets.append((setName, setYear, setCode))
+            if setName is None:
+                valid = False
+            else:
+                setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(setCode, 'id'))
+                sets.append((setName, setYear, setCode))
         # sort reprints by year
         sets.sort(key=lambda _: _[1])
         for _set in sets:
@@ -217,7 +221,10 @@ class CardViewer(QtWidgets.QWidget):
         text = self.card['type_line'] + "\n"
         if "power" in self.card.keys():
             text += self.card["power"] + "/" + self.card["toughness"] + "\n"
-        text += self.card['oracle_text'] + "\n"
+        if "oracle_text" in self.card.keys():
+            text += self.card["oracle_text"] + "\n"
+        else:
+            text += self.card["card_faces"][cardFace]["oracle_text"] + "\n"
         self.cardOracleTextLabel.setText(text)
 
         # gatherer/scryfall uri
@@ -231,6 +238,8 @@ class CardViewer(QtWidgets.QWidget):
             str(utils.getFromDict(self.card, ["prices", constants.CURRENCY[0]])) + " " + constants.CURRENCY[1]
         )
 
+        return valid
+
     def downloadCardImg(self, imageUri, cardId):
         url = QtCore.QUrl.fromUserInput(imageUri)
         self.imgDownloader.start_download(url, cardId)
@@ -240,7 +249,10 @@ class CardViewer(QtWidgets.QWidget):
 
     def on_setChange(self):
         selectedSet = self.setSelect.itemData(self.setSelect.currentIndex())
-        self.display(scryfall.getCardReprintId(self.card["id"], selectedSet, lang=self.card["lang"]))
+        if not self.display(scryfall.getCardReprintId(
+                self.card["id"], selectedSet, lang=self.card["lang"])):
+            self.display(scryfall.getCardReprintId(
+                self.card["id"], selectedSet, lang=self.card["lang"]), forceRefresh=True)
 
 
 class ImageDownloader(QtCore.QObject):

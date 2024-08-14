@@ -195,6 +195,10 @@ class SearchForm(QtWidgets.QWidget):
         self.extrasCB = QtWidgets.QCheckBox("Include Extras")
         self.mainLayout.addRow("Extras", self.extrasCB)
 
+        self.paperCB = QtWidgets.QCheckBox("Game: Paper")
+        self.paperCB.setChecked(True)
+        self.mainLayout.addRow("Paper only", self.paperCB)
+
         self.searchButton = QtWidgets.QPushButton("Search")
         self.searchButton.clicked.connect(self.on_searchAction)
         self.mainLayout.addRow(self.searchButton)
@@ -253,6 +257,9 @@ class SearchForm(QtWidgets.QWidget):
             "otag": self.otagECB.currentText(),
             "f": self.formatLegalWidget.currentText(),
         }
+
+        if self.paperCB.isChecked():
+            searchData.update({"game": "paper"})
 
         if self.typeCB.currentText() == "creature":
             searchData.update(
