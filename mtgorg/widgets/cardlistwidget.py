@@ -217,7 +217,9 @@ class CardStackListWidget(CardSearchListWidget):
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
             self._addOneLine(card)
-            if not card["type_line"].startswith("Land") and not card["type_line"].startswith("Basic Land"):
+            isNotLand = not card["type_line"].startswith("Land") and not card["type_line"].startswith("Basic Land")
+            isNotToken = "Token" not in card["type_line"]
+            if isNotLand and isNotToken:
                 # manaCost
                 if card["cmc"] > 6:
                     manaValues[6] = manaValues[6] + qty
@@ -230,34 +232,36 @@ class CardStackListWidget(CardSearchListWidget):
                     colorPie[colorIdentity] += qty
                 else:
                     colorPie.update({colorIdentity: qty})
-            # cardCount
-            cardCount += qty
+            if isNotToken:
+                # cardCount
+                cardCount += qty
             # cardPrice
             cardPrice = utils.getFromDict(card, ["prices", constants.CURRENCY[0]])
             if cardPrice is not None:
                 totalPrice += qty * float(cardPrice)
             # typePie
-            if "—" in card["type_line"]:
-                cardType = card["type_line"].split("—")[0].rstrip()
-            else:
-                cardType = card["type_line"]
-            if cardType in typePie.keys():
-                typePie[cardType] += qty
-            else:
-                typePie.update({cardType: qty})
-            # legality
-            for format, legality in card["legalities"].items():
-                if legality not in ["legal", "not_legal", "restricted", "banned"]:
-                    raise NotImplementedError(f"{legality=} is an unupported legality type")
-                elif format in legalities.keys():
-                    # TODO handle "restricted"
-                    if legality == "legal" and legalities[format] == "legal":
-                        ...
-                    else:
-                        legalities[format] = "not_legal"
+            if isNotToken:
+                if "—" in card["type_line"]:
+                    cardType = card["type_line"].split("—")[0].rstrip()
                 else:
-                    legalities.update({format: legality})
-                # TODO: Handle card numbers, and format specific restrictions.
+                    cardType = card["type_line"]
+                if cardType in typePie.keys():
+                    typePie[cardType] += qty
+                else:
+                    typePie.update({cardType: qty})
+                # legality
+                for format, legality in card["legalities"].items():
+                    if legality not in ["legal", "not_legal", "restricted", "banned"]:
+                        raise NotImplementedError(f"{legality=} is an unupported legality type")
+                    elif format in legalities.keys():
+                        # TODO handle "restricted"
+                        if legality == "legal" and legalities[format] == "legal":
+                            ...
+                        else:
+                            legalities[format] = "not_legal"
+                    else:
+                        legalities.update({format: legality})
+                    # TODO: Handle card numbers, and format specific restrictions.
 
         updateDict = {
             "manaValues": manaValues,

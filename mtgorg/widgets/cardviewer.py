@@ -162,6 +162,7 @@ class CardViewer(QtWidgets.QWidget):
         self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
 
         try:
+            # ? How to know if already connected or not ?
             self.setSelect.currentIndexChanged.disconnect()
         except (RuntimeError, RuntimeWarning):
             ...

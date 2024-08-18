@@ -91,7 +91,6 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
         else:
             if v != "":
                 q += k + ":" + v + " "
-    print(f"{q=} {kwargs=}")
     try:
         scryfallReq = scrython.cards.Search(q=q, **kwargs)
     except (ScryfallError, aiohttp.client_exceptions.ClientConnectorError) as e:
@@ -260,19 +259,7 @@ def getBulkData():  # TODO load into a tinyDB object ?
     bulkFiles = os.listdir(constants.DEFAULT_BULK_FOLDER_LOCATION)
     if len(bulkFiles) == 0:
         logging.error("no bulk files available. Downloading default bulk.")  # TODO prompt to download bulk file
-        bulkURL = "https://api.scryfall.com/bulk-data"
-        bulkDataJson = json.loads(requests.get(bulkURL).content)["data"]
-        bulkInfo = None
-        for _bulkInfo in bulkDataJson:
-            if _bulkInfo["type"] == "default_cards":
-                bulkInfo = _bulkInfo
-                break
-        dlUrl = bulkInfo["download_uri"]
-        r = requests.get(dlUrl, stream=True)
-        localPath = Path(constants.DEFAULT_BULK_FOLDER_LOCATION) / dlUrl.split("/")[-1]
-        with open(localPath.as_posix(), mode="wb") as file:
-            for chunk in r.iter_content(chunk_size=10 * 1024):
-                file.write(chunk)
+        downloadBulkData()
         bulkFiles = os.listdir(constants.DEFAULT_BULK_FOLDER_LOCATION)
 
     # Expected name : default-cards-20230813090443.json
@@ -297,7 +284,19 @@ def getBulkData():  # TODO load into a tinyDB object ?
 def downloadBulkData():
     # https://api.scryfall.com/bulk-data
     # sends list of bulk data with link
-    ...
+    bulkURL = "https://api.scryfall.com/bulk-data"
+    bulkDataJson = json.loads(requests.get(bulkURL).content)["data"]
+    bulkInfo = None
+    for _bulkInfo in bulkDataJson:
+        if _bulkInfo["type"] == "default_cards":
+            bulkInfo = _bulkInfo
+            break
+    dlUrl = bulkInfo["download_uri"]
+    r = requests.get(dlUrl, stream=True)
+    localPath = Path(constants.DEFAULT_BULK_FOLDER_LOCATION) / dlUrl.split("/")[-1]
+    with open(localPath.as_posix(), mode="wb") as file:
+        for chunk in r.iter_content(chunk_size=10 * 1024):
+            file.write(chunk)
 
 
 def getTaggerTags():
