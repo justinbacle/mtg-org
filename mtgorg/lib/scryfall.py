@@ -117,7 +117,7 @@ def getCardReprints(cardId: str):
     return sets
 
 
-def getCardReprintId(cardId: str, set: str, lang: str = "en"):
+def getCardReprintId(cardId: str, set: str, lang: str = "en") -> list:
     # TODO add cache ?
     card = getCardById(cardId)
     reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
@@ -125,19 +125,20 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en"):
     while reprintsDict["has_more"]:
         reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
         ids += [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
-    correctEnId = ids[0]  # TODO handle mutiple matches (e.g. basic lands)
-    if lang != "en":
-        try:
-            foundCard = scrython.cards.Collector(
-                code=set, collector_number=getCardById(correctEnId)["collector_number"], lang=lang).scryfallJson
-            returnId = foundCard["id"]
-        except ScryfallError:
-            logging.warning(f"Could not find {lang=} translation for given set")
-            returnId = correctEnId
-    else:
-        returnId = correctEnId
+    returnIdsList = []
+    for id in ids:
+        if lang != "en":
+            try:
+                foundCard = scrython.cards.Collector(
+                    code=set, collector_number=getCardById(id)["collector_number"], lang=lang).scryfallJson
+                returnIdsList = foundCard["id"]
+            except ScryfallError:
+                logging.warning(f"Could not find {lang=} translation for given set")
+                returnIdsList.append(id)
+        else:
+            returnIdsList.append(id)
 
-    return returnId
+    return returnIdsList
 
 
 def getCardById(id: str, force: bool = False):

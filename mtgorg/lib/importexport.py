@@ -141,8 +141,8 @@ class importDialog(QtWidgets.QDialog):
                 self.importer.toDatabase(self.collectionNameLE.text())
             self.close()
         else:
-            # TODO show error msg
-            print(errorMsg)
+            _errorMsgBox = QtWidgets.QErrorMessage(errorMsg)
+            _errorMsgBox.show()
 
     def getSelectedImportFormat(self) -> str:
         selectedFormat = None

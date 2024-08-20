@@ -84,7 +84,8 @@ class CardsList(QtWidgets.QWidget):
             )
         else:
             cardsList = self.cardsList.cardStack
-            cardsList.sort(key=lambda x: x[1][key])
+            if key is not None:
+                cardsList.sort(key=lambda x: x[1][key])
         self.cardsList.setCards(cardsList)
 
     def on_sortByType(self):

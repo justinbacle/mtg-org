@@ -250,10 +250,16 @@ class CardViewer(QtWidgets.QWidget):
 
     def on_setChange(self):
         selectedSet = self.setSelect.itemData(self.setSelect.currentIndex())
-        if not self.display(scryfall.getCardReprintId(
-                self.card["id"], selectedSet, lang=self.card["lang"])):
+        ids = scryfall.getCardReprintId(
+            self.card["id"], selectedSet, lang=self.card["lang"])
+        if len(ids) == 0:
             self.display(scryfall.getCardReprintId(
                 self.card["id"], selectedSet, lang=self.card["lang"]), forceRefresh=True)
+        elif len(ids) == 1:
+            self.display(ids[0])
+        else:
+            # TODO Show card selector widget or msg window
+            self.display(ids[0])
 
 
 class ImageDownloader(QtCore.QObject):

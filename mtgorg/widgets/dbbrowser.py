@@ -180,6 +180,7 @@ class SearchForm(QtWidgets.QWidget):
         self.priceWidgetLayout.addWidget(self.priceWidgetValue)
         self.mainLayout.addRow("Price (" + constants.CURRENCY[1] + ")", self.priceWidget)
 
+        # TODO check scryfall connection before (or switch to offline mode)
         atags, otags = scryfall.getTaggerTags()
         self.atagECB = qt.ExtendedComboBox()
         self.atagECB.addItems(atags)

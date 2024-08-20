@@ -30,7 +30,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         def on_log(record: logging.LogRecord):
             timeStr = datetime.datetime.now().strftime("%H:%M:%S")
             logMsg = f"[{timeStr}] {record.levelname}: {record.msg} ({record.filename}:{record.lineno})"
-            # TODO show log level with color with self.statusbar.setStyleSheet
+            # ? show log level with color with self.statusbar.setStyleSheet
             self.statusbar.showMessage(logMsg)
 
         logging.getLogger().addFilter(on_log)
@@ -40,16 +40,13 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         if constants.THEME == "material":
             qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '0'})
 
-        if utils.isWin():
-            iconPath = Path("resources/icons/mirari.png").as_posix()
-            icon = QtGui.QIcon()
-            icon.addFile(iconPath)
-            self.app.setWindowIcon(icon)
-        elif utils.isLinux():
-            # FIXME: not working, only seeing wayland's "W" icon
-            ...
-        else:
-            ...
+        # FIXME: not working on KDE ubuntu, only seeing wayland's "W" icon
+        # ? see : https://doc.qt.io/qtforpython-6/overviews/appicon.html
+        iconPath = Path("resources/icons/mirari.png").as_posix()
+        icon = QtGui.QIcon()
+        icon.addFile(iconPath)
+        self.app.setWindowIcon(icon)
+
         self.setWindowTitle("MTG Organizer")
         if utils.isWin():
             import ctypes
@@ -77,8 +74,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.keyruneFontId = QtGui.QFontDatabase.addApplicationFont(KEYRUNE_FONT_PATH.as_posix())  # Set font
         PROXYGLYPH_FONT_PATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
         self.proxyglyphFontId = QtGui.QFontDatabase.addApplicationFont(PROXYGLYPH_FONT_PATH.as_posix())  # better NDPMTG
+        # from scryfall website
         PHYREXIAN_FONT_PATH = Path("resources/fonts/Phyrexian-Regular.woff2")
-        # from : https://github.com/fxbuson/Phyrexian-Search-Engine/blob/main/Phyrexian-Regular.ttf
         self.phyrexianFontId = QtGui.QFontDatabase.addApplicationFont(PHYREXIAN_FONT_PATH.as_posix())  # Phyrexian cards
 
         # Load frontend
