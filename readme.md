@@ -1,6 +1,6 @@
 # MTG Organizer
 
-![](/resources/readme/screenshot.png)
+![Screenshot](/resources/readme/screenshot.png)
 
 ## Why another card organizer
 
@@ -12,7 +12,7 @@ Hence this "MTG Organizer" project (name will change for sure)
 
 Still development but most features are already here
 
-Here are the lists of things I'd like to have included in this project : 
+Here are the lists of things I'd like to have included in this project :
 
 | Feature | Status |
 | --- | --- |
@@ -53,31 +53,31 @@ For now, this is not packaged in an executable file, so you have to run it from 
 Clone this repo, then when in the folder, install dependencies
 
 - windows (with system python or venv activated)
-    - > py -m pip install -r requirements.txt
+  - > py -m pip install -r requirements.txt
 - linux/mac (with a venv already set)
-    - >venv/bin/python -m pip install -r requirements.txt
+  - >venv/bin/python -m pip install -r requirements.txt
 
 (you may have to add "py -m pip install -e ." because of the weird way python modules work, haven't figured that out yet)
 
 then run the main program
 
 - windows
-    - > py mtgorg/mtgorg_app.py
+  - > py mtgorg/mtgorg_app.py
 - linux/mac (venv)
-    - >venv/bin/python mtgorg/mtgorg_app.py
+  - >venv/bin/python mtgorg/mtgorg_app.py
 
 ## F.A.Q.
 
 - Where are my decks and collection saved ?
-    - (currently) your decks and collections are stored in your homefolder in a mtgorg.db file (which is basically a json file) which contains the most minimal data to store your deck
+  - (currently) your decks and collections are stored in your homefolder in a mtgorg.db file (which is basically a json file) which contains the most minimal data to store your deck
 
 - Where is the cache stored ?
-    - as for above question, the cache is stored in your homefolder, in a mtgorg_cache.db file, feel free to remove this file to clean the cache.
+  - as for above question, the cache is stored in your homefolder, in a mtgorg_cache.db file, feel free to remove this file to clean the cache.
 
 - Search/Import is slow
-    - contrary to most other card organizers, this app does not store the entire dataset of card, and only stores data as you request it. This has the added benefit of not needing you to download the entire datasets before starting to organize your decks.
-    This can result on slow operations (especially when importing big collections of cards) if your netwok connection is limited.
-    - There are plans to allow for full offline operations, but this is not the main focus for now
+  - contrary to most other card organizers, this app does not store the entire dataset of card, and only stores data as you request it. This has the added benefit of not needing you to download the entire datasets before starting to organize your decks.
+  This can result on slow operations (especially when importing big collections of cards) if your netwok connection is limited.
+  - There are plans to allow for full offline operations, but this is not the main focus for now
 
 ## Credits
 
