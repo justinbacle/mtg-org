@@ -21,6 +21,7 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
         self.verticalHeader().setVisible(False)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)  # ? Not working with selection
         self.setHorizontalHeaderLabels(self.columns)
+        self.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
 
     def updateCardListInfos(self):
         # TODO update cardStack before
@@ -45,6 +46,7 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
             self.insertRow(self.rowCount())
             card.update({"qty": qty})
             self._addOneLine(card)
+        self.resizeColumnsToContents()
 
     def getCardTableItem(self, cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
         dataList = []
@@ -135,6 +137,7 @@ class CardStackListWidget(CardSearchListWidget):
         for qty, card in tqdm(cardList):
             self.cardStack.append((qty, scryfall.getCardById(card)))
         self.setCards(self.cardStack)
+        self.resizeColumnsToContents()
 
     def addCard(self, card: dict):
         self.insertRow(self.rowCount())
