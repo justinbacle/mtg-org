@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from cache_to_disk import cache_to_disk
 from tqdm import tqdm
-from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results
+from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results  # noqa F401
 import aiohttp
 import requests
 import re
@@ -48,9 +48,13 @@ def searchCardsLocal(searchDict: dict, exact: bool = False):
     else:
         logging.error("not implemented yet using bulk data, only looking for close names")
         cards = []
-        for id, name in tqdm([(_["id"], _["name"]) for _ in getBulkData()]):
-            if fuzz.ratio(searchDict["name"], name) >= 60:
+        _bulkData = getBulkData()
+        for id, name in tqdm([(_["id"], _["name"]) for _ in _bulkData]):
+            if searchDict["name"].lower() in name.lower():
                 cards.append(getCardById(id))
+            # ? Fuzzy search too long ?
+            # if fuzz.ratio(searchDict["name"], name) >= 60:
+            #     cards.append(getCardById(id))
         return cards
 
 
@@ -87,7 +91,6 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
         else:
             if v != "":
                 q += k + ":" + v + " "
-    print(f"{q=} {kwargs=}")
     try:
         scryfallReq = scrython.cards.Search(q=q, **kwargs)
     except (ScryfallError, aiohttp.client_exceptions.ClientConnectorError) as e:
@@ -114,7 +117,7 @@ def getCardReprints(cardId: str):
     return sets
 
 
-def getCardReprintId(cardId: str, set: str, lang: str = "en"):
+def getCardReprintId(cardId: str, set: str, lang: str = "en") -> list:
     # TODO add cache ?
     card = getCardById(cardId)
     reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
@@ -122,19 +125,20 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en"):
     while reprintsDict["has_more"]:
         reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
         ids += [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
-    correctEnId = ids[0]  # TODO handle mutiple matches (e.g. basic lands)
-    if lang != "en":
-        try:
-            foundCard = scrython.cards.Collector(
-                code=set, collector_number=getCardById(correctEnId)["collector_number"], lang=lang).scryfallJson
-            returnId = foundCard["id"]
-        except ScryfallError:
-            logging.warning(f"Could not find {lang=} translation for given set")
-            returnId = correctEnId
-    else:
-        returnId = correctEnId
+    returnIdsList = []
+    for id in ids:
+        if lang != "en":
+            try:
+                foundCard = scrython.cards.Collector(
+                    code=set, collector_number=getCardById(id)["collector_number"], lang=lang).scryfallJson
+                returnIdsList = foundCard["id"]
+            except ScryfallError:
+                logging.warning(f"Could not find {lang=} translation for given set")
+                returnIdsList.append(id)
+        else:
+            returnIdsList.append(id)
 
-    return returnId
+    return returnIdsList
 
 
 def getCardById(id: str, force: bool = False):
@@ -170,7 +174,14 @@ def getSetData(setId, dataKey):
     if len(possibleSets) == 1:
         return possibleSets[0][dataKey]
     else:
-        raise IndexError("Set ID could not be found")
+        logging.error("Set ID could not be found. Maybe set cache is not up to date. Updating...")
+        allSets = getSets(force=True)
+        possibleSets = [_ for _ in allSets if _["id"] == setId]
+        if len(possibleSets) == 1:
+            return possibleSets[0][dataKey]
+        else:
+            logging.error(f"Could not find set for {setId=}")
+            return None
 
 
 def getSetDataByCode(setCode, dataKey):
@@ -179,7 +190,14 @@ def getSetDataByCode(setCode, dataKey):
     if len(possibleSets) == 1:
         return possibleSets[0][dataKey]
     else:
-        raise IndexError("Set code could not be found")
+        logging.error("Set code could not be found. Maybe set cache is not up to date. Updating...")
+        allSets = getSets(force=True)
+        possibleSets = [_ for _ in allSets if _["code"] == setCode]
+        if len(possibleSets) == 1:
+            return possibleSets[0][dataKey]
+        else:
+            logging.error(f"Could not find set for {setCode=}")
+            return None
 
 
 def getSetSymbol(setId):
@@ -201,7 +219,7 @@ def getSetSvg(setId):
 
 def getSetReleaseYear(setId):
     releaseDate = getSetData(setId, "released_at")
-    return releaseDate.split("-")[0]
+    return None if releaseDate is None else releaseDate.split("-")[0]
 
 
 def getOnlineSetData():
@@ -212,11 +230,11 @@ def getOnlineSetData():
     return setsData
 
 
-@cache_to_disk(1)
+# @cache_to_disk(1)
 def getSets(force: bool = False) -> list:
     setsJsonPath = Path(constants.DEFAULT_INFOS_LOCATION) / "sets.json"
     setsData = None
-    if not setsJsonPath.is_file():
+    if force or not setsJsonPath.is_file():
         setsData = getOnlineSetData()
         utils.saveJson(setsData, setsJsonPath)
     else:
@@ -242,19 +260,7 @@ def getBulkData():  # TODO load into a tinyDB object ?
     bulkFiles = os.listdir(constants.DEFAULT_BULK_FOLDER_LOCATION)
     if len(bulkFiles) == 0:
         logging.error("no bulk files available. Downloading default bulk.")  # TODO prompt to download bulk file
-        bulkURL = "https://api.scryfall.com/bulk-data"
-        bulkDataJson = json.loads(requests.get(bulkURL).content)["data"]
-        bulkInfo = None
-        for _bulkInfo in bulkDataJson:
-            if _bulkInfo["type"] == "default_cards":
-                bulkInfo = _bulkInfo
-                break
-        dlUrl = bulkInfo["download_uri"]
-        r = requests.get(dlUrl, stream=True)
-        localPath = Path(constants.DEFAULT_BULK_FOLDER_LOCATION) / dlUrl.split("/")[-1]
-        with open(localPath.as_posix(), mode="wb") as file:
-            for chunk in r.iter_content(chunk_size=10 * 1024):
-                file.write(chunk)
+        downloadBulkData()
         bulkFiles = os.listdir(constants.DEFAULT_BULK_FOLDER_LOCATION)
 
     # Expected name : default-cards-20230813090443.json
@@ -270,7 +276,7 @@ def getBulkData():  # TODO load into a tinyDB object ?
             mostRecent = (date, bulkFile)
     # TODO warn user if bulk data is outdated
     # ! FIXME handle reading of unicode chars : 暴
-    with open(constants.DEFAULT_BULK_FOLDER_LOCATION / bulkFile, 'r') as _f:
+    with open(constants.DEFAULT_BULK_FOLDER_LOCATION / bulkFile, 'r', encoding="utf-8") as _f:
         data = json.load(_f)
 
     return data
@@ -279,7 +285,19 @@ def getBulkData():  # TODO load into a tinyDB object ?
 def downloadBulkData():
     # https://api.scryfall.com/bulk-data
     # sends list of bulk data with link
-    ...
+    bulkURL = "https://api.scryfall.com/bulk-data"
+    bulkDataJson = json.loads(requests.get(bulkURL).content)["data"]
+    bulkInfo = None
+    for _bulkInfo in bulkDataJson:
+        if _bulkInfo["type"] == "default_cards":
+            bulkInfo = _bulkInfo
+            break
+    dlUrl = bulkInfo["download_uri"]
+    r = requests.get(dlUrl, stream=True)
+    localPath = Path(constants.DEFAULT_BULK_FOLDER_LOCATION) / dlUrl.split("/")[-1]
+    with open(localPath.as_posix(), mode="wb") as file:
+        for chunk in r.iter_content(chunk_size=10 * 1024):
+            file.write(chunk)
 
 
 def getTaggerTags():

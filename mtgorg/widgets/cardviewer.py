@@ -55,6 +55,12 @@ class CardViewer(QtWidgets.QWidget):
         self.reloadCardShortcut = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+R'), self)
         self.reloadCardShortcut.activated.connect(self.on_reloadCardData)
 
+        # Oracle text
+        self.cardOracleTextLabel = QtWidgets.QTextEdit()
+        self.cardOracleTextLabel.setReadOnly(True)
+        self.cardOracleTextLabel.setMaximumHeight(160)
+        self.mainLayout.addWidget(self.cardOracleTextLabel, line.postinc(), 0, 1, 2)
+
         # Card Link
         self.scryfallUriLabel = QtWidgets.QLabel("uri")
         self.scryfallUriLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
@@ -108,32 +114,37 @@ class CardViewer(QtWidgets.QWidget):
 
     def colorSetIcon(self, data: QtCore.QByteArray, rarity: str = "C"):
         if rarity in constants.RARITIES.keys():
-            color = constants.RARITIES[rarity]["color"]
+            try:
+                color = constants.RARITIES[rarity]["color"]
+            except TypeError:
+                logging.warning()
         else:
             logging.warning(f"could not find color for {rarity=}")
             color = "#00F"
-        if "#000" not in data:  # adding the path filling if not present
-            splitText = "/></svg>"
-            fillText = " fill=\"#000\" fill-rule=\"nonzero\""
-            data = data.split(splitText)[0] + fillText + splitText
-        data = data.replace("#000", color)
+        if data is not None:
+            if "#000" not in data:  # adding the path filling if not present
+                splitText = "/></svg>"
+                fillText = " fill=\"#000\" fill-rule=\"nonzero\""
+                data = data.split(splitText)[0] + fillText + splitText
+            data = data.replace("#000", color)
         return data
 
-    def display(self, cardId: str, cardFace: int = 0):
-        self.card = scryfall.getCardById(cardId)
+    def display(self, cardId: str, cardFace: int = 0, forceRefresh: bool = False):
+        self.card = scryfall.getCardById(cardId, force=forceRefresh)
+        valid = True
         if "printed_name" in self.card.keys():
             self.nameLabel.setText(self.card["printed_name"])
         else:
             self.nameLabel.setText(self.card["name"])
 
         if self.card["lang"] == "ph":
-            # phyrexianFont = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-            #     qt.findAttrInParents(self, "phyrexianFontId")
-            # ))
-            # self.nameLabel.setFont(phyrexianFont)
-            self.nameLabel.setStyleSheet("font-size: 16pt; font-family: Phyrexian;")
+            phyrexianFont = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                qt.findAttrInParents(self, "phyrexianFontId")
+            ))
+            self.nameLabel.setFont(phyrexianFont)
+            # self.nameLabel.setStyleSheet("font-size: 16pt; font-family: Phyrexian;")
         else:
-            # TODO put default font
+            self.nameLabel.setFont(QtGui.QFont())
             self.nameLabel.setStyleSheet("font-size: 16pt;")
 
         if "card_faces" in self.card.keys():
@@ -145,13 +156,15 @@ class CardViewer(QtWidgets.QWidget):
         self.setManaFont()
 
         setIconSvgData = qt.fileData(scryfall.getSetSvg(self.card["set_id"]))
+        # TODO setIconSvgData = None when not available
         setIconSvgData = self.colorSetIcon(setIconSvgData, self.card["rarity"])
         self.setIconSvg.load(QtCore.QByteArray(setIconSvgData))
         self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
 
         try:
+            # ? How to know if already connected or not ?
             self.setSelect.currentIndexChanged.disconnect()
-        except RuntimeError:
+        except (RuntimeError, RuntimeWarning):
             ...
         self.setSelect.clear()
 
@@ -162,8 +175,11 @@ class CardViewer(QtWidgets.QWidget):
         sets = []
         for setCode in self.card["sets"]:
             setName = scryfall.getSetDataByCode(setCode, 'name')
-            setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(setCode, 'id'))
-            sets.append((setName, setYear, setCode))
+            if setName is None:
+                valid = False
+            else:
+                setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(setCode, 'id'))
+                sets.append((setName, setYear, setCode))
         # sort reprints by year
         sets.sort(key=lambda _: _[1])
         for _set in sets:
@@ -187,7 +203,10 @@ class CardViewer(QtWidgets.QWidget):
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", cardFace, "image_uris", constants.IMG_SIZE])
 
-        if isCardImageCached(cardId) and not _hasManyFaces or constants.IMG_DOWNLOAD_METHOD == "direct":
+        if constants.USE_BULK_FILES and not isCardImageCached(cardId):
+            # Ignore
+            ...
+        elif isCardImageCached(cardId) and not _hasManyFaces or constants.IMG_DOWNLOAD_METHOD == "direct":
             # TODO handle cache for multi face cards
             cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
             image = QtGui.QImage()
@@ -198,6 +217,16 @@ class CardViewer(QtWidgets.QWidget):
                 if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
                     self.cardImgGraphicsView.scene().clear()
             self.downloadCardImg(imageUri, cardId)
+
+        # Oracle text
+        text = self.card['type_line'] + "\n"
+        if "power" in self.card.keys():
+            text += self.card["power"] + "/" + self.card["toughness"] + "\n"
+        if "oracle_text" in self.card.keys():
+            text += self.card["oracle_text"] + "\n"
+        else:
+            text += self.card["card_faces"][cardFace]["oracle_text"] + "\n"
+        self.cardOracleTextLabel.setText(text)
 
         # gatherer/scryfall uri
         try:
@@ -210,6 +239,8 @@ class CardViewer(QtWidgets.QWidget):
             str(utils.getFromDict(self.card, ["prices", constants.CURRENCY[0]])) + " " + constants.CURRENCY[1]
         )
 
+        return valid
+
     def downloadCardImg(self, imageUri, cardId):
         url = QtCore.QUrl.fromUserInput(imageUri)
         self.imgDownloader.start_download(url, cardId)
@@ -219,7 +250,16 @@ class CardViewer(QtWidgets.QWidget):
 
     def on_setChange(self):
         selectedSet = self.setSelect.itemData(self.setSelect.currentIndex())
-        self.display(scryfall.getCardReprintId(self.card["id"], selectedSet, lang=self.card["lang"]))
+        ids = scryfall.getCardReprintId(
+            self.card["id"], selectedSet, lang=self.card["lang"])
+        if len(ids) == 0:
+            self.display(scryfall.getCardReprintId(
+                self.card["id"], selectedSet, lang=self.card["lang"]), forceRefresh=True)
+        elif len(ids) == 1:
+            self.display(ids[0])
+        else:
+            # TODO Show card selector widget or msg window
+            self.display(ids[0])
 
 
 class ImageDownloader(QtCore.QObject):

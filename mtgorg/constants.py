@@ -1,13 +1,17 @@
 from pathlib import Path
 
 # ------------------------------------ QT ------------------------------------ #
-THEME = "material"  # ["fusion", "material"]
+THEME = "fusion"  # ["fusion", "material"]
 IMG_DOWNLOAD_METHOD = "qt"  # ["direct", "qt"]
 IMG_SIZE = "large"  # small, normal, large, png
 QSPLITTER_HANDLE_WIDTH = 8
 
+# ----------------------------------- UTILS ---------------------------------- #
+DATETIME_FORMAT = "%d/%m/%y %H:%M:%S"
+
 # ----------------------------------- PATHS ---------------------------------- #
 DEFAULT_ROOT_USER_FOLDER = Path.home() / ".mtgo"
+DEFAULT_CONFIGURATION_FILE = DEFAULT_ROOT_USER_FOLDER / "settings.ini"
 DEFAULT_DB_LOCATION = DEFAULT_ROOT_USER_FOLDER / "mtg_org.db"
 DEFAULT_CACHE_DB_LOCATION = DEFAULT_ROOT_USER_FOLDER / "mtg_org_cache.db"
 DEFAULT_BULK_FOLDER_LOCATION = DEFAULT_ROOT_USER_FOLDER / "scryfall_bulk"
@@ -73,7 +77,8 @@ LANGS = {  # Default one on top
 IMPORT_FORMATS = [
     "MTGO .dek",
     "MTG Arena",
-    "CSV"
+    "CSV",
+    "EDHRec url",
 ]
 
 MAIN_CARD_TYPES = [

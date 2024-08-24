@@ -180,6 +180,7 @@ class SearchForm(QtWidgets.QWidget):
         self.priceWidgetLayout.addWidget(self.priceWidgetValue)
         self.mainLayout.addRow("Price (" + constants.CURRENCY[1] + ")", self.priceWidget)
 
+        # TODO check scryfall connection before (or switch to offline mode)
         atags, otags = scryfall.getTaggerTags()
         self.atagECB = qt.ExtendedComboBox()
         self.atagECB.addItems(atags)
@@ -194,6 +195,10 @@ class SearchForm(QtWidgets.QWidget):
 
         self.extrasCB = QtWidgets.QCheckBox("Include Extras")
         self.mainLayout.addRow("Extras", self.extrasCB)
+
+        self.paperCB = QtWidgets.QCheckBox("Game: Paper")
+        self.paperCB.setChecked(True)
+        self.mainLayout.addRow("Paper only", self.paperCB)
 
         self.searchButton = QtWidgets.QPushButton("Search")
         self.searchButton.clicked.connect(self.on_searchAction)
@@ -253,6 +258,9 @@ class SearchForm(QtWidgets.QWidget):
             "otag": self.otagECB.currentText(),
             "f": self.formatLegalWidget.currentText(),
         }
+
+        if self.paperCB.isChecked():
+            searchData.update({"game": "paper"})
 
         if self.typeCB.currentText() == "creature":
             if self.creaturePowerWidgetLE.text() != "":

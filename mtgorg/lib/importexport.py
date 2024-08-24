@@ -5,6 +5,9 @@ import csv
 import io
 import pyperclip
 import lxml.etree
+import requests
+from bs4 import BeautifulSoup
+import urllib
 
 from mtgorg import constants
 from mtgorg import connector
@@ -138,8 +141,8 @@ class importDialog(QtWidgets.QDialog):
                 self.importer.toDatabase(self.collectionNameLE.text())
             self.close()
         else:
-            # TODO show error msg
-            print(errorMsg)
+            _errorMsgBox = QtWidgets.QErrorMessage(errorMsg)
+            _errorMsgBox.show()
 
     def getSelectedImportFormat(self) -> str:
         selectedFormat = None
@@ -162,6 +165,10 @@ class importDialog(QtWidgets.QDialog):
         elif format == "CSV":
             self.importer = CSV_importer(self)
             isValid, errorMsg = self.importer.loadInput(self.textEdit.toPlainText(), autoSet=autoset)
+        elif format == "EDHRec url":
+            # TODO use url import button ?
+            self.importer = EDHRec_importer(self)
+            isValid, errorMsg = self.importer.loadInput(self.textEdit.toPlainText())
         else:
             raise NotImplementedError
         if isValid:
@@ -229,6 +236,43 @@ class importer:
             connector.createCollection(deckName, self.deckList)
         else:
             raise NotImplementedError
+
+
+class EDHRec_importer(importer):
+    """
+    Example link : https://edhrec.com/deckpreview/0qIYCFl_tMPMnmGV0swWeg
+    ! Basic Lands + Number of lands not included
+    """
+    def loadInput(self, url) -> bool:
+        isValid = True
+        errorMsg = ""
+
+        r = requests.get(url)
+        # look for <div id="card-body">...</div>
+        soup = BeautifulSoup(r.text, 'html.parser')
+        for equ in soup.find_all('div'):
+            if "class" in equ.attrs.keys() and equ.attrs["class"] == ["card-body"]:
+                _rawList = str(equ.contents[0]).split("?c=1")[1].split("%0D%0A1")
+                break
+        _rawList[-1] = _rawList[-1].split("&amp;")[0]
+        _rawList = [_.lstrip("+") for _ in _rawList]
+        # _rawList = [ftfy.fix_text(_) for _ in _rawList]
+        _rawList = [urllib.parse.unquote(_, encoding='utf-8', errors='replace') for _ in _rawList]
+        _rawList = [_.replace("+", " ") for _ in _rawList]
+
+        self.deckList = []
+        for _rawCardName in _rawList:
+            cards = scryfall.searchCards({"name": _rawCardName}, exact=True)
+            if len(cards) == 0:
+                isValid = False
+                errorMsg += f"\ncould not find {_rawCardName=}"
+            elif len(cards) == 1:
+                self.deckList.append([1, cards[0]["id"]])
+            else:
+                logging.error(f"found multiple matches for {_rawCardName=}")
+                print(cards)
+                # ask user ?
+        return isValid, errorMsg
 
 
 class MTGA_importer(importer):

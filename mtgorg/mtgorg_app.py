@@ -13,9 +13,10 @@ from widgets.dbbrowser import DbBrowser
 from widgets.cardslist import CardsList
 
 import connector
+import config
+import constants
 
 from lib import qt, utils
-import constants
 
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
@@ -28,8 +29,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         def on_log(record: logging.LogRecord):
             timeStr = datetime.datetime.now().strftime("%H:%M:%S")
-            logMsg = f"[{timeStr}] {record.levelname}: {record.msg}"
-            # TODO show log level with color with self.statusbar.setStyleSheet
+            logMsg = f"[{timeStr}] {record.levelname}: {record.msg} ({record.filename}:{record.lineno})"
+            # ? show log level with color with self.statusbar.setStyleSheet
             self.statusbar.showMessage(logMsg)
 
         logging.getLogger().addFilter(on_log)
@@ -39,16 +40,13 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         if constants.THEME == "material":
             qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '0'})
 
-        if utils.isWin():
-            iconPath = Path("resources/icons/mirari.png").as_posix()
-            icon = QtGui.QIcon()
-            icon.addFile(iconPath)
-            self.app.setWindowIcon(icon)
-        elif utils.isLinux():
-            # FIXME: not working, only seeing wayland's "W" icon
-            ...
-        else:
-            ...
+        # FIXME: not working on KDE ubuntu, only seeing wayland's "W" icon
+        # ? see : https://doc.qt.io/qtforpython-6/overviews/appicon.html
+        iconPath = Path("resources/icons/mirari.png").as_posix()
+        icon = QtGui.QIcon()
+        icon.addFile(iconPath)
+        self.app.setWindowIcon(icon)
+
         self.setWindowTitle("MTG Organizer")
         if utils.isWin():
             import ctypes
@@ -67,6 +65,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             qt.selectPalette(self.app)
 
         # Update resources
+        self.initSettings()
         self.initUserFolders()
         self.updateResources()
 
@@ -75,11 +74,16 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.keyruneFontId = QtGui.QFontDatabase.addApplicationFont(KEYRUNE_FONT_PATH.as_posix())  # Set font
         PROXYGLYPH_FONT_PATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
         self.proxyglyphFontId = QtGui.QFontDatabase.addApplicationFont(PROXYGLYPH_FONT_PATH.as_posix())  # better NDPMTG
-        PHYREXIAN_FONT_PATH = Path("resources/fonts/Phyrexian-Regular.ttf")
+        # from scryfall website
+        PHYREXIAN_FONT_PATH = Path("resources/fonts/Phyrexian-Regular.woff2")
         self.phyrexianFontId = QtGui.QFontDatabase.addApplicationFont(PHYREXIAN_FONT_PATH.as_posix())  # Phyrexian cards
 
         # Load frontend
         self.setupUi()
+
+    def initSettings(self):
+        if not config.configFileExists():
+            config.createConfigFile()
 
     def initUserFolders(self):
         userFolders = [
@@ -94,20 +98,37 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             if not userFolder.is_dir():
                 os.makedirs(userFolder)
 
-    def updateResources(self):
+    def updateResources(self, force: bool = False):
+        _configTimeStr = utils.getFromDict(config.readConfig(), ["WEBDATA", "resources_date"])
+        if _configTimeStr == "":
+            force = True
+        else:
+            lastUpdateDate = datetime.datetime.strptime(_configTimeStr, constants.DATETIME_FORMAT)
+            if (datetime.datetime.now() - lastUpdateDate) > datetime.timedelta(7):
+                force = True
         # Keyrune (set icons)
         KEYRUNE_FONT_FILEPATH = constants.DEFAULT_FONTS_LOCATION / "keyrune.ttf"
-        if not KEYRUNE_FONT_FILEPATH.is_file():
+        _updated = False
+        if force or not KEYRUNE_FONT_FILEPATH.is_file():
             keyruneFontUrl = "https://github.com/andrewgioia/keyrune/raw/master/fonts/keyrune.ttf"
             utils.downloadFileFromUrl(keyruneFontUrl, KEYRUNE_FONT_FILEPATH)
+            _updated = True
         KEYRUNE_EQU_FILE = constants.DEFAULT_FONTS_LOCATION / "keyrune.json"
-        if not KEYRUNE_EQU_FILE.is_file():
+        if force or not KEYRUNE_EQU_FILE.is_file():
             utils.updateKeyRuneSymbols()
+            _updated = True
         # Proxygliyph (better npdmtg)
         PROXYGLIYPH_FONT_FILEPATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
-        if not PROXYGLIYPH_FONT_FILEPATH.is_file():
+        if force or not PROXYGLIYPH_FONT_FILEPATH.is_file():
             proxyglyphFontUrl = "https://github.com/MrTeferi/Proxyshop/raw/main/fonts/Proxyglyph.ttf"
             utils.downloadFileFromUrl(proxyglyphFontUrl, PROXYGLIYPH_FONT_FILEPATH)
+            _updated = True
+        if _updated:
+            config.writeValue(
+                datetime.datetime.strftime(datetime.datetime.now(), constants.DATETIME_FORMAT),
+                "WEBDATA", "resources_date"
+            )
+            logging.info("Resources files were updated succesfully")
 
     def setupUi(self):
         self.centralWidget = QtWidgets.QWidget()
@@ -147,11 +168,13 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
     def on_decklistCardSelected(self, cardId: str):
         self.dbBrowser.dbResultsList.clearSelection()
-        self.cardViewer.display(cardId)
+        if not self.cardViewer.display(cardId):
+            self.cardViewer.display(cardId, forceRefresh=True)
 
     def on_dbBrowserCardSelected(self, cardId: str):
         self.decklist.cardsList.clearSelection()
-        self.cardViewer.display(cardId)
+        if not self.cardViewer.display(cardId):
+            self.cardViewer.display(cardId, forceRefresh=True)
 
     def on_cardStackChange(self, cardStack: connector.Deck | connector.Collection):
         if cardStack is not None:
