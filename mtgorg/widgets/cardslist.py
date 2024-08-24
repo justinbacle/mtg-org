@@ -44,6 +44,9 @@ class CardsList(QtWidgets.QWidget):
         self.cardsListButton_cmc = QtWidgets.QPushButton("CMC")
         self.cardsListButton_cmc.clicked.connect(self.on_sortByCmc)
         self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_cmc)
+        self.cardsListButton_color = QtWidgets.QPushButton("Color")
+        self.cardsListButton_color.clicked.connect(self.on_sortByColor)
+        self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_color)
         self.cardsListLayout.addWidget(self.cardsListButtonBox)
         self.cardsList = CardStackListWidget(parent=self)
         self.cardsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
@@ -99,6 +102,9 @@ class CardsList(QtWidgets.QWidget):
 
     def on_sortByCmc(self):
         self.sort("cmc")
+
+    def on_sortByColor(self):
+        self.sort("colors")
 
 
 class DeckStatsWidget(QtWidgets.QWidget):
