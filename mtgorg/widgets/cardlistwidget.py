@@ -222,6 +222,8 @@ class CardStackListWidget(CardSearchListWidget):
         totalCmc = 0
         for qty, card in cardsList:
             self.insertRow(self.rowCount())
+            if isinstance(qty, str):  # backward compatible hack
+                qty = int(qty)
             card.update({"qty": qty})
             self._addOneLine(card)
             isNotLand = not card["type_line"].startswith("Land") and not card["type_line"].startswith("Basic Land")

@@ -147,9 +147,15 @@ def getCardById(id: str, force: bool = False):
         if constants.USE_BULK_FILES:
             card = list(filter(lambda x: x["id"] == id, getBulkData()))[0]
         else:
-            scryfallReq = scrython.cards.Id(id=id)
-            card = Card(scryfallReq.scryfallJson)
-        connector.saveCard(id, card)
+            try:
+                scryfallReq = scrython.cards.Id(id=id)
+            except ScryfallError:
+                logging.error(f"Could not find card for {id=}")
+                card = None
+            else:
+                card = Card(scryfallReq.scryfallJson)
+        if card is not None:
+            connector.saveCard(id, card)
     else:
         card = card["data"]
     return card
