@@ -2,9 +2,9 @@ import logging
 from tinydb import TinyDB, Query
 from pathlib import Path
 
-from mtgorg.lib import system
+from lib import system
 
-from mtgorg import constants
+import constants
 
 
 class Collection(dict):
@@ -35,7 +35,8 @@ def getCacheDB(location: Path = constants.DEFAULT_CACHE_DB_LOCATION) -> TinyDB:
 
 # -------------------------------- COLLECTIONS ------------------------------- #
 
-def createCollection(collName, cardList: list = []):
+def createCollection(collName, cardList: list | None = None):
+    cardList = cardList if cardList is not None else []
     if getCollection(collName) is None:
         getDB().table(constants.COLLECTIONS_TABLE_NAME).insert(
             {
@@ -56,6 +57,9 @@ def removeCollection(collName):
 
 def renameCollection(previousCollName, newCollName):
     coll = getCollection(previousCollName)
+    if coll is None:
+        logging.error(f"Collection {previousCollName=} not found")
+        return
     coll["name"] = newCollName
     getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
         coll, Query().name == previousCollName
@@ -67,7 +71,7 @@ def getCollectionsList() -> list:
     return collections
 
 
-def getCollection(collectionName) -> Deck:
+def getCollection(collectionName) -> dict | None:
     collections = getDB().table(constants.COLLECTIONS_TABLE_NAME).search(Query().name == collectionName)
     if len(collections) == 1:
         return collections[0]
@@ -77,6 +81,9 @@ def getCollection(collectionName) -> Deck:
 
 def addCardToCollection(collectionName, qty, cardId):
     collection = getCollection(collectionName)
+    if collection is None:
+        logging.error(f"Collection {collectionName=} not found")
+        return
     cardList = collection["cardList"]
     # If card not in collection
     if len([_[0] for _ in cardList if _[1] == cardId]) == 0:
@@ -93,6 +100,9 @@ def addCardToCollection(collectionName, qty, cardId):
 
 def changeCardCollectionQty(collectionName, qty, cardId):
     collection = getCollection(collectionName)
+    if collection is None:
+        logging.error(f"Collection {collectionName=} not found")
+        return
     cardList = collection["cardList"]
     for card in cardList:
         if card[1] == cardId:
@@ -105,6 +115,9 @@ def changeCardCollectionQty(collectionName, qty, cardId):
 
 def removeCardFromCollection(collectionName, cardId):
     collection = getCollection(collectionName)
+    if collection is None:
+        logging.error(f"Collection {collectionName=} not found")
+        return
     cardList = collection["cardList"]
     collection["cardList"] = [_ for _ in cardList if _[1] != cardId]
     getDB().table(constants.COLLECTIONS_TABLE_NAME).update(
@@ -117,7 +130,8 @@ def removeCardFromCollection(collectionName, cardId):
 # cardlist : (qty, id) ->  (qty, id, zone)
 
 
-def createDeck(deckName, cardList: list = []):
+def createDeck(deckName, cardList: list | None = None):
+    cardList = cardList if cardList is not None else []
     if getDeck(deckName) is None:
         getDB().table(constants.DECKS_TABLE_NAME).insert(
             {
@@ -138,6 +152,9 @@ def removeDeck(deckName):
 
 def renameDeck(previousDeckName, newDeckName):
     deck = getDeck(previousDeckName)
+    if deck is None:
+        logging.error(f"Deck {previousDeckName=} not found")
+        return
     deck["name"] = newDeckName
     getDB().table(constants.DECKS_TABLE_NAME).update(
         deck, Query().name == previousDeckName
@@ -149,14 +166,18 @@ def getDecksList() -> list:
     return decks
 
 
-def getDeck(deckName) -> Deck:
+def getDeck(deckName) -> dict | None:
     decks = getDB().table(constants.DECKS_TABLE_NAME).search(Query().name == deckName)
     if len(decks) == 1:
         return decks[0]
+    return None
 
 
 def addCardToDeck(deckName, qty, cardId):
     deck = getDeck(deckName)
+    if deck is None:
+        logging.error(f"Deck {deckName=} not found")
+        return
     cardList = deck["cardList"]
 
     # If card not in deck
@@ -174,6 +195,9 @@ def addCardToDeck(deckName, qty, cardId):
 
 def changeCardDeckQty(deckName, qty, cardId):
     deck = getDeck(deckName)
+    if deck is None:
+        logging.error(f"Deck {deckName=} not found")
+        return
     cardList = deck["cardList"]
     for card in cardList:
         if card[1] == cardId:
@@ -186,6 +210,9 @@ def changeCardDeckQty(deckName, qty, cardId):
 
 def removeCardFromDeck(deckName, cardId):
     deck = getDeck(deckName)
+    if deck is None:
+        logging.error(f"Deck {deckName=} not found")
+        return
     cardList = deck["cardList"]
     deck["cardList"] = [_ for _ in cardList if _[1] != cardId]
     getDB().table(constants.DECKS_TABLE_NAME).update(
@@ -196,7 +223,7 @@ def removeCardFromDeck(deckName, cardId):
 # ----------------------------------- CACHE ---------------------------------- #
 
 
-def getCard(cardId) -> dict:
+def getCard(cardId) -> dict | None:
     card = getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)
     if len(card) == 0:
         card = None
@@ -219,6 +246,10 @@ def saveCard(cardId, cardData) -> None:
 
 
 def updateCard(cardId, updateDict: dict) -> None:
-    cardData = getCard(cardId)["data"]
+    card = getCard(cardId)
+    if card is None:
+        logging.error(f"Card {cardId=} not found in cache")
+        return
+    cardData = card["data"]
     cardData.update(updateDict)
     getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)

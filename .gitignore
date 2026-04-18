@@ -2,6 +2,8 @@ __pycache__
 *.spec
 *.egg-info/
 
+.history/
+
 venv
 .venv
 _local/

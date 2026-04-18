@@ -27,11 +27,12 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         self.statusbar = QtWidgets.QStatusBar()
 
-        def on_log(record: logging.LogRecord):
+        def on_log(record: logging.LogRecord) -> bool:
             timeStr = datetime.datetime.now().strftime("%H:%M:%S")
             logMsg = f"[{timeStr}] {record.levelname}: {record.msg} ({record.filename}:{record.lineno})"
             # ? show log level with color with self.statusbar.setStyleSheet
             self.statusbar.showMessage(logMsg)
+            return True
 
         logging.getLogger().addFilter(on_log)
 
@@ -131,10 +132,10 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             logging.info("Resources files were updated succesfully")
 
     def setupUi(self):
-        self.centralWidget = QtWidgets.QWidget()
-        self.setCentralWidget(self.centralWidget)
-        self.mainLayout = QtWidgets.QHBoxLayout(self.centralWidget)
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self.centralWidget)
+        self._centralWidget = QtWidgets.QWidget()
+        self.setCentralWidget(self._centralWidget)
+        self.mainLayout = QtWidgets.QHBoxLayout(self._centralWidget)
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal, self._centralWidget)
         self.mainLayout.addWidget(self.splitter)
 
         # Left pane is card viewer
@@ -146,7 +147,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.cardBrowsersLayout = QtWidgets.QVBoxLayout()
         self.cardBrowsersWidget.setLayout(self.cardBrowsersLayout)
         self.splitter.addWidget(self.cardBrowsersWidget)
-        self.cardBrowsersSplitter = QtWidgets.QSplitter(QtCore.Qt.Vertical, self.cardBrowsersWidget)
+        self.cardBrowsersSplitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical, self.cardBrowsersWidget)
         self.cardBrowsersLayout.addWidget(self.cardBrowsersSplitter)
 
         # Top one is decklist

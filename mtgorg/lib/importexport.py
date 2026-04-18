@@ -9,9 +9,9 @@ import requests
 from bs4 import BeautifulSoup
 import urllib
 
-from mtgorg import constants
-from mtgorg import connector
-from mtgorg.lib import utils, scryfall, qt
+import constants
+import connector
+from lib import utils, scryfall, qt
 
 
 class exportDialog(QtWidgets.QDialog):
@@ -141,13 +141,13 @@ class importDialog(QtWidgets.QDialog):
                 self.importer.toDatabase(self.collectionNameLE.text())
             self.close()
         else:
-            _errorMsgBox = QtWidgets.QErrorMessage(errorMsg)
-            _errorMsgBox.show()
+            _errorMsgBox = QtWidgets.QErrorMessage(self)
+            _errorMsgBox.showMessage(errorMsg)
 
     def getSelectedImportFormat(self) -> str:
         selectedFormat = None
         for i in range(self.formatSelectLayout.count()):
-            radioButton = self.formatSelectLayout.itemAt(i).wid
+            radioButton = self.formatSelectLayout.itemAt(i).widget()
             if radioButton.isChecked():
                 selectedFormat = radioButton.text()
         return selectedFormat

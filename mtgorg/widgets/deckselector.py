@@ -18,11 +18,11 @@ class CardStackSelector(QtWidgets.QWidget):
         self.setCallBacks()
 
     def initUi(self):
-        self.layout = QtWidgets.QVBoxLayout()
-        self.setLayout(self.layout)
+        self._layout = QtWidgets.QVBoxLayout()
+        self.setLayout(self._layout)
 
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical, self)
-        self.layout.addWidget(self.splitter)
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical, self)
+        self._layout.addWidget(self.splitter)
 
         # Collections
         self.collectionsWidget = QtWidgets.QWidget()
@@ -80,7 +80,7 @@ class CardStackSelector(QtWidgets.QWidget):
     def on_addColl(self):
         collName, ok = QtWidgets.QInputDialog.getText(
             self, "New collection",
-            "New collection name:", QtWidgets.QLineEdit.Normal,
+            "New collection name:", QtWidgets.QLineEdit.EchoMode.Normal,
         )
         if ok and collName:
             connector.createCollection(collName)
@@ -89,14 +89,14 @@ class CardStackSelector(QtWidgets.QWidget):
     def on_removeColl(self):
         button = QtWidgets.QMessageBox.question(
             self, "Confirm deletion ?", "This will permanently delete the collection and its contents, continue ?")
-        if button == QtWidgets.QMessageBox.Yes:
+        if button == QtWidgets.QMessageBox.StandardButton.Yes:
             connector.removeCollection(self.getSelected()[1])
             self.initData()
 
     def on_editColl(self):
         newCollName, ok = QtWidgets.QInputDialog.getText(
             self, "Rename collection",
-            "Rename collection to...:", QtWidgets.QLineEdit.Normal,
+            "Rename collection to...:", QtWidgets.QLineEdit.EchoMode.Normal,
         )
         if ok and newCollName:
             connector.renameCollection(previousCollName=self.getSelected()[1], newCollName=newCollName)
@@ -113,13 +113,17 @@ class CardStackSelector(QtWidgets.QWidget):
             col = connector.getDeck(name)
         elif stackType == "collection":
             col = connector.getCollection(name)
+        else:
+            col = None
+        if col is None:
+            return
         exportDialog = importexport.exportDialog(parent=self, cardList=col["cardList"])
         exportDialog.exec()
 
     def on_addDeck(self):
         deckName, ok = QtWidgets.QInputDialog.getText(
             self, "QInputDialog.getText()",
-            "New deck name:", QtWidgets.QLineEdit.Normal,
+            "New deck name:", QtWidgets.QLineEdit.EchoMode.Normal,
         )
         if ok and deckName:
             connector.createDeck(deckName)
@@ -128,14 +132,14 @@ class CardStackSelector(QtWidgets.QWidget):
     def on_removeDeck(self):
         button = QtWidgets.QMessageBox.question(
             self, "Confirm deletion ?", "This will permanently delete the deck and its contents, continue ?")
-        if button == QtWidgets.QMessageBox.Yes:
+        if button == QtWidgets.QMessageBox.StandardButton.Yes:
             connector.removeDeck(self.getSelected()[1])
             self.initData()
 
     def on_editDeck(self):
         newDeckName, ok = QtWidgets.QInputDialog.getText(
             self, "Rename deck",
-            "Rename deck to...:", QtWidgets.QLineEdit.Normal,
+            "Rename deck to...:", QtWidgets.QLineEdit.EchoMode.Normal,
         )
         if ok and newDeckName:
             connector.renameDeck(previousDeckName=self.getSelected()[1], newDeckName=newDeckName)

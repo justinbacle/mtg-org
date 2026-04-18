@@ -11,11 +11,12 @@ import re
 import os
 
 import scrython.cards
-from scrython.foundation import ScryfallError
+import scrython.sets
+from scrython.base import ScryfallError
 
-from mtgorg import connector
-from mtgorg.lib import utils
-from mtgorg import constants
+import connector
+from lib import utils
+import constants
 
 
 SEARCH_DICT_KEYS = [
@@ -93,17 +94,19 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
                 q += k + ":" + v + " "
     try:
         scryfallReq = scrython.cards.Search(q=q, **kwargs)
-    except (ScryfallError, aiohttp.client_exceptions.ClientConnectorError) as e:
+    except (ScryfallError, aiohttp.ClientConnectorError) as e:
         # TODO display error msg, not connected to internet (suggest using bulk file)
         logging.warning(e)
     else:
-        for cardJson in scryfallReq.scryfallJson["data"]:
-            cards.append(Card(cardJson))
+        for card in scryfallReq.data:
+            cards.append(Card(card.to_dict()))
     return cards
 
 
 def getCardReprints(cardId: str):
     card = getCardById(cardId)
+    if card is None:
+        return []
     if "sets" not in card.keys():  # Cache
         reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
         sets = [_["set"] for _ in reprintsDict["data"]]
@@ -120,6 +123,8 @@ def getCardReprints(cardId: str):
 def getCardReprintId(cardId: str, set: str, lang: str = "en") -> list:
     # TODO add cache ?
     card = getCardById(cardId)
+    if card is None:
+        return []
     reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
     ids = [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
     while reprintsDict["has_more"]:
@@ -129,9 +134,13 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en") -> list:
     for id in ids:
         if lang != "en":
             try:
-                foundCard = scrython.cards.Collector(
-                    code=set, collector_number=getCardById(id)["collector_number"], lang=lang).scryfallJson
-                returnIdsList = foundCard["id"]
+                _cardById = getCardById(id)
+                if _cardById is None:
+                    returnIdsList.append(id)
+                    continue
+                foundCard = scrython.cards.ByCodeNumber(
+                    code=set, collector_number=_cardById["collector_number"], lang=lang).to_dict()
+                returnIdsList.append(foundCard["id"])
             except ScryfallError:
                 logging.warning(f"Could not find {lang=} translation for given set")
                 returnIdsList.append(id)
@@ -148,12 +157,12 @@ def getCardById(id: str, force: bool = False):
             card = list(filter(lambda x: x["id"] == id, getBulkData()))[0]
         else:
             try:
-                scryfallReq = scrython.cards.Id(id=id)
+                scryfallReq = scrython.cards.ById(id=id)
             except ScryfallError:
                 logging.error(f"Could not find card for {id=}")
                 card = None
             else:
-                card = Card(scryfallReq.scryfallJson)
+                card = Card(scryfallReq.to_dict())
         if card is not None:
             connector.saveCard(id, card)
     else:
@@ -171,7 +180,7 @@ def getCardByMTGOId(mtgoId: int) -> dict:
 
 
 def getRandomCard() -> dict:
-    return scrython.Random().scryfallJson
+    return scrython.cards.Random().to_dict()
 
 
 def getSetData(setId, dataKey):
@@ -217,9 +226,10 @@ def getSetSvg(setId):
             logging.error(f"Missing local data for {setId=}")
         else:
             svgData = utils.getUrlData(getSetSymbol(setId))
-            f = open(setIconFilePath, 'w')
-            f.write(svgData)
-            f.close()
+            if svgData is not None:
+                f = open(setIconFilePath, 'w')
+                f.write(svgData)
+                f.close()
     return setIconFilePath.as_posix()
 
 
@@ -231,7 +241,7 @@ def getSetReleaseYear(setId):
 def getOnlineSetData():
     setsData = {
         "_date": datetime.datetime.now().strftime(constants.TIME_FORMAT_STR),
-        "sets": scrython.Sets().scryfallJson["data"]
+        "sets": [s._scryfall_data for s in scrython.sets.All().data]
     }
     return setsData
 
@@ -258,6 +268,8 @@ def getSets(force: bool = False) -> list:
         else:
             if setsData is not None:
                 setsData = utils.loadJson(setsJsonPath)
+    if setsData is None:
+        return []
     return setsData["sets"]
 
 
@@ -282,7 +294,9 @@ def getBulkData():  # TODO load into a tinyDB object ?
             mostRecent = (date, bulkFile)
     # TODO warn user if bulk data is outdated
     # ! FIXME handle reading of unicode chars : 暴
-    with open(constants.DEFAULT_BULK_FOLDER_LOCATION / bulkFile, 'r', encoding="utf-8") as _f:
+    if mostRecent[1] is None:
+        raise RuntimeError("No valid bulk file found")
+    with open(constants.DEFAULT_BULK_FOLDER_LOCATION / mostRecent[1], 'r', encoding="utf-8") as _f:
         data = json.load(_f)
 
     return data
@@ -298,6 +312,9 @@ def downloadBulkData():
         if _bulkInfo["type"] == "default_cards":
             bulkInfo = _bulkInfo
             break
+    if bulkInfo is None:
+        logging.error("Could not find default_cards bulk data")
+        return
     dlUrl = bulkInfo["download_uri"]
     r = requests.get(dlUrl, stream=True)
     localPath = Path(constants.DEFAULT_BULK_FOLDER_LOCATION) / dlUrl.split("/")[-1]
@@ -320,7 +337,9 @@ def getTaggerTags():
             isAfterHeader = True
         elif isAfterHeader and re.match(r".*<a href=\"/search\?.*>(.*)<.a>.*", textLine):
             # '<a href="/search?q=art%3Ainkwell&amp;unique=art">inkwell</a>'
-            tag = re.match(r".*<a href=\"/search\?.*>(.*)<.a>.*", textLine).groups()[0]
+            m = re.match(r".*<a href=\"/search\?.*>(.*)<.a>.*", textLine)
+            assert m is not None
+            tag = m.groups()[0]
             if isFunctionnal:
                 otags.append(tag)
             else:

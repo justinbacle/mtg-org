@@ -9,7 +9,7 @@ from pathlib import Path
 import html
 from bs4 import BeautifulSoup
 
-from mtgorg import constants
+import constants
 
 
 # --------------------------------- Platform --------------------------------- #

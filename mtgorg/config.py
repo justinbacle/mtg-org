@@ -4,7 +4,7 @@ import constants
 
 
 def configFileExists() -> bool:
-    if constants.DEFAULT_CONFIGURATION_FILE.is_file() and constants.DEFAULT_CONFIGURATION_FILE.exists():
+    if constants.DEFAULT_CONFIGURATION_FILE.is_file():
         return True
     else:
         return False

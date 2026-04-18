@@ -50,4 +50,4 @@ def isWin10Dark() -> bool:
 
 
 def isFileEditable(path: Path):
-    os.access(path, os.R_OK)
+    return os.access(path, os.R_OK)
