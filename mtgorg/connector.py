@@ -125,6 +125,19 @@ def removeCardFromCollection(collectionName, cardId):
     )
 
 
+def replaceCardInCollection(collectionName: str, oldCardId: str, newCardId: str):
+    collection = getCollection(collectionName)
+    if collection is None:
+        logging.error(f"Collection {collectionName=} not found")
+        return
+    cardList = collection["cardList"]
+    for entry in cardList:
+        if entry[1] == oldCardId:
+            entry[1] = newCardId
+    collection["cardList"] = cardList
+    getDB().table(constants.COLLECTIONS_TABLE_NAME).update(collection, Query().name == collectionName)
+
+
 # ----------------------------------- DECKS ---------------------------------- #
 # TODO: handle commander/sideboard etc in card list
 # cardlist : (qty, id) ->  (qty, id, zone)
@@ -218,6 +231,19 @@ def removeCardFromDeck(deckName, cardId):
     getDB().table(constants.DECKS_TABLE_NAME).update(
         deck, Query().name == deckName
     )
+
+
+def replaceCardInDeck(deckName: str, oldCardId: str, newCardId: str):
+    deck = getDeck(deckName)
+    if deck is None:
+        logging.error(f"Deck {deckName=} not found")
+        return
+    cardList = deck["cardList"]
+    for entry in cardList:
+        if entry[1] == oldCardId:
+            entry[1] = newCardId
+    deck["cardList"] = cardList
+    getDB().table(constants.DECKS_TABLE_NAME).update(deck, Query().name == deckName)
 
 
 # ----------------------------------- CACHE ---------------------------------- #

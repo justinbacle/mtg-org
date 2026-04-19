@@ -87,8 +87,11 @@ class SetChangeWorker(QtCore.QObject):
 
 class CardViewer(QtWidgets.QWidget):
     # To Build
+    replaceInDeckRequested: QtCore.Signal = QtCore.Signal(str, str)  # (old_card_id, new_card_id)
+
     def __init__(self, parent=None, **kwargs):
         super(CardViewer, self).__init__(parent=parent, **kwargs)
+        self._deck_card_id: str | None = None
         self.setupUi()
         if constants.IMG_DOWNLOAD_METHOD == "qt":
             self.imgDownloader = ImageDownloader()
@@ -124,7 +127,11 @@ class CardViewer(QtWidgets.QWidget):
         self.cardFaceChooser = QtWidgets.QPushButton("See other face \u21B7")
         self.cardFaceChooser.setVisible(False)
         self.cardFaceChooser.clicked.connect(self.on_cardflip)
-        self.mainLayout.addWidget(self.cardFaceChooser, line.postinc(), 0)
+        self.mainLayout.addWidget(self.cardFaceChooser, line.val(), 0)
+        self.applyToDeckPB = QtWidgets.QPushButton("Apply set to deck \u2713")
+        self.applyToDeckPB.setVisible(False)
+        self.applyToDeckPB.clicked.connect(self.on_applyToDeck)
+        self.mainLayout.addWidget(self.applyToDeckPB, line.postinc(), 1)
 
         # Card Img
         self.cardImgGraphicsView = qt.ResizingGraphicsView()
@@ -153,6 +160,17 @@ class CardViewer(QtWidgets.QWidget):
     def on_reloadCardData(self):
         self.display(self.card["id"], forceRefresh=True)
 
+    def display_from_deck(self, cardId: str):
+        """Display a card that originates from the current deck/collection."""
+        self._deck_card_id = cardId
+        self.display(cardId)
+
+    def display_from_db(self, cardId: str):
+        """Display a card from the DB browser (no deck context)."""
+        self._deck_card_id = None
+        self.applyToDeckPB.setVisible(False)
+        self.display(cardId)
+
     def on_add(self):
         # TODO check when already present to raise qty instead of adding other line
         qt.findAttrInParents(self, "decklist").cardsList.addCard(self.card)
@@ -165,7 +183,7 @@ class CardViewer(QtWidgets.QWidget):
         self._random_worker = RandomCardFetchWorker()
         self._random_worker.moveToThread(self._random_thread)
         self._random_thread.started.connect(self._random_worker.run)
-        self._random_worker.ready.connect(self.display)
+        self._random_worker.ready.connect(self.display_from_db)
         self._random_worker.failed.connect(self._on_display_failed)
         self._random_worker.ready.connect(self._random_thread.quit)
         self._random_worker.failed.connect(self._random_thread.quit)
@@ -324,13 +342,33 @@ class CardViewer(QtWidgets.QWidget):
         except KeyError:
             self.scryfallUriLabel.setText(f"<a href=\"{self.card['scryfall_uri']}\">Scryfall Link</a>")
 
-        self.avgPriceLabel.setText(
-            str(utils.getFromDict(self.card, ["prices", constants.CURRENCY[0]])) + " " + constants.CURRENCY[1]
-        )
+        _price = utils.getFromDict(self.card, ["prices", constants.CURRENCY[0]])
+        _foil_key = constants.CURRENCY[0] + "_foil"
+        _foil_price = utils.getFromDict(self.card, ["prices", _foil_key])
+        if _price is not None:
+            _price_text = f"{_price} {constants.CURRENCY[1]}"
+        elif _foil_price is not None:
+            _price_text = f"{_foil_price} {constants.CURRENCY[1]} (foil)"
+        else:
+            _price_text = "N/A"
+        self.avgPriceLabel.setText(_price_text)
+
+        # Show "Apply to deck" button only when the displayed card differs from the deck's card
+        if self._deck_card_id is not None and self.card["id"] != self._deck_card_id:
+            self.applyToDeckPB.setVisible(True)
+        else:
+            self.applyToDeckPB.setVisible(False)
 
     def _on_display_failed(self, error: str):
         logging.warning(f"Failed to display card: {error}")
         self.nameLabel.setText(f"Failed to load card")
+
+    def on_applyToDeck(self):
+        if self._deck_card_id is not None and self.card["id"] != self._deck_card_id:
+            old_id = self._deck_card_id
+            self._deck_card_id = self.card["id"]
+            self.applyToDeckPB.setVisible(False)
+            self.replaceInDeckRequested.emit(old_id, self.card["id"])
 
     def downloadCardImg(self, imageUri, cardId):
         url = QtCore.QUrl.fromUserInput(imageUri)

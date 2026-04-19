@@ -49,7 +49,8 @@ class CardsList(QtWidgets.QWidget):
         self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_color)
         self.cardsListLayout.addWidget(self.cardsListButtonBox)
         self.deckLoadingBar = QtWidgets.QProgressBar()
-        self.deckLoadingBar.setRange(0, 0)  # indeterminate
+        self.deckLoadingBar.setRange(0, 1)
+        self.deckLoadingBar.setValue(0)
         self.deckLoadingBar.setMaximumHeight(6)
         self.deckLoadingBar.setTextVisible(False)
         self.deckLoadingBar.setVisible(False)

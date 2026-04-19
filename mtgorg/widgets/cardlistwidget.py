@@ -120,10 +120,13 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                     text = utils.setSetsText([text])
                 if column == "price":
                     text = utils.getFromDict(cardData, ["prices", constants.CURRENCY[0]])
+                    _foil_key = constants.CURRENCY[0] + "_foil"
                     if text is not None:
                         text = str(text) + " " + constants.CURRENCY[1]
+                    elif utils.getFromDict(cardData, ["prices", _foil_key]) is not None:
+                        text = str(utils.getFromDict(cardData, ["prices", _foil_key])) + " " + constants.CURRENCY[1] + " (foil)"
                     else:
-                        text = "?"
+                        text = "N/A"
                 item.setData(QtCore.Qt.ItemDataRole.DisplayRole, text)
                 item.setData(QtCore.Qt.ItemDataRole.UserRole, {"data": cardData, "column": column})
                 dataList.append(item)
@@ -160,6 +163,8 @@ class CardStackListWidget(CardSearchListWidget):
         self.cardStack = []
         _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
         if _loadingBar is not None:
+            _loadingBar.setRange(0, len(cardList))
+            _loadingBar.setValue(0)
             _loadingBar.setVisible(True)
 
         self._loader_thread = QtCore.QThread()
@@ -180,6 +185,9 @@ class CardStackListWidget(CardSearchListWidget):
         self.insertRow(self.rowCount())
         card.update({"qty": qty})
         self._addOneLine(card)
+        _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
+        if _loadingBar is not None:
+            _loadingBar.setValue(_loadingBar.value() + 1)
 
     def addCard(self, card: dict):
         self.insertRow(self.rowCount())
@@ -254,6 +262,19 @@ class CardStackListWidget(CardSearchListWidget):
             self.addQty(qty=1)
         else:
             return super().keyPressEvent(event)
+
+    def replaceCardInStack(self, oldCardId: str, newCardId: str):
+        stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
+        if stackType == "deck":
+            connector.replaceCardInDeck(stackName, oldCardId, newCardId)
+            deck = connector.getDeck(stackName)
+            if deck is not None:
+                self.setCardList(deck["cardList"])
+        elif stackType == "collection":
+            connector.replaceCardInCollection(stackName, oldCardId, newCardId)
+            collection = connector.getCollection(stackName)
+            if collection is not None:
+                self.setCardList(collection["cardList"])
 
     def updateCardListInfos(self):
         _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')

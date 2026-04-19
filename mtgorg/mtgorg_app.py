@@ -140,6 +140,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         # Left pane is card viewer
         self.cardViewer = CardViewer(self)
+        self.cardViewer.replaceInDeckRequested.connect(self.on_replaceCardInDeck)
         self.splitter.addWidget(self.cardViewer)
 
         # Middle Pane are card Browsers
@@ -169,11 +170,14 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
     def on_decklistCardSelected(self, cardId: str):
         self.dbBrowser.dbResultsList.clearSelection()
-        self.cardViewer.display(cardId)
+        self.cardViewer.display_from_deck(cardId)
 
     def on_dbBrowserCardSelected(self, cardId: str):
         self.decklist.cardsList.clearSelection()
-        self.cardViewer.display(cardId)
+        self.cardViewer.display_from_db(cardId)
+
+    def on_replaceCardInDeck(self, oldCardId: str, newCardId: str):
+        self.decklist.cardsList.replaceCardInStack(oldCardId, newCardId)
 
     def on_cardStackChange(self, cardStack: connector.Deck | connector.Collection):
         if cardStack is not None:
