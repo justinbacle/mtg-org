@@ -32,12 +32,13 @@ class CardDisplayWorker(QtCore.QObject):
 
             sets = []
             for setCode in card["sets"]:
-                setName = scryfall.getSetDataByCode(setCode, "name")
-                if setName is None:
+                setRecord = scryfall.getSetByCode(setCode)
+                if setRecord is None:
                     logging.debug(f"Skipping unknown set code '{setCode}' in reprint list")
                     continue
-                setId = scryfall.getSetDataByCode(setCode, "id")
-                setYear = scryfall.getSetReleaseYear(setId) if setId else None
+                setName = setRecord["name"]
+                releaseDate = setRecord.get("released_at")
+                setYear = releaseDate.split("-")[0] if releaseDate else None
                 sets.append((setName, setYear, setCode))
             sets.sort(key=lambda s: (s[1] is None, s[1]))
 

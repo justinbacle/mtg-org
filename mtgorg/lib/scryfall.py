@@ -18,6 +18,8 @@ import connector
 from lib import utils
 import constants
 
+_sets_memory_cache: list | None = None
+
 
 SEARCH_DICT_KEYS = [
     'order',
@@ -248,6 +250,9 @@ def getOnlineSetData():
 
 # @cache_to_disk(1)
 def getSets(force: bool = False) -> list:
+    global _sets_memory_cache
+    if not force and _sets_memory_cache is not None:
+        return _sets_memory_cache
     setsJsonPath = Path(constants.DEFAULT_INFOS_LOCATION) / "sets.json"
     setsData = None
     if force or not setsJsonPath.is_file():
@@ -270,7 +275,21 @@ def getSets(force: bool = False) -> list:
                 setsData = utils.loadJson(setsJsonPath)
     if setsData is None:
         return []
-    return setsData["sets"]
+    _sets_memory_cache = setsData["sets"]
+    assert _sets_memory_cache is not None
+    return _sets_memory_cache
+
+
+def getSetByCode(setCode: str) -> dict | None:
+    """Return the full set record for a given set code, or None if not found."""
+    allSets = getSets()
+    matches = [s for s in allSets if s["code"] == setCode]
+    if matches:
+        return matches[0]
+    # Try refreshing once
+    allSets = getSets(force=True)
+    matches = [s for s in allSets if s["code"] == setCode]
+    return matches[0] if matches else None
 
 
 @cache_to_disk(1)
