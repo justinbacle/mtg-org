@@ -1,6 +1,7 @@
 from PySide6 import QtWidgets, QtGui, QtCore, QtNetwork, QtSvgWidgets
 import logging
 import urllib
+import urllib.request
 import os
 
 from lib import scryfall, utils, qt
@@ -135,10 +136,16 @@ class CardViewer(QtWidgets.QWidget):
 
         # Card Img
         self.cardImgGraphicsView = qt.ResizingGraphicsView()
-        self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform)
+        self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing | QtGui.QPainter.RenderHint.SmoothPixmapTransform)
         self.mainLayout.addWidget(self.cardImgGraphicsView, line.postinc(), 0, 1, 2)
         self.reloadCardShortcut = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+R'), self)
         self.reloadCardShortcut.activated.connect(self.on_reloadCardData)
+
+        # English name (shown for non-English cards)
+        self.englishNameLabel = QtWidgets.QLabel()
+        self.englishNameLabel.setStyleSheet("font-style: italic; color: gray;")
+        self.englishNameLabel.setVisible(False)
+        self.mainLayout.addWidget(self.englishNameLabel, line.postinc(), 0, 1, 2)
 
         # Oracle text
         self.cardOracleTextLabel = QtWidgets.QTextEdit()
@@ -148,7 +155,7 @@ class CardViewer(QtWidgets.QWidget):
 
         # Card Link
         self.scryfallUriLabel = QtWidgets.QLabel("uri")
-        self.scryfallUriLabel.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        self.scryfallUriLabel.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextBrowserInteraction)
         self.scryfallUriLabel.setOpenExternalLinks(True)
         # self.scryfallUriLabel.linkActivated.connect(self.on_scryfallLinkClicked)
         self.mainLayout.addWidget(self.scryfallUriLabel, line.val(), 0)
@@ -176,7 +183,8 @@ class CardViewer(QtWidgets.QWidget):
         qt.findAttrInParents(self, "decklist").cardsList.addCard(self.card)
 
     def on_scryfallLinkClicked(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.uri))
+        if hasattr(self, 'card'):
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.card.get('scryfall_uri', '')))
 
     def on_randomCardPBClicked(self):
         self._random_thread = QtCore.QThread()
@@ -206,7 +214,7 @@ class CardViewer(QtWidgets.QWidget):
             self.cardImgGraphicsView.scene().clear()
         self.cardImgGraphicsView.scene().addPixmap(self.cardImgPixMap)
         bounds = self.cardImgGraphicsView.scene().itemsBoundingRect()
-        self.cardImgGraphicsView.fitInView(bounds, QtCore.Qt.KeepAspectRatio)
+        self.cardImgGraphicsView.fitInView(bounds, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def setManaFont(self):
         if self.manacostLabel.font().family() != "Proxyglyph":
@@ -215,12 +223,14 @@ class CardViewer(QtWidgets.QWidget):
             font.setPointSize(24)
             self.manacostLabel.setFont(font)
 
-    def colorSetIcon(self, data: QtCore.QByteArray, rarity: str = "C"):
+    def colorSetIcon(self, data: str | None, rarity: str = "C") -> str | None:
+        color: str
         if rarity in constants.RARITIES.keys():
             try:
                 color = constants.RARITIES[rarity]["color"]
             except TypeError:
-                logging.warning()
+                logging.warning(f"could not find color for {rarity=}")
+                color = "#00F"
         else:
             logging.warning(f"could not find color for {rarity=}")
             color = "#00F"
@@ -273,6 +283,12 @@ class CardViewer(QtWidgets.QWidget):
             self.nameLabel.setFont(QtGui.QFont())
             self.nameLabel.setStyleSheet("font-size: 16pt;")
 
+        if self.card["lang"] != "en" and "printed_name" in self.card:
+            self.englishNameLabel.setText(self.card["name"])
+            self.englishNameLabel.setVisible(True)
+        else:
+            self.englishNameLabel.setVisible(False)
+
         if "card_faces" in self.card.keys():
             manaCost = self.card["card_faces"][0]["mana_cost"]
         else:
@@ -283,8 +299,8 @@ class CardViewer(QtWidgets.QWidget):
 
         setIconSvgData = self.colorSetIcon(setIconSvgData, self.card["rarity"])
         if setIconSvgData is not None:
-            self.setIconSvg.load(QtCore.QByteArray(setIconSvgData))
-            self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
+            self.setIconSvg.load(QtCore.QByteArray(setIconSvgData.encode("utf-8")))
+            self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
         try:
             self.setSelect.currentIndexChanged.disconnect()
@@ -413,7 +429,7 @@ class ImageDownloader(QtCore.QObject):
         self.manager.get(QtNetwork.QNetworkRequest(url))
 
     def handle_finished(self, reply):
-        if reply.error() != QtNetwork.QNetworkReply.NoError:
+        if reply.error() != QtNetwork.QNetworkReply.NetworkError.NoError:
             print("error: ", reply.errorString())
             return
         image = QtGui.QImage()
@@ -435,5 +451,5 @@ def getCardImageFromUrl(url, cardId) -> str:
 
 def saveCardImg(image: QtGui.QImage, cardId: str):
     path = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
-    writer = QtGui.QImageWriter(path.as_posix(), format=QtCore.QByteArray("jpg"))
+    writer = QtGui.QImageWriter(path.as_posix(), b"jpg")
     writer.write(image)

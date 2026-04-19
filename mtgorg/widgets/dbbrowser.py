@@ -18,16 +18,16 @@ class DbBrowser(QtWidgets.QWidget):
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.setLayout(self.mainLayout)
 
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal, self)
         self.mainLayout.addWidget(self.splitter)
 
         self.searchForm = SearchForm(parent=self)
         # self.searchForm.setMaximumWidth(300)
         self.searchForm.setMinimumWidth(300)
-        self.searchForm.find.connect(self.on_searchRequest)
+        self.searchForm.searched.connect(self.on_searchRequest)
         self.qscroll = QtWidgets.QScrollArea()
         self.qscroll.setWidgetResizable(True)
-        self.qscroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.qscroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.qscroll.setWidget(self.searchForm)
         self.splitter.addWidget(self.qscroll)
         # QListWidget on the right for results
@@ -44,17 +44,17 @@ class DbBrowser(QtWidgets.QWidget):
     def on_dbSelectChanged(self):
         if len(self.dbResultsList.selectedItems()) == 1:
             selectedItem = self.dbResultsList.selectedItems()[0]
-            self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["data"]["id"])
+            self.cardSelected.emit(selectedItem.data(QtCore.Qt.ItemDataRole.UserRole)["data"]["id"])
         else:
             selectedItem = None
 
 
 class SearchForm(QtWidgets.QWidget):
 
-    find: QtCore.Signal = QtCore.Signal(dict)   # ? replace with search dict object ?
+    searched: QtCore.Signal = QtCore.Signal(dict)   # ? replace with search dict object ?
 
     # To Build
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.mainLayout = QtWidgets.QFormLayout()
@@ -207,7 +207,7 @@ class SearchForm(QtWidgets.QWidget):
         self.on_mainTypeChange()
 
     def on_searchAction(self):
-        self.find.emit(self.getSearchData())
+        self.searched.emit(self.getSearchData())
 
     def on_mainTypeChange(self):
         # TODO setRowVisible() only available on lates pyside6 versions
@@ -281,7 +281,7 @@ class SearchForm(QtWidgets.QWidget):
 
 
 class ManaColorSelectorWidget(QtWidgets.QWidget):
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.setLayout(self.mainLayout)
@@ -330,7 +330,7 @@ class ManaColorWidget(QtWidgets.QWidget):
         "G": "P",
     }
 
-    def __init__(self, color: str, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, color: str, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.color = color
         self.mainLayout = QtWidgets.QHBoxLayout()
@@ -339,9 +339,9 @@ class ManaColorWidget(QtWidgets.QWidget):
         self.state = self.STATES[0]
         self.manaSymbolLabel = QtWidgets.QLabel("")
         self.mainLayout.addWidget(self.manaSymbolLabel)
-        self.font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+        self._labelFont = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
             qt.findAttrInParents(self, "proxyglyphFontId")))
-        self.font.setPointSize(16)
+        self._labelFont.setPointSize(16)
         self.mainLayout.setContentsMargins(0, 0, 0, 0)
         self.draw()
 
@@ -352,7 +352,7 @@ class ManaColorWidget(QtWidgets.QWidget):
         else:  # May is half symbol  NOT USED
             text = self.HALF_MANA_EQU[self.color]
             self.manaSymbolLabel.setText(text)
-        self.manaSymbolLabel.setFont(self.font)
+        self.manaSymbolLabel.setFont(self._labelFont)
 
         if self.state in ["NS"]:
             self.manaSymbolLabel.setStyleSheet(

@@ -75,8 +75,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.keyruneFontId = QtGui.QFontDatabase.addApplicationFont(KEYRUNE_FONT_PATH.as_posix())  # Set font
         PROXYGLYPH_FONT_PATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
         self.proxyglyphFontId = QtGui.QFontDatabase.addApplicationFont(PROXYGLYPH_FONT_PATH.as_posix())  # better NDPMTG
-        # from scryfall website
-        PHYREXIAN_FONT_PATH = Path("resources/fonts/Phyrexian-Regular.woff2")
+        # from scryfall website (TTF converted from woff2 — DirectWrite on Windows cannot load woff2)
+        PHYREXIAN_FONT_PATH = Path("resources/fonts/Phyrexian-Regular.ttf")
         self.phyrexianFontId = QtGui.QFontDatabase.addApplicationFont(PHYREXIAN_FONT_PATH.as_posix())  # Phyrexian cards
 
         # Load frontend
