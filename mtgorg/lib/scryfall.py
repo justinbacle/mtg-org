@@ -139,7 +139,7 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en") -> list:
                     returnIdsList.append(id)
                     continue
                 foundCard = scrython.cards.ByCodeNumber(
-                    code=set, collector_number=_cardById["collector_number"], lang=lang).to_dict()
+                    code=set, number=_cardById["collector_number"], lang=lang).to_dict()
                 returnIdsList.append(foundCard["id"])
             except ScryfallError:
                 logging.warning(f"Could not find {lang=} translation for given set")

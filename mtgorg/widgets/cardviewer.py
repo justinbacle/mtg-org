@@ -7,6 +7,83 @@ from lib import scryfall, utils, qt
 import constants
 
 
+class CardDisplayWorker(QtCore.QObject):
+    """Fetches all card display data in a background thread."""
+    dataReady = QtCore.Signal(dict)
+    failed = QtCore.Signal(str)
+
+    def __init__(self, cardId: str, cardFace: int = 0, forceRefresh: bool = False):
+        super().__init__()
+        self._cardId = cardId
+        self._cardFace = cardFace
+        self._forceRefresh = forceRefresh
+
+    def run(self):
+        try:
+            card = scryfall.getCardById(self._cardId, force=self._forceRefresh)
+            if card is None:
+                self.failed.emit(f"Card {self._cardId} not found")
+                return
+
+            setIconSvgData = qt.fileData(scryfall.getSetSvg(card["set_id"]))
+
+            if "sets" not in card:
+                card["sets"] = scryfall.getCardReprints(card["id"])
+
+            sets = []
+            for setCode in card["sets"]:
+                setName = scryfall.getSetDataByCode(setCode, "name")
+                if setName is None:
+                    logging.debug(f"Skipping unknown set code '{setCode}' in reprint list")
+                    continue
+                setId = scryfall.getSetDataByCode(setCode, "id")
+                setYear = scryfall.getSetReleaseYear(setId) if setId else None
+                sets.append((setName, setYear, setCode))
+            sets.sort(key=lambda s: (s[1] is None, s[1]))
+
+            self.dataReady.emit({
+                "card": card,
+                "cardFace": self._cardFace,
+                "forceRefresh": self._forceRefresh,
+                "setIconSvgData": setIconSvgData,
+                "sets": sets,
+            })
+        except Exception as e:
+            logging.warning(f"CardDisplayWorker error: {e}")
+            self.failed.emit(str(e))
+
+
+class RandomCardFetchWorker(QtCore.QObject):
+    ready = QtCore.Signal(str)
+    failed = QtCore.Signal(str)
+
+    def run(self):
+        try:
+            card = scryfall.getRandomCard()
+            if card:
+                self.ready.emit(card["id"])
+        except Exception as e:
+            self.failed.emit(str(e))
+
+
+class SetChangeWorker(QtCore.QObject):
+    ready = QtCore.Signal(list)
+    failed = QtCore.Signal(str)
+
+    def __init__(self, cardId: str, setCode: str, lang: str):
+        super().__init__()
+        self._cardId = cardId
+        self._setCode = setCode
+        self._lang = lang
+
+    def run(self):
+        try:
+            ids = scryfall.getCardReprintId(self._cardId, self._setCode, lang=self._lang)
+            self.ready.emit(ids)
+        except Exception as e:
+            self.failed.emit(str(e))
+
+
 class CardViewer(QtWidgets.QWidget):
     # To Build
     def __init__(self, parent=None, **kwargs):
@@ -73,11 +150,7 @@ class CardViewer(QtWidgets.QWidget):
         self.mainLayout.addWidget(self.avgPriceLabel, line.postinc(), 1)
 
     def on_reloadCardData(self):
-        scryfall.getCardById(self.card["id"], force=True)
-        if utils.getFromDict(self.card, ["image_uris"], None) is not None:
-            # TODO fix whan dual faced card download fixed
-            imageUri = utils.getFromDict(self.card, ["image_uris", constants.IMG_SIZE])
-            self.downloadCardImg(imageUri, self.card["id"])
+        self.display(self.card["id"], forceRefresh=True)
 
     def on_add(self):
         # TODO check when already present to raise qty instead of adding other line
@@ -87,7 +160,18 @@ class CardViewer(QtWidgets.QWidget):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(self.uri))
 
     def on_randomCardPBClicked(self):
-        self.display(scryfall.getRandomCard()["id"])
+        self._random_thread = QtCore.QThread()
+        self._random_worker = RandomCardFetchWorker()
+        self._random_worker.moveToThread(self._random_thread)
+        self._random_thread.started.connect(self._random_worker.run)
+        self._random_worker.ready.connect(self.display)
+        self._random_worker.failed.connect(self._on_display_failed)
+        self._random_worker.ready.connect(self._random_thread.quit)
+        self._random_worker.failed.connect(self._random_thread.quit)
+        self._random_worker.ready.connect(self._random_worker.deleteLater)
+        self._random_worker.failed.connect(self._random_worker.deleteLater)
+        self._random_thread.finished.connect(self._random_thread.deleteLater)
+        self._random_thread.start()
 
     def saveCardImg(self, image, cardId):
         logging.info(f"saved image for {cardId=}")
@@ -130,8 +214,32 @@ class CardViewer(QtWidgets.QWidget):
         return data
 
     def display(self, cardId: str, cardFace: int = 0, forceRefresh: bool = False):
-        self.card = scryfall.getCardById(cardId, force=forceRefresh)
-        valid = True
+        # Cancel any in-progress fetch
+        if hasattr(self, '_display_thread') and self._display_thread.isRunning():
+            self._display_thread.quit()
+            self._display_thread.wait()
+        self.nameLabel.setText("Loading...")
+        self._display_thread = QtCore.QThread()
+        self._display_worker = CardDisplayWorker(cardId, cardFace, forceRefresh)
+        self._display_worker.moveToThread(self._display_thread)
+        self._display_thread.started.connect(self._display_worker.run)
+        self._display_worker.dataReady.connect(self._on_display_data_ready)
+        self._display_worker.failed.connect(self._on_display_failed)
+        self._display_worker.dataReady.connect(self._display_thread.quit)
+        self._display_worker.failed.connect(self._display_thread.quit)
+        self._display_worker.dataReady.connect(self._display_worker.deleteLater)
+        self._display_worker.failed.connect(self._display_worker.deleteLater)
+        self._display_thread.start()
+
+    def _on_display_data_ready(self, data: dict):
+        card = data["card"]
+        cardFace = data["cardFace"]
+        sets = data["sets"]
+        setIconSvgData = data["setIconSvgData"]
+
+        self.card = card
+        cardId = card["id"]
+
         if "printed_name" in self.card.keys():
             self.nameLabel.setText(self.card["printed_name"])
         else:
@@ -142,7 +250,6 @@ class CardViewer(QtWidgets.QWidget):
                 qt.findAttrInParents(self, "phyrexianFontId")
             ))
             self.nameLabel.setFont(phyrexianFont)
-            # self.nameLabel.setStyleSheet("font-size: 16pt; font-family: Phyrexian;")
         else:
             self.nameLabel.setFont(QtGui.QFont())
             self.nameLabel.setStyleSheet("font-size: 16pt;")
@@ -155,35 +262,19 @@ class CardViewer(QtWidgets.QWidget):
         self.manacostLabel.setText(utils.setManaText(manaCost))
         self.setManaFont()
 
-        setIconSvgData = qt.fileData(scryfall.getSetSvg(self.card["set_id"]))
-        # TODO setIconSvgData = None when not available
         setIconSvgData = self.colorSetIcon(setIconSvgData, self.card["rarity"])
-        self.setIconSvg.load(QtCore.QByteArray(setIconSvgData))
-        self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
+        if setIconSvgData is not None:
+            self.setIconSvg.load(QtCore.QByteArray(setIconSvgData))
+            self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.KeepAspectRatio)
 
         try:
-            # ? How to know if already connected or not ?
             self.setSelect.currentIndexChanged.disconnect()
         except (RuntimeError, RuntimeWarning):
             ...
         self.setSelect.clear()
 
-        # reprints handling
-        if "sets" not in self.card.keys():
-            self.card.update({"sets": scryfall.getCardReprints(self.card["id"])})
-
-        sets = []
-        for setCode in self.card["sets"]:
-            setName = scryfall.getSetDataByCode(setCode, 'name')
-            if setName is None:
-                valid = False
-            else:
-                setYear = scryfall.getSetReleaseYear(scryfall.getSetDataByCode(setCode, 'id'))
-                sets.append((setName, setYear, setCode))
-        # sort reprints by year
-        sets.sort(key=lambda _: _[1])
-        for _set in sets:
-            setName, setYear, setCode = _set
+        selectedText = ""
+        for setName, setYear, setCode in sets:
             setText = f"{setName} ({setCode.upper()}) - {setYear}"
             self.setSelect.addItem(setText, setCode)
             if self.card["set"] == setCode:
@@ -197,15 +288,14 @@ class CardViewer(QtWidgets.QWidget):
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
             imageUri = utils.getFromDict(self.card, ["image_uris", constants.IMG_SIZE])
         else:
-            if len(self.card['card_faces']) > 1:
+            if len(self.card["card_faces"]) > 1:
                 _hasManyFaces = True
                 self.cardFaceChooser.setVisible(True)
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", cardFace, "image_uris", constants.IMG_SIZE])
 
         if constants.USE_BULK_FILES and not isCardImageCached(cardId):
-            # Ignore
-            ...
+            pass
         elif isCardImageCached(cardId) and not _hasManyFaces or constants.IMG_DOWNLOAD_METHOD == "direct":
             # TODO handle cache for multi face cards
             cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
@@ -219,7 +309,7 @@ class CardViewer(QtWidgets.QWidget):
             self.downloadCardImg(imageUri, cardId)
 
         # Oracle text
-        text = self.card['type_line'] + "\n"
+        text = self.card["type_line"] + "\n"
         if "power" in self.card.keys():
             text += self.card["power"] + "/" + self.card["toughness"] + "\n"
         if "oracle_text" in self.card.keys():
@@ -228,18 +318,18 @@ class CardViewer(QtWidgets.QWidget):
             text += self.card["card_faces"][cardFace]["oracle_text"] + "\n"
         self.cardOracleTextLabel.setText(text)
 
-        # gatherer/scryfall uri
         try:
             self.scryfallUriLabel.setText(f"<a href=\"{self.card['related_uris']['gatherer']}\">Gatherer Link</a>")
         except KeyError:
             self.scryfallUriLabel.setText(f"<a href=\"{self.card['scryfall_uri']}\">Scryfall Link</a>")
 
-        # price
         self.avgPriceLabel.setText(
             str(utils.getFromDict(self.card, ["prices", constants.CURRENCY[0]])) + " " + constants.CURRENCY[1]
         )
 
-        return valid
+    def _on_display_failed(self, error: str):
+        logging.warning(f"Failed to display card: {error}")
+        self.nameLabel.setText(f"Failed to load card")
 
     def downloadCardImg(self, imageUri, cardId):
         url = QtCore.QUrl.fromUserInput(imageUri)
@@ -250,16 +340,25 @@ class CardViewer(QtWidgets.QWidget):
 
     def on_setChange(self):
         selectedSet = self.setSelect.itemData(self.setSelect.currentIndex())
-        ids = scryfall.getCardReprintId(
-            self.card["id"], selectedSet, lang=self.card["lang"])
+        self._setchange_thread = QtCore.QThread()
+        self._setchange_worker = SetChangeWorker(self.card["id"], selectedSet, self.card["lang"])
+        self._setchange_worker.moveToThread(self._setchange_thread)
+        self._setchange_thread.started.connect(self._setchange_worker.run)
+        self._setchange_worker.ready.connect(self._on_set_change_ids_ready)
+        self._setchange_worker.failed.connect(self._on_display_failed)
+        self._setchange_worker.ready.connect(self._setchange_thread.quit)
+        self._setchange_worker.failed.connect(self._setchange_thread.quit)
+        self._setchange_worker.ready.connect(self._setchange_worker.deleteLater)
+        self._setchange_worker.failed.connect(self._setchange_worker.deleteLater)
+        self._setchange_thread.finished.connect(self._setchange_thread.deleteLater)
+        self._setchange_thread.start()
+
+    def _on_set_change_ids_ready(self, ids: list):
         if len(ids) == 0:
-            self.display(scryfall.getCardReprintId(
-                self.card["id"], selectedSet, lang=self.card["lang"]), forceRefresh=True)
-        elif len(ids) == 1:
-            self.display(ids[0])
-        else:
-            # TODO Show card selector widget or msg window
-            self.display(ids[0])
+            logging.warning("No cards found for selected set")
+            return
+        # TODO Show card selector widget when len(ids) > 1
+        self.display(ids[0])
 
 
 class ImageDownloader(QtCore.QObject):

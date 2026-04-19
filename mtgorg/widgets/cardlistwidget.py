@@ -5,6 +5,22 @@ import connector
 from lib import scryfall, utils, qt
 import constants
 
+
+class CardLoaderWorker(QtCore.QObject):
+    cardLoaded = QtCore.Signal(int, dict)   # (qty, card_dict)
+    finished = QtCore.Signal()
+
+    def __init__(self, cardList):
+        super().__init__()
+        self._cardList = cardList
+
+    def run(self):
+        for qty, cardId in self._cardList:
+            card = scryfall.getCardById(cardId)
+            if card is not None:
+                self.cardLoaded.emit(qty, card)
+        self.finished.emit()
+
 COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
 USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
 
@@ -13,15 +29,16 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
     def __init__(self, parent=None, columns=COLUMNS) -> None:
         super().__init__(parent)
         self.columns = columns
+        self.cardStack: list = []
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         # self.setSortingEnabled(True)  # TODO bugs on add/delete line ?
         self.setColumnCount(len(self.columns))
         self.verticalHeader().setVisible(False)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)  # ? Not working with selection
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)  # ? Not working with selection
         self.setHorizontalHeaderLabels(self.columns)
-        self.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+        self.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents)
 
     def updateCardListInfos(self):
         # TODO update cardStack before
@@ -37,8 +54,12 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         if event.source() != self:
-            cardId = event.source().currentItem().data(QtCore.Qt.UserRole)["id"]
-            self.addCard(scryfall.getCardById(cardId))
+            source = event.source()
+            if isinstance(source, QtWidgets.QTableWidget) and source.currentItem() is not None:
+                cardId = source.currentItem().data(QtCore.Qt.ItemDataRole.UserRole)["id"]
+                card = scryfall.getCardById(cardId)
+                if card is not None:
+                    self.addCard(card)
 
     def setCards(self, cardsList: list):
         self.setRowCount(0)
@@ -48,7 +69,10 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
             self._addOneLine(card)
         self.resizeColumnsToContents()
 
-    def getCardTableItem(self, cardData: dict, columns: list = []) -> QtWidgets.QTableWidgetItem:
+    def addCard(self, card: dict) -> None:
+        raise NotImplementedError
+
+    def getCardTableItem(self, cardData: dict, columns: list = []) -> list[QtWidgets.QTableWidgetItem]:
         dataList = []
         if cardData is not None:
             for column in columns:
@@ -97,11 +121,11 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                 if column == "price":
                     text = utils.getFromDict(cardData, ["prices", constants.CURRENCY[0]])
                     if text is not None:
-                        text += " " + constants.CURRENCY[1]
+                        text = str(text) + " " + constants.CURRENCY[1]
                     else:
                         text = "?"
-                item.setData(QtCore.Qt.DisplayRole, text)
-                item.setData(QtCore.Qt.UserRole, {"data": cardData, "column": column})
+                item.setData(QtCore.Qt.ItemDataRole.DisplayRole, text)
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, {"data": cardData, "column": column})
                 dataList.append(item)
         return dataList
 
@@ -115,15 +139,15 @@ class CardStackListWidget(CardSearchListWidget):
         self.setDragEnabled(True)
         self.setColumnCount(len(self.columns))
         self.verticalHeader().setVisible(False)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
         self.setHorizontalHeaderLabels(self.columns)
         self.setMouseTracking(True)
 
     def on_itemChanged(self, item):
         # TODO prepare for user info (commander/sideboard/maybeboard etc...)
         if len(self.selectedItems()) == 1:
-            if item.data(QtCore.Qt.UserRole)["column"] == "qty":
-                previousQty = item.data(QtCore.Qt.UserRole)["data"]["qty"]
+            if item.data(QtCore.Qt.ItemDataRole.UserRole)["column"] == "qty":
+                previousQty = item.data(QtCore.Qt.ItemDataRole.UserRole)["data"]["qty"]
                 newQty = int(item.text())
                 if previousQty != newQty:
                     if previousQty > newQty:
@@ -134,10 +158,28 @@ class CardStackListWidget(CardSearchListWidget):
     def setCardList(self, cardList: connector.Deck | connector.Collection):
         self.setRowCount(0)
         self.cardStack = []
-        for qty, card in tqdm(cardList):
-            self.cardStack.append((qty, scryfall.getCardById(card)))
-        self.setCards(self.cardStack)
-        self.resizeColumnsToContents()
+        _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
+        if _loadingBar is not None:
+            _loadingBar.setVisible(True)
+
+        self._loader_thread = QtCore.QThread()
+        self._loader_worker = CardLoaderWorker(cardList)
+        self._loader_worker.moveToThread(self._loader_thread)
+
+        self._loader_thread.started.connect(self._loader_worker.run)
+        self._loader_worker.cardLoaded.connect(self._on_card_loaded)
+        self._loader_worker.finished.connect(self._loader_thread.quit)
+        self._loader_worker.finished.connect(self._loader_worker.deleteLater)
+        self._loader_thread.finished.connect(self._loader_thread.deleteLater)
+        self._loader_worker.finished.connect(self.updateCardListInfos)
+
+        self._loader_thread.start()
+
+    def _on_card_loaded(self, qty: int, card: dict):
+        self.cardStack.append((qty, card))
+        self.insertRow(self.rowCount())
+        card.update({"qty": qty})
+        self._addOneLine(card)
 
     def addCard(self, card: dict):
         self.insertRow(self.rowCount())
@@ -151,22 +193,24 @@ class CardStackListWidget(CardSearchListWidget):
         else:
             ...
         self.cardStack.append((1, card))
-        self.parent().sort()
+        self.parent().parent().parent().sort()  # type: ignore[union-attr]
         self.updateCardListInfos()
 
     def removeQty(self, qty: int):
         selectedLine = self.selectedIndexes()[0]
-        selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)["data"]
+        selectedCard = self.selectedItems()[0].data(QtCore.Qt.ItemDataRole.UserRole)["data"]
         stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if selectedCard["qty"] > qty:
             if stackType == "deck":
                 connector.changeCardDeckQty(stackName, selectedCard["qty"] - qty, selectedCard["id"])
                 deck = connector.getDeck(stackName)
-                self.setCardList(deck["cardList"])
+                if deck is not None:
+                    self.setCardList(deck["cardList"])
             elif stackType == "collection":
                 connector.changeCardCollectionQty(stackName, selectedCard["qty"] - qty, selectedCard["id"])
                 collection = connector.getCollection(stackName)
-                self.setCardList(collection["cardList"])
+                if collection is not None:
+                    self.setCardList(collection["cardList"])
             else:
                 ...
             self.setCurrentCell(selectedLine.row(), selectedLine.column())
@@ -174,41 +218,51 @@ class CardStackListWidget(CardSearchListWidget):
             if stackType == "deck":
                 connector.removeCardFromDeck(stackName, selectedCard["id"])
                 deck = connector.getDeck(stackName)
-                self.setCardList(deck["cardList"])
+                if deck is not None:
+                    self.setCardList(deck["cardList"])
             elif stackType == "collection":
                 connector.removeCardFromCollection(stackName, selectedCard["id"])
                 collection = connector.getCollection(stackName)
-                self.setCardList(collection["cardList"])
+                if collection is not None:
+                    self.setCardList(collection["cardList"])
             else:
                 ...
-        self.parent().parent().parent().sort()
+        self.parent().parent().parent().sort()  # type: ignore[union-attr]
 
     def addQty(self, qty: int):
         selectedLine = self.selectedIndexes()[0]
-        selectedCard = self.selectedItems()[0].data(QtCore.Qt.UserRole)["data"]
+        selectedCard = self.selectedItems()[0].data(QtCore.Qt.ItemDataRole.UserRole)["data"]
         stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if stackType == "deck":
             connector.changeCardDeckQty(stackName, selectedCard["qty"] + qty, selectedCard["id"])
             deck = connector.getDeck(stackName)
-            self.setCardList(deck["cardList"])
+            if deck is not None:
+                self.setCardList(deck["cardList"])
         elif stackType == "collection":
             connector.changeCardCollectionQty(stackName, selectedCard["qty"] + qty, selectedCard["id"])
             collection = connector.getCollection(stackName)
-            self.setCardList(collection["cardList"])
+            if collection is not None:
+                self.setCardList(collection["cardList"])
         else:
             ...
         self.setCurrentCell(selectedLine.row(), selectedLine.column())
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if event.key() == QtCore.Qt.Key_Minus:
+        if event.key() == QtCore.Qt.Key.Key_Minus:
             self.removeQty(qty=1)
-        elif event.key() == QtCore.Qt.Key_Plus:
+        elif event.key() == QtCore.Qt.Key.Key_Plus:
             self.addQty(qty=1)
         else:
             return super().keyPressEvent(event)
 
-    def setCards(self, cardsList: list):
-        self.setRowCount(0)
+    def updateCardListInfos(self):
+        _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
+        if _loadingBar is not None:
+            _loadingBar.setVisible(False)
+        self._updateStatsPanel(self.cardStack)
+        self.resizeColumnsToContents()
+
+    def _updateStatsPanel(self, cardsList: list) -> None:
         manaValues = [0, 0, 0, 0, 0, 0, 0]  # 0, 1, 2, 3, 4, 5, 6+
         cardCount = 0
         totalPrice = 0
@@ -221,11 +275,8 @@ class CardStackListWidget(CardSearchListWidget):
 
         totalCmc = 0
         for qty, card in cardsList:
-            self.insertRow(self.rowCount())
             if isinstance(qty, str):  # backward compatible hack
                 qty = int(qty)
-            card.update({"qty": qty})
-            self._addOneLine(card)
             isNotLand = not card["type_line"].startswith("Land") and not card["type_line"].startswith("Basic Land")
             isNotToken = "Token" not in card["type_line"]
             if isNotLand and isNotToken:
@@ -261,7 +312,7 @@ class CardStackListWidget(CardSearchListWidget):
                 # legality
                 for format, legality in card["legalities"].items():
                     if legality not in ["legal", "not_legal", "restricted", "banned"]:
-                        raise NotImplementedError(f"{legality=} is an unupported legality type")
+                        continue  # skip unknown legality types gracefully
                     elif format in legalities.keys():
                         # TODO handle "restricted"
                         if legality == "legal" and card["legalities"][format] == "legal":
@@ -289,5 +340,15 @@ class CardStackListWidget(CardSearchListWidget):
             "typePie": typePie,
             "legalities": legalities
         }
-        # TODO only trigger for cardStack
         qt.findAttrInParents(self, "decklist").infoPanel.updateValues(updateDict)
+
+    def setCards(self, cardsList: list):
+        self.setRowCount(0)
+        for qty, card in cardsList:
+            self.insertRow(self.rowCount())
+            if isinstance(qty, str):  # backward compatible hack
+                qty = int(qty)
+            card.update({"qty": qty})
+            self._addOneLine(card)
+        self._updateStatsPanel(cardsList)
+        self.resizeColumnsToContents()

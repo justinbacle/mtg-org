@@ -242,7 +242,7 @@ def saveCard(cardId, cardData) -> None:
             {"data": cardData, "id": cardId}
         )
     else:
-        updateCard(cardId, cardData)
+        getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)
 
 
 def updateCard(cardId, updateDict: dict) -> None:

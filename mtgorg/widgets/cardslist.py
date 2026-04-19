@@ -21,7 +21,7 @@ class CardsList(QtWidgets.QWidget):
         self.mainLayout = QtWidgets.QHBoxLayout()
         self.setLayout(self.mainLayout)
 
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal, self)
+        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal, self)
         self.mainLayout.addWidget(self.splitter)
 
         # Left (main pane) is cards list
@@ -48,6 +48,12 @@ class CardsList(QtWidgets.QWidget):
         self.cardsListButton_color.clicked.connect(self.on_sortByColor)
         self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_color)
         self.cardsListLayout.addWidget(self.cardsListButtonBox)
+        self.deckLoadingBar = QtWidgets.QProgressBar()
+        self.deckLoadingBar.setRange(0, 0)  # indeterminate
+        self.deckLoadingBar.setMaximumHeight(6)
+        self.deckLoadingBar.setTextVisible(False)
+        self.deckLoadingBar.setVisible(False)
+        self.cardsListLayout.addWidget(self.deckLoadingBar)
         self.cardsList = CardStackListWidget(parent=self)
         self.cardsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
         self.cardsList.itemChanged.connect(self.cardsList.on_itemChanged)
@@ -58,18 +64,18 @@ class CardsList(QtWidgets.QWidget):
         self.infoPanel = InfoWidget()
         self.qscroll = QtWidgets.QScrollArea()
         self.qscroll.setWidgetResizable(True)
-        self.qscroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.qscroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.qscroll.setWidget(self.infoPanel)
         self.splitter.addWidget(self.qscroll)
 
     def on_dbSelectChanged(self):
         if len(self.cardsList.selectedItems()) == 1:
             selectedItem = self.cardsList.selectedItems()[0]
-            self.cardSelected.emit(selectedItem.data(QtCore.Qt.UserRole)["data"]["id"])
+            self.cardSelected.emit(selectedItem.data(QtCore.Qt.ItemDataRole.UserRole)["data"]["id"])
         else:
             selectedItem = None
 
-    def sort(self, key: str = None):
+    def sort(self, key: str | None = None):
         if key is None:
             key = self.sortBy
         else:
@@ -108,7 +114,7 @@ class CardsList(QtWidgets.QWidget):
 
 
 class DeckStatsWidget(QtWidgets.QWidget):
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.mainLayout = QtWidgets.QGridLayout()
@@ -173,15 +179,15 @@ class InfoWidget(QtWidgets.QWidget):
         self.manaAxisX.append(self.manaCategories)
         self.manaBarSeries.attachAxis(self.manaAxisX)
         self.manaAxisY = QtCharts.QValueAxis()
-        self.manaChart.addAxis(self.manaAxisX, QtCore.Qt.AlignBottom)
-        self.manaChart.addAxis(self.manaAxisY, QtCore.Qt.AlignLeft)
+        self.manaChart.addAxis(self.manaAxisX, QtCore.Qt.AlignmentFlag.AlignBottom)
+        self.manaChart.addAxis(self.manaAxisY, QtCore.Qt.AlignmentFlag.AlignLeft)
         self.manaBarSeries.attachAxis(self.manaAxisY)
         # legend
         self.manaChart.legend().setVisible(False)
-        self.manaChart.legend().setAlignment(QtCore.Qt.AlignBottom)
+        self.manaChart.legend().setAlignment(QtCore.Qt.AlignmentFlag.AlignBottom)
         # View
         self.manaChartView = QtCharts.QChartView(self.manaChart)
-        self.manaChartView.setRenderHint(QtGui.QPainter.Antialiasing)
+        self.manaChartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         self.manaChartView.setMinimumSize(GRAPH_MIN_SIZE[0], GRAPH_MIN_SIZE[1])
         self.mainLayout.addWidget(self.manaChartView)
 
@@ -194,8 +200,8 @@ class InfoWidget(QtWidgets.QWidget):
         self.colorPieChart.legend().setVisible(False)
         self.colorPieChart.setTitle("Color repartition")
         self.colorPieChartView = QtCharts.QChartView(self.colorPieChart)
-        self.colorPieChartView.setRenderHint(QtGui.QPainter.Antialiasing)
-        self.colorPieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], GRAPH_MIN_SIZE[1] * 1.2)
+        self.colorPieChartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        self.colorPieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], int(GRAPH_MIN_SIZE[1] * 1.2))
         self.colorPieChartView.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.MinimumExpanding,
             QtWidgets.QSizePolicy.Policy.Preferred,
@@ -211,8 +217,8 @@ class InfoWidget(QtWidgets.QWidget):
         self.typePieChart.legend().setVisible(False)
         self.typePieChart.setTitle("Type repartition")
         self.typePieChartView = QtCharts.QChartView(self.typePieChart)
-        self.typePieChartView.setRenderHint(QtGui.QPainter.Antialiasing)
-        self.typePieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], GRAPH_MIN_SIZE[1] * 1.2)
+        self.typePieChartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        self.typePieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], int(GRAPH_MIN_SIZE[1] * 1.2))
         self.mainLayout.addWidget(self.typePieChartView)
 
     def updateValues(self, updateDict: dict):
