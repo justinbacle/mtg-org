@@ -240,38 +240,65 @@ class importer:
 
 class EDHRec_importer(importer):
     """
-    Example link : https://edhrec.com/deckpreview/0qIYCFl_tMPMnmGV0swWeg
-    ! Basic Lands + Number of lands not included
+    Example link : https://edhrec.com/deckpreview/TV66-4LUHUNBJIO80_f4Rw
+    Parses the Card Kingdom export URL embedded in the page to obtain the
+    decklist (quantities and card names), then resolves each card via Scryfall.
     """
+    def parseInput(self, url: str) -> list[tuple[int, str]]:
+        """Return the (quantity, card name) entries parsed from the EDHRec page."""
+        r = requests.get(url)
+        soup = BeautifulSoup(r.text, 'html.parser')
+
+        # EDHRec embeds the decklist as a percent-encoded query parameter in the
+        # Card Kingdom export link (e.g. .../builder?...&c=1%20Card%20Name%0A1%20...).
+        export_url = None
+        for anchor in soup.find_all('a', href=True):
+            href = anchor['href']
+            if 'cardkingdom' in href and 'c=1' in href:
+                export_url = href
+                break
+        if export_url is None:
+            raise ValueError("Could not find EDHRec Card Kingdom export link")
+
+        parsed = urllib.parse.urlparse(export_url)
+        query = urllib.parse.parse_qs(parsed.query)
+        deck_param = query.get('c', [None])[0]
+        if not deck_param:
+            raise ValueError("Card Kingdom export link is missing the decklist parameter")
+
+        # Lines are separated by percent-encoded newlines. Each line is "<qty> <name>".
+        raw_lines = deck_param.replace('%0D%0A', '\n').replace('%0A', '\n').split('\n')
+        entries = []
+        for line in raw_lines:
+            line = urllib.parse.unquote(line, encoding='utf-8', errors='replace').strip()
+            if not line:
+                continue
+            match = re.fullmatch(r'(\d+)\s+(.*)', line)
+            if match is None:
+                logging.warning(f"Skipping malformed EDHRec deck line: {line!r}")
+                continue
+            qty = int(match.group(1))
+            card_name = match.group(2)
+            entries.append((qty, card_name))
+        return entries
+
     def loadInput(self, url) -> bool:
         isValid = True
         errorMsg = ""
 
-        r = requests.get(url)
-        # look for <div id="card-body">...</div>
-        soup = BeautifulSoup(r.text, 'html.parser')
-        for equ in soup.find_all('div'):
-            if "class" in equ.attrs.keys() and equ.attrs["class"] == ["card-body"]:
-                _rawList = str(equ.contents[0]).split("?c=1")[1].split("%0D%0A1")
-                break
-        _rawList[-1] = _rawList[-1].split("&amp;")[0]
-        _rawList = [_.lstrip("+") for _ in _rawList]
-        # _rawList = [ftfy.fix_text(_) for _ in _rawList]
-        _rawList = [urllib.parse.unquote(_, encoding='utf-8', errors='replace') for _ in _rawList]
-        _rawList = [_.replace("+", " ") for _ in _rawList]
+        try:
+            entries = self.parseInput(url)
+        except ValueError as e:
+            return False, str(e)
 
         self.deckList = []
-        for _rawCardName in _rawList:
-            cards = scryfall.searchCards({"name": _rawCardName}, exact=True)
+        for qty, card_name in entries:
+            cards = scryfall.searchCards({"name": card_name}, exact=True)
             if len(cards) == 0:
                 isValid = False
-                errorMsg += f"\ncould not find {_rawCardName=}"
-            elif len(cards) == 1:
-                self.deckList.append([1, cards[0]["id"]])
+                errorMsg += f"\ncould not find {card_name=}"
             else:
-                logging.error(f"found multiple matches for {_rawCardName=}")
-                print(cards)
-                # ask user ?
+                self.deckList.append([qty, cards[0]["id"]])
         return isValid, errorMsg
 
 
@@ -294,24 +321,26 @@ class MTGA_importer(importer):
                 if matched is not None:
                     qty, cardName = matched.groups()
                     qty = int(qty)
+                    # MTGA exports use the ligature Æ for cards such as "Aether Flash".
+                    # Scryfall's canonical name uses "Ae", so normalize before searching.
+                    cardName = cardName.replace("\u00c6", "Ae")
                     cards = scryfall.searchCards({"name": cardName}, exact=True)
                     if len(cards) == 0:
                         isValid = False
                         errorMsg += f"\ncould not find {cardName=}"
-                    elif len(cards) == 1:
-                        sets = scryfall.getCardReprints(cards[0]["id"])
+                    else:
+                        # searchCards returns printings sorted by release date (newest
+                        # first). Use the first match deterministically.
+                        card = cards[0]
+                        sets = scryfall.getCardReprints(card["id"])
                         if len(sets) > 1 and not autoSet:
                             _dialog = SetChooserDialog(parent=self.parent, cardName=cardName, sets=sets)
                             i = _dialog.exec()
                             set = sets[i]
-                            cardId = scryfall.getCardReprintId(cards[0]["id"], set)  # TODO handle lang ?
+                            cardId = scryfall.getCardReprintId(card["id"], set)  # TODO handle lang ?
                             self.deckList.append([qty, cardId])
                         else:
-                            self.deckList.append([qty, cards[0]["id"]])
-                    else:
-                        logging.error(f"found multiple matches for {cardName=}")
-                        print(cards)
-                        # ask user ?
+                            self.deckList.append([qty, card["id"]])
                 else:
                     errorMsg += f"\nError on line {line=}"
         return isValid, errorMsg

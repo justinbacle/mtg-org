@@ -12,11 +12,16 @@ import os
 
 import scrython.cards
 import scrython.sets
-from scrython.base import ScryfallError
+from scrython.base import ScryfallError, ScrythonRequestHandler
 
 import connector
 from lib import utils
 import constants
+
+# Register a custom Scryfall User-Agent whenever this module is imported.
+ScrythonRequestHandler.set_user_agent(
+    "MTGOrganizer/1.0 (https://github.com/justinmtg/mtg-org)"
+)
 
 _sets_memory_cache: list | None = None
 
@@ -102,6 +107,15 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
     else:
         for card in scryfallReq.data:
             cards.append(Card(card.to_dict()))
+        # When multiple printings match an exact name, always return the same
+        # deterministic order. Prefer the most recently released printing so the
+        # result is stable and predictable. Python's sort is stable, so printings
+        # released on the same day keep Scryfall's original order.
+        if exact and cards:
+            cards.sort(
+                key=lambda c: c.get("released_at", ""),
+                reverse=True,
+            )
     return cards
 
 

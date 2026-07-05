@@ -5,6 +5,8 @@ import operator
 from dotmap import DotMap
 import json
 import platform
+import threading
+import time
 from pathlib import Path
 import html
 from bs4 import BeautifulSoup
@@ -43,9 +45,33 @@ DEFAULT_HEADERS = {
 }
 
 
+class RateLimiter:
+    """Simple thread-safe rate limiter for direct HTTP requests."""
+
+    def __init__(self, calls_per_second: float = 10.0):
+        self.min_interval = 1.0 / calls_per_second
+        self.last_call = 0.0
+        self.lock = threading.Lock()
+
+    def wait(self):
+        with self.lock:
+            now = time.time()
+            elapsed = now - self.last_call
+            if elapsed < self.min_interval:
+                time.sleep(self.min_interval - elapsed)
+            self.last_call = time.time()
+
+
+# Scryfall allows 10 requests/second for most endpoints (e.g. prints_search_uri).
+# Search/named/random/collection endpoints are limited to 2/second and are
+# handled by scrython's own SlowRateLimiter.
+_url_rate_limiter = RateLimiter(calls_per_second=10.0)
+
+
 def getUrlData(url, headers=None):
     if url is None:
         return None
+    _url_rate_limiter.wait()
     r = requests.get(url, headers=headers if headers is not None else DEFAULT_HEADERS)
     return r.text
 
