@@ -1,5 +1,6 @@
 from PySide6 import QtWidgets, QtGui, QtCore, QtNetwork, QtSvgWidgets
 import logging
+import traceback
 import urllib
 import urllib.request
 import os
@@ -50,9 +51,9 @@ class CardDisplayWorker(QtCore.QObject):
                 "setIconSvgData": setIconSvgData,
                 "sets": sets,
             })
-        except Exception as e:
-            logging.warning(f"CardDisplayWorker error: {e}")
-            self.failed.emit(str(e))
+        except Exception:
+            logging.exception(f"CardDisplayWorker error while loading {self._cardId=}")
+            self.failed.emit(traceback.format_exc())
 
 
 class RandomCardFetchWorker(QtCore.QObject):
@@ -82,8 +83,12 @@ class SetChangeWorker(QtCore.QObject):
         try:
             ids = scryfall.getCardReprintId(self._cardId, self._setCode, lang=self._lang)
             self.ready.emit(ids)
-        except Exception as e:
-            self.failed.emit(str(e))
+        except Exception:
+            logging.exception(
+                f"SetChangeWorker error while changing "
+                f"{self._cardId=} to {self._setCode=} ({self._lang=})"
+            )
+            self.failed.emit(traceback.format_exc())
 
 
 class CardViewer(QtWidgets.QWidget):
@@ -93,6 +98,11 @@ class CardViewer(QtWidgets.QWidget):
     def __init__(self, parent=None, **kwargs):
         super(CardViewer, self).__init__(parent=parent, **kwargs)
         self._deck_card_id: str | None = None
+        self._display_thread: QtCore.QThread | None = None
+        self._display_worker: CardDisplayWorker | None = None
+        self._setchange_thread: QtCore.QThread | None = None
+        self._setchange_worker: SetChangeWorker | None = None
+        self._graveyard_threads: list[QtCore.QThread] = []
         self.setupUi()
         if constants.IMG_DOWNLOAD_METHOD == "qt":
             self.imgDownloader = ImageDownloader()
@@ -136,7 +146,10 @@ class CardViewer(QtWidgets.QWidget):
 
         # Card Img
         self.cardImgGraphicsView = qt.ResizingGraphicsView()
-        self.cardImgGraphicsView.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing | QtGui.QPainter.RenderHint.SmoothPixmapTransform)
+        self.cardImgGraphicsView.setRenderHints(
+            QtGui.QPainter.RenderHint.Antialiasing
+            | QtGui.QPainter.RenderHint.SmoothPixmapTransform
+        )
         self.mainLayout.addWidget(self.cardImgGraphicsView, line.postinc(), 0, 1, 2)
         self.reloadCardShortcut = QtGui.QShortcut(QtGui.QKeySequence('Ctrl+R'), self)
         self.reloadCardShortcut.activated.connect(self.on_reloadCardData)
@@ -243,11 +256,13 @@ class CardViewer(QtWidgets.QWidget):
         return data
 
     def display(self, cardId: str, cardFace: int = 0, forceRefresh: bool = False):
-        # Cancel any in-progress fetch
-        if hasattr(self, '_display_thread') and self._display_thread.isRunning():
-            self._display_thread.quit()
-            self._display_thread.wait()
         self.nameLabel.setText("Loading...")
+
+        # Keep the previous thread alive until it finishes so Qt doesn't destroy it early.
+        if self._display_thread is not None and self._display_thread.isRunning():
+            self._bury_thread(self._display_thread)
+            self._cleanup_graveyard()
+
         self._display_thread = QtCore.QThread()
         self._display_worker = CardDisplayWorker(cardId, cardFace, forceRefresh)
         self._display_worker.moveToThread(self._display_thread)
@@ -259,6 +274,17 @@ class CardViewer(QtWidgets.QWidget):
         self._display_worker.dataReady.connect(self._display_worker.deleteLater)
         self._display_worker.failed.connect(self._display_worker.deleteLater)
         self._display_thread.start()
+
+    def _bury_thread(self, thread: QtCore.QThread):
+        """Keep a finished thread alive briefly so Qt doesn't destroy it while running."""
+        if thread in self._graveyard_threads:
+            return
+        self._graveyard_threads.append(thread)
+
+    def _cleanup_graveyard(self):
+        self._graveyard_threads = [
+            thr for thr in self._graveyard_threads if thr is not None and thr.isRunning()
+        ]
 
     def _on_display_data_ready(self, data: dict):
         card = data["card"]
@@ -302,10 +328,7 @@ class CardViewer(QtWidgets.QWidget):
             self.setIconSvg.load(QtCore.QByteArray(setIconSvgData.encode("utf-8")))
             self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
-        try:
-            self.setSelect.currentIndexChanged.disconnect()
-        except (RuntimeError, RuntimeWarning):
-            ...
+        self.setSelect.blockSignals(True)
         self.setSelect.clear()
 
         selectedText = ""
@@ -315,6 +338,7 @@ class CardViewer(QtWidgets.QWidget):
             if self.card["set"] == setCode:
                 selectedText = setText
         self.setSelect.setCurrentText(selectedText)
+        self.setSelect.blockSignals(False)
         self.setSelect.currentIndexChanged.connect(self.on_setChange)
 
         self.cardFaceChooser.setVisible(False)
@@ -376,8 +400,8 @@ class CardViewer(QtWidgets.QWidget):
             self.applyToDeckPB.setVisible(False)
 
     def _on_display_failed(self, error: str):
-        logging.warning(f"Failed to display card: {error}")
-        self.nameLabel.setText(f"Failed to load card")
+        logging.error("Failed to display card:\n%s", error)
+        self.nameLabel.setText("Failed to load card")
 
     def on_applyToDeck(self):
         if self._deck_card_id is not None and self.card["id"] != self._deck_card_id:
@@ -395,6 +419,12 @@ class CardViewer(QtWidgets.QWidget):
 
     def on_setChange(self):
         selectedSet = self.setSelect.itemData(self.setSelect.currentIndex())
+
+        # Keep the previous thread alive until it finishes so Qt doesn't destroy it early.
+        if self._setchange_thread is not None and self._setchange_thread.isRunning():
+            self._bury_thread(self._setchange_thread)
+            self._cleanup_graveyard()
+
         self._setchange_thread = QtCore.QThread()
         self._setchange_worker = SetChangeWorker(self.card["id"], selectedSet, self.card["lang"])
         self._setchange_worker.moveToThread(self._setchange_thread)
@@ -405,14 +435,15 @@ class CardViewer(QtWidgets.QWidget):
         self._setchange_worker.failed.connect(self._setchange_thread.quit)
         self._setchange_worker.ready.connect(self._setchange_worker.deleteLater)
         self._setchange_worker.failed.connect(self._setchange_worker.deleteLater)
-        self._setchange_thread.finished.connect(self._setchange_thread.deleteLater)
+
         self._setchange_thread.start()
 
     def _on_set_change_ids_ready(self, ids: list):
         if len(ids) == 0:
             logging.warning("No cards found for selected set")
             return
-        # TODO Show card selector widget when len(ids) > 1
+        if len(ids) > 1:
+            logging.info(f"Multiple reprint ids returned ({len(ids)}), using first: {ids[0]}")
         self.display(ids[0])
 
 

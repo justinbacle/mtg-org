@@ -37,14 +37,23 @@ def isMac() -> bool:
 
 # -------------------------------- Misc utils -------------------------------- #
 
-def getUrlData(url):
-    if url is not None:
-        r = requests.get(url)
-        return r.text
+DEFAULT_HEADERS = {
+    "User-Agent": "MTGOrganizer/1.0 (https://github.com/justinmtg/mtg-org)",
+    "Accept": "application/json;q=0.9,*/*;q=0.8",
+}
 
 
-def getUrlJsonData(url):
-    text = getUrlData(url)
+def getUrlData(url, headers=None):
+    if url is None:
+        return None
+    r = requests.get(url, headers=headers if headers is not None else DEFAULT_HEADERS)
+    return r.text
+
+
+def getUrlJsonData(url, headers=None):
+    text = getUrlData(url, headers=headers)
+    if text is None:
+        return None
     jsonData = json.loads(text)
     return jsonData
 
@@ -70,7 +79,7 @@ def saveJson(dataDict: dict, jsonPath: str | Path):
 
 
 def downloadFileFromUrl(url: str, location: Path):
-    r = requests.get(url)
+    r = requests.get(url, headers=DEFAULT_HEADERS)
     open(location.as_posix(), 'wb').write(r.content)
 
 

@@ -122,16 +122,35 @@ def getCardReprints(cardId: str):
     return sets
 
 
-def getCardReprintId(cardId: str, set: str, lang: str = "en") -> list:
+def _getPrintsSearchData(card: dict) -> list:
+    """Fetch all printings from a card's prints_search_uri, returning the data list."""
+    printsUri = card.get("prints_search_uri")
+    if printsUri is None:
+        logging.warning(f"No prints_search_uri for card {card.get('id')}")
+        return []
+    reprintsDict = utils.getUrlJsonData(printsUri)
+    if reprintsDict is None or "data" not in reprintsDict:
+        logging.warning(
+            f"prints_search_uri returned no data for card {card.get('id')}: {reprintsDict}"
+        )
+        return []
+    allData = reprintsDict["data"]
+    while reprintsDict.get("has_more") and "next_page" in reprintsDict:
+        reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
+        if reprintsDict is None or "data" not in reprintsDict:
+            logging.warning("Pagination request returned no data")
+            break
+        allData.extend(reprintsDict["data"])
+    return allData
+
+
+def getCardReprintId(cardId: str, setCode: str, lang: str = "en") -> list:
     # TODO add cache ?
     card = getCardById(cardId)
     if card is None:
         return []
-    reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
-    ids = [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
-    while reprintsDict["has_more"]:
-        reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
-        ids += [_["id"] for _ in reprintsDict["data"] if _["set"] == set]
+    allPrintings = _getPrintsSearchData(card)
+    ids = [_card["id"] for _card in allPrintings if _card.get("set") == setCode]
     returnIdsList = []
     for id in ids:
         if lang != "en":
@@ -141,7 +160,7 @@ def getCardReprintId(cardId: str, set: str, lang: str = "en") -> list:
                     returnIdsList.append(id)
                     continue
                 foundCard = scrython.cards.ByCodeNumber(
-                    code=set, number=_cardById["collector_number"], lang=lang).to_dict()
+                    code=setCode, number=_cardById["collector_number"], lang=lang).to_dict()
                 returnIdsList.append(foundCard["id"])
             except ScryfallError:
                 logging.warning(f"Could not find {lang=} translation for given set")
@@ -167,8 +186,18 @@ def getCardById(id: str, force: bool = False):
                 card = Card(scryfallReq.to_dict())
         if card is not None:
             connector.saveCard(id, card)
-    else:
+    elif isinstance(card, dict) and "data" in card:
         card = card["data"]
+    else:
+        logging.warning(f"Malformed cache entry for {id=}, refetching")
+        card = None
+        try:
+            scryfallReq = scrython.cards.ById(id=id)
+        except ScryfallError:
+            logging.error(f"Could not find card for {id=}")
+        else:
+            card = Card(scryfallReq.to_dict())
+            connector.saveCard(id, card)
     return card
 
 

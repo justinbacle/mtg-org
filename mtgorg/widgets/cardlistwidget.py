@@ -1,5 +1,4 @@
 from PySide6 import QtWidgets, QtCore, QtGui
-from tqdm import tqdm
 
 import connector
 from lib import scryfall, utils, qt
@@ -20,6 +19,7 @@ class CardLoaderWorker(QtCore.QObject):
             if card is not None:
                 self.cardLoaded.emit(qty, card)
         self.finished.emit()
+
 
 COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
 USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
@@ -124,7 +124,8 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                     if text is not None:
                         text = str(text) + " " + constants.CURRENCY[1]
                     elif utils.getFromDict(cardData, ["prices", _foil_key]) is not None:
-                        text = str(utils.getFromDict(cardData, ["prices", _foil_key])) + " " + constants.CURRENCY[1] + " (foil)"
+                        foil_price = utils.getFromDict(cardData, ["prices", _foil_key])
+                        text = f"{foil_price} {constants.CURRENCY[1]} (foil)"
                     else:
                         text = "N/A"
                 item.setData(QtCore.Qt.ItemDataRole.DisplayRole, text)
