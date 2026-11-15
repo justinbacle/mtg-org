@@ -74,6 +74,8 @@
 - Online mode checks for released sets at launch and weekly, then refreshes
   `sets.json`, advances the card-cache generation, resets formats, and updates
   Keyrune while keeping images.
+- GitHub Actions builds Linux, Windows, and macOS release artifacts on every
+  push to `master` and publishes them as a GitHub release.
 
 ## Backlog
 
@@ -116,4 +118,3 @@
 
 - [ ] Run Pyright in CI (needs venv/stub configuration).
 - [ ] Decide on and add a project licence.
-- [ ] Add a CI matrix or release builds.

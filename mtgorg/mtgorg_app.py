@@ -2,7 +2,6 @@ import os
 import sys
 import logging
 import threading
-from pathlib import Path
 import datetime
 
 from PySide6 import QtWidgets, QtCore, QtGui
@@ -62,7 +61,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         # FIXME: not working on KDE ubuntu, only seeing wayland's "W" icon
         # ? see : https://doc.qt.io/qtforpython-6/overviews/appicon.html
-        iconPath = Path("resources/icons/mirari.png").as_posix()
+        iconPath = constants.resourcePath("icons", "mirari.png").as_posix()
         icon = QtGui.QIcon()
         icon.addFile(iconPath)
         self.app.setWindowIcon(icon)
@@ -90,7 +89,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         PROXYGLYPH_FONT_PATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
         self.proxyglyphFontId = QtGui.QFontDatabase.addApplicationFont(PROXYGLYPH_FONT_PATH.as_posix())  # better NDPMTG
         # from scryfall website (TTF converted from woff2 — DirectWrite on Windows cannot load woff2)
-        PHYREXIAN_FONT_PATH = Path("resources/fonts/Phyrexian-Regular.ttf")
+        PHYREXIAN_FONT_PATH = constants.resourcePath("fonts", "Phyrexian-Regular.ttf")
         self.phyrexianFontId = QtGui.QFontDatabase.addApplicationFont(PHYREXIAN_FONT_PATH.as_posix())  # Phyrexian cards
 
         # Load frontend

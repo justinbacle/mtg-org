@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from PySide6 import QtWidgets, QtCore, QtGui
 
 import connector
@@ -176,7 +174,7 @@ class CardStackSelector(QtWidgets.QWidget):
         self.decksWidgetLayout.addLayout(self.deckImportExportLayout)
 
     def applyTheme(self):
-        iconPath = Path("resources/icons/settings.svg")
+        iconPath = constants.resourcePath("icons", "settings.svg")
         if iconPath.is_file():
             self.settingsPB.setIcon(qt.themedSvgIcon(iconPath, qt.iconColor(), 18))
             self.settingsPB.setIconSize(QtCore.QSize(18, 18))

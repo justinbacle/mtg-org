@@ -40,6 +40,15 @@ DEFAULT_FONTS_LOCATION = DEFAULT_ROOT_USER_FOLDER / "fonts"
 DEFAULT_SET_ICONS_LOCATION = DEFAULT_ROOT_USER_FOLDER / "sets_icons"
 DEFAULT_CARDIMAGES_LOCATION = DEFAULT_ROOT_USER_FOLDER / "card_imgs"
 
+
+def resourcePath(*parts: str) -> Path:
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        root = Path(sys._MEIPASS)
+    else:
+        root = Path(__file__).resolve().parent.parent
+    return root.joinpath("resources", *parts)
+
+
 # ------------------------------------ DB ------------------------------------ #
 DECKS_TABLE_NAME = "Decks"
 COLLECTIONS_TABLE_NAME = "Collections"
