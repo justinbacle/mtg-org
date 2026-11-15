@@ -40,6 +40,118 @@ BULK_INFO_CACHE_SECONDS = 3600
 # ---------------------------------- SEARCH ---------------------------------- #
 SEARCH_RESULT_LIMIT = 100
 
+# ----------------------------------- DECKS ---------------------------------- #
+DECK_FORMATS = {
+    "casual": {
+        "label": "Casual",
+        "sideboard": True,
+        "commander": True,
+        "maxSideboard": None,
+        "deckSize": None,
+        "singleton": False,
+        "commanderMin": 0,
+        "commanderMax": 2,
+    },
+    "standard": {
+        "label": "Standard",
+        "sideboard": True,
+        "commander": False,
+        "maxSideboard": 15,
+        "deckSize": 60,
+        "singleton": False,
+    },
+    "pioneer": {
+        "label": "Pioneer",
+        "sideboard": True,
+        "commander": False,
+        "maxSideboard": 15,
+        "deckSize": 60,
+        "singleton": False,
+    },
+    "modern": {
+        "label": "Modern",
+        "sideboard": True,
+        "commander": False,
+        "maxSideboard": 15,
+        "deckSize": 60,
+        "singleton": False,
+    },
+    "legacy": {
+        "label": "Legacy",
+        "sideboard": True,
+        "commander": False,
+        "maxSideboard": 15,
+        "deckSize": 60,
+        "singleton": False,
+    },
+    "vintage": {
+        "label": "Vintage",
+        "sideboard": True,
+        "commander": False,
+        "maxSideboard": 15,
+        "deckSize": 60,
+        "singleton": False,
+    },
+    "pauper": {
+        "label": "Pauper",
+        "sideboard": True,
+        "commander": False,
+        "maxSideboard": 15,
+        "deckSize": 60,
+        "singleton": False,
+    },
+    "commander": {
+        "label": "Commander",
+        "sideboard": False,
+        "commander": True,
+        "maxSideboard": 0,
+        "deckSize": 100,
+        "singleton": True,
+        "commanderMin": 1,
+        "commanderMax": 2,
+    },
+    "brawl": {
+        "label": "Brawl",
+        "sideboard": False,
+        "commander": True,
+        "maxSideboard": 0,
+        "deckSize": 60,
+        "singleton": True,
+        "commanderMin": 1,
+        "commanderMax": 2,
+    },
+    "historicbrawl": {
+        "label": "Historic Brawl",
+        "sideboard": False,
+        "commander": True,
+        "maxSideboard": 0,
+        "deckSize": 100,
+        "singleton": True,
+        "commanderMin": 1,
+        "commanderMax": 2,
+    },
+    "oathbreaker": {
+        "label": "Oathbreaker",
+        "sideboard": False,
+        "commander": True,
+        "maxSideboard": 0,
+        "deckSize": 60,
+        "singleton": True,
+        "commanderMin": 1,
+        "commanderMax": 2,
+    },
+    "limited": {
+        "label": "Limited",
+        "sideboard": True,
+        "commander": False,
+        "maxSideboard": 15,
+        "deckSize": 40,
+        "singleton": False,
+    },
+}
+
+DEFAULT_DECK_FORMAT = "casual"
+
 # ------------------------------------ MTG ----------------------------------- #
 RARITIES = {
     "common": {

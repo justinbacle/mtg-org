@@ -3,7 +3,9 @@ from PySide6 import QtWidgets, QtCore, QtCharts, QtGui
 from widgets.cardlistwidget import CardStackListWidget
 from lib import utils, qt
 
+import connector
 import constants
+from lib import deckrules
 
 GRAPH_MIN_SIZE = (240, 240)
 
@@ -15,6 +17,8 @@ class CardsList(QtWidgets.QWidget):
     def __init__(self, parent=None, **kwargs):
         super(CardsList, self).__init__(parent=parent, **kwargs)
         self.sortBy = None
+        self.stackType = None
+        self.stackName = None
         self.initUi()
 
     def initUi(self):
@@ -28,6 +32,7 @@ class CardsList(QtWidgets.QWidget):
         self.cardsListWidget = QtWidgets.QWidget()
         self.cardsListLayout = QtWidgets.QVBoxLayout()
         self.cardsListWidget.setLayout(self.cardsListLayout)
+
         self.cardsListButtonBox = QtWidgets.QWidget()
         self.cardsListButtonBoxLayout = QtWidgets.QHBoxLayout()
         self.cardsListButtonBox.setLayout(self.cardsListButtonBoxLayout)
@@ -47,7 +52,10 @@ class CardsList(QtWidgets.QWidget):
         self.cardsListButton_color = QtWidgets.QPushButton("Color")
         self.cardsListButton_color.clicked.connect(self.on_sortByColor)
         self.cardsListButtonBoxLayout.addWidget(self.cardsListButton_color)
+        self.cardsListButtonBoxLayout.addStretch()
+
         self.cardsListLayout.addWidget(self.cardsListButtonBox)
+
         self.deckLoadingBar = QtWidgets.QProgressBar()
         self.deckLoadingBar.setRange(0, 1)
         self.deckLoadingBar.setValue(0)
@@ -55,10 +63,12 @@ class CardsList(QtWidgets.QWidget):
         self.deckLoadingBar.setTextVisible(False)
         self.deckLoadingBar.setVisible(False)
         self.cardsListLayout.addWidget(self.deckLoadingBar)
+
         self.cardsList = CardStackListWidget(parent=self)
         self.cardsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
         self.cardsList.itemChanged.connect(self.cardsList.on_itemChanged)
-        self.cardsListLayout.addWidget(self.cardsList)
+        self.cardsList.cardListChanged.connect(self.refreshValidation)
+        self.cardsListLayout.addWidget(self.cardsList, 1)
         self.splitter.addWidget(self.cardsListWidget)
 
         # Right pane is infos data (text, graphs, list, ...)
@@ -69,34 +79,78 @@ class CardsList(QtWidgets.QWidget):
         self.qscroll.setWidget(self.infoPanel)
         self.splitter.addWidget(self.qscroll)
 
+    def setCardStack(self, cardStack, stackType: str | None, stackName: str | None):
+        self.stackType = stackType
+        self.stackName = stackName
+        if stackType == "deck":
+            formatKey = cardStack.get("format", constants.DEFAULT_DECK_FORMAT)
+            allowed = deckrules.allowedSections(formatKey)
+            sections = {
+                "main": cardStack.get("cardList", []),
+                "sideboard": cardStack.get("sideboard", []),
+                "commander": cardStack.get("commander", []),
+            }
+        else:
+            allowed = {"main"}
+            sections = {"main": cardStack["cardList"]}
+        showSectionHeaders = stackType == "deck"
+        self.cardsList.setSections(sections, allowed, showSectionHeaders=showSectionHeaders)
+        self.refreshValidation()
+
+    def refreshValidation(self):
+        if self.stackType == "deck" and self.stackName is not None:
+            deck = connector.getDeck(self.stackName)
+            if deck is not None:
+                self.infoPanel.setValidationMessages(deckrules.validateDeck(deck))
+                return
+        self.infoPanel.setValidationMessages([])
+
+    def replaceCardInAnySection(self, oldCardId: str, newCardId: str):
+        if self.stackType != "deck" or self.stackName is None:
+            return
+        deck = connector.getDeck(self.stackName)
+        if deck is None:
+            return
+        for section, key in connector.DECK_SECTION_KEYS.items():
+            if any(entry[1] == oldCardId for entry in deck.get(key, [])):
+                connector.replaceCardInDeck(self.stackName, oldCardId, newCardId, section=section)
+                self.cardsList.reloadFromDatabase()
+                self.refreshValidation()
+                return
+
     def on_dbSelectChanged(self):
         if len(self.cardsList.selectedItems()) == 1:
             selectedItem = self.cardsList.selectedItems()[0]
+            data = selectedItem.data(QtCore.Qt.ItemDataRole.UserRole)
+            if data is not None:
+                self.cardSelected.emit(data["data"]["id"])
+
+    def on_dbSelectChangedFor(self, table):
+        if len(table.selectedItems()) == 1:
+            selectedItem = table.selectedItems()[0]
             self.cardSelected.emit(selectedItem.data(QtCore.Qt.ItemDataRole.UserRole)["data"]["id"])
-        else:
-            selectedItem = None
 
     def sort(self, key: str | None = None):
         if key is None:
             key = self.sortBy
         else:
             self.sortBy = key
-        if key == "prices":
-            cardsList = self.cardsList.cardStack
-            cardsList.sort(
-                key=lambda x: float(
-                    utils.getFromDict(
-                        x[1], [key, constants.CURRENCY[0]], 0
-                    ) if utils.getFromDict(
-                        x[1], [key, constants.CURRENCY[0]], 0
-                    ) is not None else 0
+        for cardsList in self.cardsList.sectionCardStacks.values():
+            if not cardsList:
+                continue
+            if key == "prices":
+                cardsList.sort(
+                    key=lambda x: float(
+                        utils.getFromDict(
+                            x[1], [key, constants.CURRENCY[0]], 0
+                        ) if utils.getFromDict(
+                            x[1], [key, constants.CURRENCY[0]], 0
+                        ) is not None else 0
+                    )
                 )
-            )
-        else:
-            cardsList = self.cardsList.cardStack
-            if key is not None:
+            elif key is not None:
                 cardsList.sort(key=lambda x: x[1][key])
-        self.cardsList.setCards(cardsList)
+        self.cardsList.renderSections()
 
     def on_sortByType(self):
         self.sort("type_line")
@@ -156,6 +210,12 @@ class InfoWidget(QtWidgets.QWidget):
         self.setLayout(self.mainLayout)
 
         # Deck stats
+        self.validationLabel = QtWidgets.QLabel("")
+        self.validationLabel.setWordWrap(True)
+        self.validationLabel.setStyleSheet("color: #F80;")
+        self.validationLabel.setVisible(False)
+        self.mainLayout.addWidget(self.validationLabel)
+
         self.deckStatsWidget = DeckStatsWidget()
         self.mainLayout.addWidget(self.deckStatsWidget)
 
@@ -221,6 +281,14 @@ class InfoWidget(QtWidgets.QWidget):
         self.typePieChartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         self.typePieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], int(GRAPH_MIN_SIZE[1] * 1.2))
         self.mainLayout.addWidget(self.typePieChartView)
+
+    def setValidationMessages(self, messages: list[str]):
+        if messages:
+            self.validationLabel.setText("Deck issues:\n- " + "\n- ".join(messages))
+            self.validationLabel.setVisible(True)
+        else:
+            self.validationLabel.clear()
+            self.validationLabel.setVisible(False)
 
     def updateValues(self, updateDict: dict):
         # Main data

@@ -36,6 +36,15 @@
 - Search dropdowns ignore mouse-wheel changes, and Enter triggers search from
   every text field (including CMC, power, toughness, and loyalty).
 - Packaging metadata fixed and runtime/dev requirements split.
+- Decks support main/sideboard/commander sections, including MTGA and MTGO
+  sideboard/commander import parsing.
+- Deck format metadata controls which sections are available, with validation
+  warnings for deck size, sideboard limits, commander count, and singleton rules.
+- Main, sideboard, and commander are shown simultaneously in one grouped table
+  with section header rows and a single scrollbar. Commander is listed first;
+  collections show only the main list. Section headers follow the active theme.
+- Cards can be added to Main, Commander, or Sideboard from the viewer's
+  right-click Add menu, and moved between sections with the row context menu.
 - Search results are capped by a configurable limit (default 100), with a
   truncation notice when more cards match.
 - Table columns are capped and elided instead of expanding for long names/types.
@@ -48,3 +57,6 @@
 - Run Pyright in CI (config exists, but it needs the venv/stub setup first).
 - Decide on and add a project licence.
 - Optionally test/measure the `all_cards` mode end-to-end.
+- Export sideboard/commander sections.
+- Add drag/drop to move cards between deck sections.
+- Improve format validation edge cases (partners/backgrounds, companions, colour identity).

@@ -125,6 +125,13 @@ class importDialog(QtWidgets.QDialog):
         self.autoSetCB.setChecked(True)
         self.mainLayout.addWidget(self.autoSetCB, line.postinc(), 0, 3, 1)
 
+        self.deckFormatLabel = QtWidgets.QLabel("Deck format:")
+        self.mainLayout.addWidget(self.deckFormatLabel, line.val(), 0, 1, 1)
+        self.deckFormatCB = qt.NoWheelComboBox()
+        for key, info in constants.DECK_FORMATS.items():
+            self.deckFormatCB.addItem(info["label"], key)
+        self.mainLayout.addWidget(self.deckFormatCB, line.postinc(), 1, 1, 2)
+
         self.importButtonPB = QtWidgets.QPushButton("Import")
         self.importButtonPB.setEnabled(False)
         self.importButtonPB.clicked.connect(self.on_importPBclicked)
@@ -228,12 +235,26 @@ class importer:
     def __init__(self, parent=None) -> None:
         self.parent = parent
         self.deckList = []
+        self.sideboardList = []
+        self.commanderList = []
 
     def toDatabase(self, deckName):
         if self.parent.collectionChooser.currentText() == "Deck":
-            connector.createDeck(deckName, self.deckList)
+            formatKey = constants.DEFAULT_DECK_FORMAT
+            if hasattr(self.parent, "deckFormatCB"):
+                formatKey = self.parent.deckFormatCB.currentData()
+            connector.createDeck(
+                deckName,
+                self.deckList,
+                sideboard=self.sideboardList,
+                commander=self.commanderList,
+                format=formatKey,
+            )
         elif self.parent.collectionChooser.currentText() == "Collection":
-            connector.createCollection(deckName, self.deckList)
+            connector.createCollection(
+                deckName,
+                self.deckList + self.sideboardList + self.commanderList,
+            )
         else:
             raise NotImplementedError
 
@@ -315,34 +336,53 @@ class MTGA_importer(importer):
         errorMsg = ""
         lines = text.split("\n")
         self.deckList = []
+        self.sideboardList = []
+        self.commanderList = []
+        section = "main"
         for line in lines:
-            if not line.startswith("#") and not line == "":
-                matched = re.fullmatch(r"(\d+)\s(.*)", line)
-                if matched is not None:
-                    qty, cardName = matched.groups()
-                    qty = int(qty)
-                    # MTGA exports use the ligature Æ for cards such as "Aether Flash".
-                    # Scryfall's canonical name uses "Ae", so normalize before searching.
-                    cardName = cardName.replace("\u00c6", "Ae")
-                    cards = scryfall.searchCards({"name": cardName}, exact=True)
-                    if len(cards) == 0:
-                        isValid = False
-                        errorMsg += f"\ncould not find {cardName=}"
-                    else:
-                        # searchCards returns printings sorted by release date (newest
-                        # first). Use the first match deterministically.
-                        card = cards[0]
-                        sets = scryfall.getCardReprints(card["id"])
-                        if len(sets) > 1 and not autoSet:
-                            _dialog = SetChooserDialog(parent=self.parent, cardName=cardName, sets=sets)
-                            i = _dialog.exec()
-                            set = sets[i]
-                            cardId = scryfall.getCardReprintId(card["id"], set)  # TODO handle lang ?
-                            self.deckList.append([qty, cardId])
-                        else:
-                            self.deckList.append([qty, card["id"]])
-                else:
-                    errorMsg += f"\nError on line {line=}"
+            stripped = line.strip()
+            header = stripped.lower()
+            if header in ("deck", "main", "mainboard"):
+                section = "main"
+                continue
+            if header in ("sideboard", "side board"):
+                section = "sideboard"
+                continue
+            if header == "commander":
+                section = "commander"
+                continue
+            if not stripped or stripped.startswith("#"):
+                continue
+            matched = re.fullmatch(r"(\d+)\s(.*)", stripped)
+            if matched is None:
+                errorMsg += f"\nError on line {line=}"
+                continue
+            qty, cardName = matched.groups()
+            qty = int(qty)
+            # MTGA exports use the ligature Æ for cards such as "Aether Flash".
+            # Scryfall's canonical name uses "Ae", so normalize before searching.
+            cardName = cardName.replace("\u00c6", "Ae")
+            cards = scryfall.searchCards({"name": cardName}, exact=True)
+            if len(cards) == 0:
+                isValid = False
+                errorMsg += f"\ncould not find {cardName=}"
+                continue
+            if section == "commander":
+                targetList = self.commanderList
+            elif section == "sideboard":
+                targetList = self.sideboardList
+            else:
+                targetList = self.deckList
+            card = cards[0]
+            sets = scryfall.getCardReprints(card["id"])
+            if len(sets) > 1 and not autoSet:
+                _dialog = SetChooserDialog(parent=self.parent, cardName=cardName, sets=sets)
+                i = _dialog.exec()
+                set = sets[i]
+                cardId = scryfall.getCardReprintId(card["id"], set)  # TODO handle lang ?
+                targetList.append([qty, cardId])
+            else:
+                targetList.append([qty, card["id"]])
         return isValid, errorMsg
 
 
@@ -454,6 +494,8 @@ class MTGO_DEK_importer(importer):
     """
     def loadInput(self, text: str) -> bool:
         self.deckList = []
+        self.sideboardList = []
+        self.commanderList = []
         xmlRoot = lxml.etree.fromstring(text.encode(encoding="utf-8"))
         for card in xmlRoot.findall("Cards"):
             qty = int(card.attrib["Quantity"])
@@ -462,7 +504,9 @@ class MTGO_DEK_importer(importer):
             if cardData is None:
                 logging.error(f"Could not find card for MTGO id {mtgoId}")
                 continue
-            self.deckList.append(
+            isSideboard = card.attrib.get("Sideboard", "false").lower() == "true"
+            targetList = self.sideboardList if isSideboard else self.deckList
+            targetList.append(
                 [qty, cardData["id"]]
             )
         return True, ""  # TODO grab errors

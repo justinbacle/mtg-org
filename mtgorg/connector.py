@@ -1,4 +1,7 @@
+import json
 import logging
+import shutil
+import threading
 from tinydb import TinyDB, Query
 from pathlib import Path
 
@@ -17,6 +20,18 @@ class Deck(Collection):
         super().__init__()
 
 
+_cacheDB: TinyDB | None = None
+_cacheDBPath: Path | None = None
+_cacheLock = threading.RLock()
+
+
+def resetCacheDB():
+    global _cacheDB, _cacheDBPath
+    with _cacheLock:
+        _cacheDB = None
+        _cacheDBPath = None
+
+
 def getDB(location: Path = constants.DEFAULT_DB_LOCATION) -> TinyDB:
     if location.is_file() and system.isFileEditable(location):
         return TinyDB(location.as_posix(), sort_keys=True, indent=4)
@@ -25,12 +40,26 @@ def getDB(location: Path = constants.DEFAULT_DB_LOCATION) -> TinyDB:
         return TinyDB(location.as_posix(), sort_keys=True, indent=4)
 
 
-def getCacheDB(location: Path = constants.DEFAULT_CACHE_DB_LOCATION) -> TinyDB:
-    if location.is_file() and system.isFileEditable(location):
-        return TinyDB(location.as_posix())
-    else:
-        # TODO Ask for db creation location
-        return TinyDB(location.as_posix())
+def getCacheDB(location: Path | None = None) -> TinyDB:
+    global _cacheDB, _cacheDBPath
+    location = location or constants.DEFAULT_CACHE_DB_LOCATION
+    with _cacheLock:
+        if _cacheDB is not None and _cacheDBPath == location:
+            return _cacheDB
+        if location.is_file():
+            try:
+                with open(location, "r", encoding="utf-8") as file:
+                    json.load(file)
+            except json.JSONDecodeError as e:
+                backup = location.with_suffix(location.suffix + ".corrupt")
+                logging.error(f"Card cache is corrupt; backing up to {backup}: {e}")
+                shutil.copy2(location, backup)
+                location.unlink(missing_ok=True)
+        if not (location.is_file() and system.isFileEditable(location)):
+            logging.warning("Card cache is missing or not editable; creating a new one")
+        _cacheDB = TinyDB(location.as_posix())
+        _cacheDBPath = location
+        return _cacheDB
 
 
 # -------------------------------- COLLECTIONS ------------------------------- #
@@ -139,21 +168,67 @@ def replaceCardInCollection(collectionName: str, oldCardId: str, newCardId: str)
 
 
 # ----------------------------------- DECKS ---------------------------------- #
-# TODO: handle commander/sideboard etc in card list
-# cardlist : (qty, id) ->  (qty, id, zone)
+
+DECK_SECTION_KEYS = {
+    "main": "cardList",
+    "sideboard": "sideboard",
+    "commander": "commander",
+}
 
 
-def createDeck(deckName, cardList: list | None = None):
+def _deckSectionKey(section: str) -> str:
+    return DECK_SECTION_KEYS.get(section, "cardList")
+
+
+def _getDeckSection(deck: dict, section: str) -> list:
+    key = _deckSectionKey(section)
+    cardList = deck.get(key)
+    if not isinstance(cardList, list):
+        cardList = []
+        deck[key] = cardList
+    return cardList
+
+
+def createDeck(deckName, cardList: list | None = None, sideboard: list | None = None,
+               commander: list | None = None, format: str = constants.DEFAULT_DECK_FORMAT):
     cardList = cardList if cardList is not None else []
+    sideboard = sideboard if sideboard is not None else []
+    commander = commander if commander is not None else []
+    if format not in constants.DECK_FORMATS:
+        format = constants.DEFAULT_DECK_FORMAT
     if getDeck(deckName) is None:
         getDB().table(constants.DECKS_TABLE_NAME).insert(
             {
                 "name": deckName,
-                "cardList": cardList
+                "format": format,
+                "cardList": cardList,
+                "sideboard": sideboard,
+                "commander": commander,
             }
         )
     else:
         logging.error(f"Deck with {deckName=} already exists")
+
+
+def getDeckFormat(deckName) -> str:
+    deck = getDeck(deckName)
+    if deck is None:
+        return constants.DEFAULT_DECK_FORMAT
+    return deck.get("format", constants.DEFAULT_DECK_FORMAT)
+
+
+def setDeckFormat(deckName, format: str):
+    if format not in constants.DECK_FORMATS:
+        logging.error(f"Unknown deck format {format=}")
+        return
+    deck = getDeck(deckName)
+    if deck is None:
+        logging.error(f"Deck {deckName=} not found")
+        return
+    deck["format"] = format
+    getDB().table(constants.DECKS_TABLE_NAME).update(
+        deck, Query().name == deckName
+    )
 
 
 def removeDeck(deckName):
@@ -186,99 +261,140 @@ def getDeck(deckName) -> dict | None:
     return None
 
 
-def addCardToDeck(deckName, qty, cardId):
+def getDeckSection(deckName, section: str = "main") -> list:
+    deck = getDeck(deckName)
+    if deck is None:
+        return []
+    return _getDeckSection(deck, section)
+
+
+def addCardToDeck(deckName, qty, cardId, section: str = "main"):
     deck = getDeck(deckName)
     if deck is None:
         logging.error(f"Deck {deckName=} not found")
         return
-    cardList = deck["cardList"]
+    cardList = _getDeckSection(deck, section)
 
-    # If card not in deck
-    if len([_[0] for _ in cardList if _[1] == cardId]) == 0:
-        deck.update(
-            {"cardList": cardList + [(qty, cardId)]}
-        )
-        getDB().table(constants.DECKS_TABLE_NAME).update(
-            deck, Query().name == deckName
-        )
+    if len([_[1] for _ in cardList if _[1] == cardId]) == 0:
+        cardList.append((qty, cardId))
     else:
-        previousQty = [_[0] for _ in cardList if _[1] == cardId][0]
-        changeCardDeckQty(deckName, previousQty + 1, cardId)
+        for card in cardList:
+            if card[1] == cardId:
+                card[0] += qty
+                break
+    deck[_deckSectionKey(section)] = cardList
+    getDB().table(constants.DECKS_TABLE_NAME).update(
+        deck, Query().name == deckName
+    )
 
 
-def changeCardDeckQty(deckName, qty, cardId):
+def changeCardDeckQty(deckName, qty, cardId, section: str = "main"):
     deck = getDeck(deckName)
     if deck is None:
         logging.error(f"Deck {deckName=} not found")
         return
-    cardList = deck["cardList"]
+    cardList = _getDeckSection(deck, section)
     for card in cardList:
         if card[1] == cardId:
             card[0] = qty
-    deck["cardList"] = cardList
+    deck[_deckSectionKey(section)] = cardList
     getDB().table(constants.DECKS_TABLE_NAME).update(
         deck, Query().name == deckName
     )
 
 
-def removeCardFromDeck(deckName, cardId):
+def removeCardFromDeck(deckName, cardId, section: str = "main"):
     deck = getDeck(deckName)
     if deck is None:
         logging.error(f"Deck {deckName=} not found")
         return
-    cardList = deck["cardList"]
-    deck["cardList"] = [_ for _ in cardList if _[1] != cardId]
+    cardList = _getDeckSection(deck, section)
+    deck[_deckSectionKey(section)] = [_ for _ in cardList if _[1] != cardId]
     getDB().table(constants.DECKS_TABLE_NAME).update(
         deck, Query().name == deckName
     )
 
 
-def replaceCardInDeck(deckName: str, oldCardId: str, newCardId: str):
+def moveCardInDeck(deckName: str, cardId: str, fromSection: str, toSection: str):
     deck = getDeck(deckName)
     if deck is None:
         logging.error(f"Deck {deckName=} not found")
         return
-    cardList = deck["cardList"]
+    if fromSection == toSection:
+        return
+    source = _getDeckSection(deck, fromSection)
+    target = _getDeckSection(deck, toSection)
+    movedQty = None
+    for entry in list(source):
+        if entry[1] == cardId:
+            movedQty = int(entry[0])
+            source.remove(entry)
+            break
+    if movedQty is None:
+        return
+    for entry in target:
+        if entry[1] == cardId:
+            entry[0] += movedQty
+            break
+    else:
+        target.append((movedQty, cardId))
+    deck[_deckSectionKey(fromSection)] = source
+    deck[_deckSectionKey(toSection)] = target
+    getDB().table(constants.DECKS_TABLE_NAME).update(
+        deck, Query().name == deckName
+    )
+
+
+def replaceCardInDeck(deckName: str, oldCardId: str, newCardId: str, section: str = "main"):
+    deck = getDeck(deckName)
+    if deck is None:
+        logging.error(f"Deck {deckName=} not found")
+        return
+    cardList = _getDeckSection(deck, section)
     for entry in cardList:
         if entry[1] == oldCardId:
             entry[1] = newCardId
-    deck["cardList"] = cardList
-    getDB().table(constants.DECKS_TABLE_NAME).update(deck, Query().name == deckName)
+    deck[_deckSectionKey(section)] = cardList
+    getDB().table(constants.DECKS_TABLE_NAME).update(
+        deck, Query().name == deckName
+    )
 
 
 # ----------------------------------- CACHE ---------------------------------- #
 
 
 def getCard(cardId) -> dict | None:
-    card = getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)
-    if len(card) == 0:
-        card = None
-    elif len(card) == 1:
-        card = card[0]
-    else:
-        card = card[0]
-        logging.warning(f"Got multiple entries for card id {cardId}")
-
+    with _cacheLock:
+        card = getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)
+        if len(card) == 0:
+            card = None
+        elif len(card) == 1:
+            card = card[0]
+        else:
+            card = card[0]
+            logging.warning(f"Got multiple entries for card id {cardId}")
     return card
 
 
 def saveCard(cardId, cardData) -> None:
-    if len(getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)) == 0:
-        getCacheDB().table(constants.CARDS_TABLE_NAME).insert(
-            {"data": cardData, "id": cardId}
-        )
-    else:
-        getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)
+    with _cacheLock:
+        if len(getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)) == 0:
+            getCacheDB().table(constants.CARDS_TABLE_NAME).insert(
+                {"data": cardData, "id": cardId}
+            )
+        else:
+            getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)
 
 
 def updateCard(cardId, updateDict: dict) -> None:
-    card = getCard(cardId)
-    if card is None:
-        logging.error(f"Card {cardId=} not found in cache")
-        return
-    cardData = card["data"]
-    cardData.update(updateDict)
-    getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)
+    with _cacheLock:
+        card = getCard(cardId)
+        if card is None:
+            logging.error(f"Card {cardId=} not found in cache")
+            return
+        cardData = card["data"]
+        cardData.update(updateDict)
+        getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)
 
 
 def _removeCachedFile(path: Path) -> tuple[int, int, str | None]:
@@ -293,6 +409,7 @@ def _removeCachedFile(path: Path) -> tuple[int, int, str | None]:
 
 def clearCache() -> dict:
     """Delete cached card data, images, set icons, and set metadata."""
+    resetCacheDB()
     filesRemoved = 0
     bytesRemoved = 0
     errors = []

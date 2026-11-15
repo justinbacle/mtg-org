@@ -5,7 +5,8 @@ import urllib
 import urllib.request
 import os
 
-from lib import scryfall, utils, qt
+from lib import deckrules, scryfall, utils, qt
+import connector
 import constants
 
 
@@ -82,7 +83,10 @@ class CardViewer(QtWidgets.QWidget):
         self.randomCardPB.clicked.connect(self.on_randomCardPBClicked)
         self.mainLayout.addWidget(self.randomCardPB, line.val(), 0)
         self.addToCurrentPB = QtWidgets.QPushButton("Add to current >>")
+        self.addToCurrentPB.setToolTip("Left-click adds to Main; right-click to choose a section")
         self.addToCurrentPB.clicked.connect(self.on_add)
+        self.addToCurrentPB.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.addToCurrentPB.customContextMenuRequested.connect(self.on_addContextMenu)
         self.mainLayout.addWidget(self.addToCurrentPB, line.postinc(), 1)
 
         # Card Name + Mana
@@ -176,8 +180,33 @@ class CardViewer(QtWidgets.QWidget):
         self.display(cardId)
 
     def on_add(self):
-        # TODO check when already present to raise qty instead of adding other line
-        qt.findAttrInParents(self, "decklist").cardsList.addCard(self.card)
+        self.addToSection("main")
+
+    def addToSection(self, section: str):
+        if not hasattr(self, "card"):
+            return
+        logging.info(f"Adding {self.card.get('name')} to {section}")
+        qt.findAttrInParents(self, "decklist").cardsList.addCard(self.card, section=section)
+
+    def on_addContextMenu(self, pos):
+        if not hasattr(self, "card"):
+            return
+        stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
+        if stackType != "deck":
+            return
+        deck = connector.getDeck(stackName)
+        if deck is None:
+            return
+        allowed = deckrules.allowedSections(deck.get("format", constants.DEFAULT_DECK_FORMAT))
+        labels = {"commander": "Commander", "main": "Main", "sideboard": "Sideboard"}
+        menu = QtWidgets.QMenu(self.addToCurrentPB)
+        for section in ("commander", "main", "sideboard"):
+            if section in allowed:
+                action = menu.addAction(f"Add to {labels[section]}")
+                action.setData(section)
+        chosen = menu.exec(self.addToCurrentPB.mapToGlobal(pos))
+        if chosen is not None:
+            self.addToSection(chosen.data())
 
     def on_scryfallLinkClicked(self):
         if hasattr(self, 'card'):

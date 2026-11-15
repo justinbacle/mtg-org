@@ -135,6 +135,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         for userFolder in userFolders:
             if not userFolder.is_dir():
                 os.makedirs(userFolder)
+        connector.getCacheDB()
 
     def initBulkData(self):
         if not constants.USE_BULK_FILES:
@@ -277,11 +278,12 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.cardViewer.display_from_db(cardId)
 
     def on_replaceCardInDeck(self, oldCardId: str, newCardId: str):
-        self.decklist.cardsList.replaceCardInStack(oldCardId, newCardId)
+        self.decklist.replaceCardInAnySection(oldCardId, newCardId)
 
     def on_cardStackChange(self, cardStack: connector.Deck | connector.Collection):
         if cardStack is not None:
-            self.decklist.cardsList.setCardList(cardStack["cardList"])
+            stackType, stackName = self.deckSelector.getSelected()
+            self.decklist.setCardStack(cardStack, stackType, stackName)
         else:
             self.decklist.cardsList.clear()
 

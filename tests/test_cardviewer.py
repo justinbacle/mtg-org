@@ -187,3 +187,26 @@ def test_viewer_minimum_width_independent_of_text(qtApp, monkeypatch):
     qtApp.processEvents()
 
     assert viewer.minimumSizeHint().width() == shortWidth
+
+
+def test_add_to_section_passes_target_section(qtApp, monkeypatch):
+    from types import SimpleNamespace
+
+    viewer = cardviewer.CardViewer()
+    viewer.card = {"id": "card-1", "name": "Test Card"}
+    calls = []
+
+    class FakeCardList:
+        def addCard(self, card, section="main"):
+            calls.append((card, section))
+
+    fakeDeckList = SimpleNamespace(cardsList=FakeCardList())
+    monkeypatch.setattr(
+        cardviewer.qt,
+        "findAttrInParents",
+        lambda obj, attr: fakeDeckList if attr == "decklist" else None,
+    )
+
+    viewer.addToSection("sideboard")
+
+    assert calls == [({"id": "card-1", "name": "Test Card"}, "sideboard")]

@@ -1,7 +1,7 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 
 import connector
-from lib import scryfall, utils, qt
+from lib import deckrules, scryfall, utils, qt
 import constants
 
 
@@ -24,6 +24,14 @@ class CardLoaderWorker(QtCore.QObject):
 COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
 USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
 
+SECTION_ORDER = ("commander", "main", "sideboard")
+
+SECTION_LABELS = {
+    "main": "Main",
+    "sideboard": "Sideboard",
+    "commander": "Commander",
+}
+
 COLUMN_MAX_WIDTHS = {
     "qty": 50,
     "name": 200,
@@ -41,6 +49,7 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
         super().__init__(parent)
         self.columns = columns
         self.cardStack: list = []
+        self.deckSection = "main"
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
@@ -51,6 +60,12 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
         self.setHorizontalHeaderLabels(self.columns)
         self.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents)
         self.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
+        self.horizontalHeader().setStretchLastSection(False)
+        if self.columns:
+            self.horizontalHeader().setSectionResizeMode(
+                len(self.columns) - 1,
+                QtWidgets.QHeaderView.ResizeMode.Interactive,
+            )
 
     def resizeColumnsToContents(self):
         super().resizeColumnsToContents()
@@ -58,6 +73,21 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
             maxWidth = COLUMN_MAX_WIDTHS.get(column)
             if maxWidth is not None:
                 self.setColumnWidth(index, min(self.columnWidth(index), maxWidth))
+        self._stretchLastColumn()
+
+    def _stretchLastColumn(self):
+        if not self.columns:
+            return
+        last = len(self.columns) - 1
+        available = self.viewport().width() - sum(self.columnWidth(i) for i in range(last))
+        self.setColumnWidth(last, max(80, available))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._stretchLastColumn()
+
+    def setDeckSection(self, section: str):
+        self.deckSection = section
 
     def updateCardListInfos(self):
         # TODO update cardStack before
@@ -163,127 +193,250 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
         return dataList
 
 
+class SectionsLoaderWorker(QtCore.QObject):
+    finished = QtCore.Signal(int, dict)
+
+    def __init__(self, requestId: int, sections: dict):
+        super().__init__()
+        self._requestId = requestId
+        self._sections = sections
+
+    def run(self):
+        result = {}
+        for section, entries in self._sections.items():
+            cards = []
+            for qty, cardId in entries:
+                card = scryfall.getCardById(cardId)
+                if card is not None:
+                    cards.append((int(qty), card))
+            result[section] = cards
+        self.finished.emit(self._requestId, result)
+
+
 class CardStackListWidget(CardSearchListWidget):
+    cardListChanged = QtCore.Signal()
+
     # similar to the cardListWidget but whith specific data about qties, user comments, etc...
-    def __init__(self, parent=None, columns=USER_COLUMNS) -> None:
+    def __init__(self, parent=None, columns=USER_COLUMNS, updateStats: bool = True) -> None:
         super().__init__(parent=parent, columns=columns)
-        self.columns = columns
-        self.setAcceptDrops(True)
+        self.updateStats = updateStats
+        self.sectionCardStacks: dict[str, list] = {}
+        self.visibleSections = ["main"]
+        self.showSectionHeaders = True
+        self.rowSections: dict[int, str] = {}
+        self.sectionHeaderRows: dict[str, int] = {}
+        self.cardStack: list = []
+        self._loadRequestId = 0
+        self._loaderThread: QtCore.QThread | None = None
+        self.setAcceptDrops(False)
         self.setDragEnabled(True)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.on_contextMenuRequested)
         self.setColumnCount(len(self.columns))
         self.verticalHeader().setVisible(False)
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
         self.setHorizontalHeaderLabels(self.columns)
         self.setMouseTracking(True)
 
-    def on_itemChanged(self, item):
-        # TODO prepare for user info (commander/sideboard/maybeboard etc...)
-        if len(self.selectedItems()) == 1:
-            if item.data(QtCore.Qt.ItemDataRole.UserRole)["column"] == "qty":
-                previousQty = item.data(QtCore.Qt.ItemDataRole.UserRole)["data"]["qty"]
-                newQty = int(item.text())
-                if previousQty != newQty:
-                    if previousQty > newQty:
-                        self.removeQty(previousQty - newQty)
-                    else:
-                        self.addQty(newQty - previousQty)
+    def on_contextMenuRequested(self, pos: QtCore.QPoint):
+        row = self.rowAt(pos.y())
+        section = self.rowSections.get(row)
+        if section is None:
+            return
+        item = self.item(row, 0)
+        if item is None:
+            return
+        data = item.data(QtCore.Qt.ItemDataRole.UserRole)
+        if data is None:
+            return
+        stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
+        if stackType != "deck":
+            return
+        deck = connector.getDeck(stackName)
+        if deck is None:
+            return
+        allowed = deckrules.allowedSections(deck.get("format", constants.DEFAULT_DECK_FORMAT))
+        targets = [target for target in ("commander", "main", "sideboard") if target in allowed and target != section]
+        if not targets:
+            return
+        self.selectRow(row)
+        menu = QtWidgets.QMenu(self)
+        for target in targets:
+            action = menu.addAction(f"Move to {SECTION_LABELS[target]}")
+            action.setData(target)
+        chosen = menu.exec(self.viewport().mapToGlobal(pos))
+        if chosen is None:
+            return
+        self.moveCardToSection(row, chosen.data())
 
-    def setCardList(self, cardList: connector.Deck | connector.Collection):
-        self.setRowCount(0)
-        self.cardStack = []
+    def moveCardToSection(self, row: int, targetSection: str):
+        section = self.rowSections.get(row)
+        item = self.item(row, 0)
+        if section is None or item is None:
+            return
+        data = item.data(QtCore.Qt.ItemDataRole.UserRole)
+        if data is None:
+            return
+        stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
+        if stackType != "deck":
+            return
+        connector.moveCardInDeck(stackName, data["data"]["id"], section, targetSection)
+        self.reloadFromDatabase()
+        self.cardListChanged.emit()
+
+    def on_itemChanged(self, item):
+        if item.data(QtCore.Qt.ItemDataRole.UserRole) is None:
+            return
+        if item.data(QtCore.Qt.ItemDataRole.UserRole)["column"] != "qty":
+            return
+        previousQty = item.data(QtCore.Qt.ItemDataRole.UserRole)["data"]["qty"]
+        newQty = int(item.text())
+        if previousQty != newQty:
+            if previousQty > newQty:
+                self.removeQty(previousQty - newQty)
+            else:
+                self.addQty(newQty - previousQty)
+
+    def setSections(self, sections: dict, visibleSections: set[str], showSectionHeaders: bool = True):
+        self.visibleSections = [s for s in SECTION_ORDER if s in visibleSections]
+        self.showSectionHeaders = showSectionHeaders
+        self._loadRequestId += 1
+        requestId = self._loadRequestId
         _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
         if _loadingBar is not None:
-            _loadingBar.setRange(0, len(cardList))
-            _loadingBar.setValue(0)
+            _loadingBar.setRange(0, 0)
             _loadingBar.setVisible(True)
 
-        self._loader_thread = QtCore.QThread()
-        self._loader_worker = CardLoaderWorker(cardList)
-        self._loader_worker.moveToThread(self._loader_thread)
+        self._loaderThread = QtCore.QThread(self)
+        self._loaderWorker = SectionsLoaderWorker(requestId, sections)
+        self._loaderWorker.moveToThread(self._loaderThread)
+        self._loaderThread.started.connect(self._loaderWorker.run)
+        self._loaderWorker.finished.connect(self._on_sections_loaded)
+        self._loaderWorker.finished.connect(self._loaderThread.quit)
+        self._loaderWorker.finished.connect(self._loaderWorker.deleteLater)
+        self._loaderThread.finished.connect(self._loaderThread.deleteLater)
+        self._loaderThread.start()
 
-        self._loader_thread.started.connect(self._loader_worker.run)
-        self._loader_worker.cardLoaded.connect(self._on_card_loaded)
-        self._loader_worker.finished.connect(self._loader_thread.quit)
-        self._loader_worker.finished.connect(self._loader_worker.deleteLater)
-        self._loader_thread.finished.connect(self._loader_thread.deleteLater)
-        self._loader_worker.finished.connect(self.updateCardListInfos)
+    def setCardList(self, cardList):
+        self.setSections({"main": cardList}, {"main"})
 
-        self._loader_thread.start()
-
-    def _on_card_loaded(self, qty: int, card: dict):
-        self.cardStack.append((qty, card))
-        self.insertRow(self.rowCount())
-        card.update({"qty": qty})
-        self._addOneLine(card)
+    def _on_sections_loaded(self, requestId: int, sections: dict):
+        if requestId != self._loadRequestId:
+            return
+        self.sectionCardStacks = sections
+        self.cardStack = sections.get("main", [])
+        self.renderSections()
         _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
         if _loadingBar is not None:
-            _loadingBar.setValue(_loadingBar.value() + 1)
+            _loadingBar.setVisible(False)
+        if self.updateStats:
+            self._updateStatsPanel(self.cardStack)
 
-    def addCard(self, card: dict):
-        self.insertRow(self.rowCount())
-        card.update({"qty": 1})
-        self._addOneLine(card=card)
+    def renderSections(self):
+        self.setRowCount(0)
+        self.rowSections = {}
+        self.sectionHeaderRows = {}
+        for section in self.visibleSections:
+            cards = self.sectionCardStacks.get(section, [])
+            if self.showSectionHeaders:
+                headerRow = self.rowCount()
+                self.insertRow(headerRow)
+                total = sum(qty for qty, _card in cards)
+                header = QtWidgets.QTableWidgetItem(f"{SECTION_LABELS[section]} ({total})")
+                font = header.font()
+                font.setBold(True)
+                header.setFont(font)
+                palette = self.palette()
+                header.setBackground(palette.color(QtGui.QPalette.ColorRole.AlternateBase))
+                header.setForeground(palette.color(QtGui.QPalette.ColorRole.Text))
+                header.setFlags(QtCore.Qt.ItemFlag.ItemIsEnabled)
+                self.setItem(headerRow, 0, header)
+                self.setSpan(headerRow, 0, 1, len(self.columns))
+                self.sectionHeaderRows[section] = headerRow
+            for qty, card in cards:
+                row = self.rowCount()
+                self.insertRow(row)
+                card.update({"qty": qty})
+                for columnIndex, item in enumerate(self.getCardTableItem(card, columns=self.columns)):
+                    self.setItem(row, columnIndex, item)
+                self.rowSections[row] = section
+        self.resizeColumnsToContents()
+
+    def _selectedSection(self) -> str:
+        rows = {index.row() for index in self.selectedIndexes()}
+        for row in rows:
+            if row in self.rowSections:
+                return self.rowSections[row]
+        return "main"
+
+    def reloadFromDatabase(self):
         stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if stackType == "deck":
-            connector.addCardToDeck(stackName, 1, card["id"])
+            deck = connector.getDeck(stackName)
+            if deck is None:
+                return
+            sections = {
+                "main": deck.get("cardList", []),
+                "sideboard": deck.get("sideboard", []),
+                "commander": deck.get("commander", []),
+            }
+        elif stackType == "collection":
+            collection = connector.getCollection(stackName)
+            if collection is None:
+                return
+            sections = {"main": collection["cardList"]}
+            self.visibleSections = ["main"]
+            self.showSectionHeaders = False
+        else:
+            return
+        self.setSections(sections, set(self.visibleSections), self.showSectionHeaders)
+
+    def addCard(self, card: dict, section: str = "main"):
+        stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
+        if stackType == "deck":
+            connector.addCardToDeck(stackName, 1, card["id"], section=section)
         elif stackType == "collection":
             connector.addCardToCollection(stackName, 1, card["id"])
         else:
-            ...
-        self.cardStack.append((1, card))
-        self.parent().parent().parent().sort()  # type: ignore[union-attr]
-        self.updateCardListInfos()
+            return
+        self.reloadFromDatabase()
+        self.cardListChanged.emit()
 
     def removeQty(self, qty: int):
-        selectedLine = self.selectedIndexes()[0]
+        if not self.selectedItems():
+            return
         selectedCard = self.selectedItems()[0].data(QtCore.Qt.ItemDataRole.UserRole)["data"]
+        section = self._selectedSection()
         stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if selectedCard["qty"] > qty:
             if stackType == "deck":
-                connector.changeCardDeckQty(stackName, selectedCard["qty"] - qty, selectedCard["id"])
-                deck = connector.getDeck(stackName)
-                if deck is not None:
-                    self.setCardList(deck["cardList"])
+                connector.changeCardDeckQty(
+                    stackName, selectedCard["qty"] - qty, selectedCard["id"], section=section
+                )
             elif stackType == "collection":
                 connector.changeCardCollectionQty(stackName, selectedCard["qty"] - qty, selectedCard["id"])
-                collection = connector.getCollection(stackName)
-                if collection is not None:
-                    self.setCardList(collection["cardList"])
-            else:
-                ...
-            self.setCurrentCell(selectedLine.row(), selectedLine.column())
         else:
             if stackType == "deck":
-                connector.removeCardFromDeck(stackName, selectedCard["id"])
-                deck = connector.getDeck(stackName)
-                if deck is not None:
-                    self.setCardList(deck["cardList"])
+                connector.removeCardFromDeck(stackName, selectedCard["id"], section=section)
             elif stackType == "collection":
                 connector.removeCardFromCollection(stackName, selectedCard["id"])
-                collection = connector.getCollection(stackName)
-                if collection is not None:
-                    self.setCardList(collection["cardList"])
-            else:
-                ...
-        self.parent().parent().parent().sort()  # type: ignore[union-attr]
+        self.reloadFromDatabase()
+        self.cardListChanged.emit()
 
     def addQty(self, qty: int):
-        selectedLine = self.selectedIndexes()[0]
+        if not self.selectedItems():
+            return
         selectedCard = self.selectedItems()[0].data(QtCore.Qt.ItemDataRole.UserRole)["data"]
+        section = self._selectedSection()
         stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if stackType == "deck":
-            connector.changeCardDeckQty(stackName, selectedCard["qty"] + qty, selectedCard["id"])
-            deck = connector.getDeck(stackName)
-            if deck is not None:
-                self.setCardList(deck["cardList"])
+            connector.changeCardDeckQty(
+                stackName, selectedCard["qty"] + qty, selectedCard["id"], section=section
+            )
         elif stackType == "collection":
             connector.changeCardCollectionQty(stackName, selectedCard["qty"] + qty, selectedCard["id"])
-            collection = connector.getCollection(stackName)
-            if collection is not None:
-                self.setCardList(collection["cardList"])
-        else:
-            ...
-        self.setCurrentCell(selectedLine.row(), selectedLine.column())
+        self.reloadFromDatabase()
+        self.cardListChanged.emit()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == QtCore.Qt.Key.Key_Minus:
@@ -294,23 +447,18 @@ class CardStackListWidget(CardSearchListWidget):
             return super().keyPressEvent(event)
 
     def replaceCardInStack(self, oldCardId: str, newCardId: str):
+        section = self._selectedSection()
         stackType, stackName = qt.findAttrInParents(self, "deckSelector").getSelected()
         if stackType == "deck":
-            connector.replaceCardInDeck(stackName, oldCardId, newCardId)
-            deck = connector.getDeck(stackName)
-            if deck is not None:
-                self.setCardList(deck["cardList"])
+            connector.replaceCardInDeck(stackName, oldCardId, newCardId, section=section)
         elif stackType == "collection":
             connector.replaceCardInCollection(stackName, oldCardId, newCardId)
-            collection = connector.getCollection(stackName)
-            if collection is not None:
-                self.setCardList(collection["cardList"])
+        self.reloadFromDatabase()
+        self.cardListChanged.emit()
 
     def updateCardListInfos(self):
-        _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
-        if _loadingBar is not None:
-            _loadingBar.setVisible(False)
-        self._updateStatsPanel(self.cardStack)
+        if self.updateStats:
+            self._updateStatsPanel(self.cardStack)
         self.resizeColumnsToContents()
 
     def _updateStatsPanel(self, cardsList: list) -> None:

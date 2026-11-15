@@ -1,7 +1,36 @@
 from PySide6 import QtWidgets, QtCore
 
 import connector
+import constants
 from lib import importexport
+
+
+class DeckDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None, name: str = "", formatKey: str = None):
+        super().__init__(parent)
+        self.setWindowTitle("Deck")
+        self.mainLayout = QtWidgets.QFormLayout()
+        self.setLayout(self.mainLayout)
+
+        self.nameLE = QtWidgets.QLineEdit(name)
+        self.mainLayout.addRow("Name", self.nameLE)
+
+        self.formatCB = QtWidgets.QComboBox()
+        for key, info in constants.DECK_FORMATS.items():
+            self.formatCB.addItem(info["label"], key)
+        formatKey = formatKey if formatKey in constants.DECK_FORMATS else constants.DEFAULT_DECK_FORMAT
+        self.formatCB.setCurrentIndex(max(self.formatCB.findData(formatKey), 0))
+        self.mainLayout.addRow("Format", self.formatCB)
+
+        self.buttonBox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        self.mainLayout.addRow(self.buttonBox)
+
+    def values(self) -> tuple[str, str]:
+        return self.nameLE.text().strip(), self.formatCB.currentData()
 
 
 class CardStackSelector(QtWidgets.QWidget):
@@ -127,13 +156,12 @@ class CardStackSelector(QtWidgets.QWidget):
         exportDialog.exec()
 
     def on_addDeck(self):
-        deckName, ok = QtWidgets.QInputDialog.getText(
-            self, "QInputDialog.getText()",
-            "New deck name:", QtWidgets.QLineEdit.EchoMode.Normal,
-        )
-        if ok and deckName:
-            connector.createDeck(deckName)
-            self.initData()
+        dialog = DeckDialog(self)
+        if dialog.exec():
+            deckName, formatKey = dialog.values()
+            if deckName:
+                connector.createDeck(deckName, format=formatKey)
+                self.initData()
 
     def on_removeDeck(self):
         button = QtWidgets.QMessageBox.question(
@@ -143,12 +171,18 @@ class CardStackSelector(QtWidgets.QWidget):
             self.initData()
 
     def on_editDeck(self):
-        newDeckName, ok = QtWidgets.QInputDialog.getText(
-            self, "Rename deck",
-            "Rename deck to...:", QtWidgets.QLineEdit.EchoMode.Normal,
-        )
-        if ok and newDeckName:
-            connector.renameDeck(previousDeckName=self.getSelected()[1], newDeckName=newDeckName)
+        oldName = self.getSelected()[1]
+        deck = connector.getDeck(oldName)
+        if deck is None:
+            return
+        dialog = DeckDialog(self, name=oldName, formatKey=deck.get("format", constants.DEFAULT_DECK_FORMAT))
+        if dialog.exec():
+            newName, formatKey = dialog.values()
+            if not newName:
+                return
+            if newName != oldName:
+                connector.renameDeck(previousDeckName=oldName, newDeckName=newName)
+            connector.setDeckFormat(newName, formatKey)
             self.initData()
 
     def getSelected(self):

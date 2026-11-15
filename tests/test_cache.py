@@ -141,3 +141,17 @@ def test_ensure_bulk_cache_with_progress(qtApp, monkeypatch):
 
     assert settings.ensureBulkCacheWithProgress(None) is True
     assert calls == [True]
+
+
+def test_corrupt_card_cache_is_backed_up_and_recreated(tmp_path, monkeypatch):
+    cachePath = tmp_path / "mtg_org_cache.db"
+    cachePath.write_text("{broken json")
+    monkeypatch.setattr(constants, "DEFAULT_CACHE_DB_LOCATION", cachePath)
+    connector.resetCacheDB()
+
+    db = connector.getCacheDB()
+
+    assert db.all() == []
+    assert cachePath.is_file()
+    assert (tmp_path / "mtg_org_cache.db.corrupt").is_file()
+    connector.resetCacheDB()

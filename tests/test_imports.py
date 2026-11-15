@@ -242,6 +242,8 @@ MTGO_DEK_DECKLIST = [
     [2, "e4399e19-d05d-4bb3-9aff-c4133ddd2850"],
     [16, "32af9f41-89e2-4e7a-9fec-fffe79cae077"],
     [4, "91cef7ce-aa9f-4659-ac24-394c5ab9f77c"],
+]
+MTGO_DEK_SIDEBOARD = [
     [1, "ba4106de-20c7-48cf-8a36-8c6913b46c89"],
     [4, "425f5d1b-9989-4fd1-88e2-6c3108aefa0b"],
 ]
@@ -251,6 +253,22 @@ def test_MTGO_DEK_import():
     importer = importexport.MTGO_DEK_importer()
     importer.loadInput(MTGO_DEK)
     assert importer.deckList == MTGO_DEK_DECKLIST
+    assert importer.sideboardList == MTGO_DEK_SIDEBOARD
+
+
+def test_MTGA_import_sections():
+    text = """Deck
+4 Lightning Bolt
+Sideboard
+2 Shock
+Commander
+1 Spitting Earth
+"""
+    importer = importexport.MTGA_importer()
+    importer.loadInput(text)
+    assert importer.deckList == [[4, "7673784e-db4b-43a1-8d55-1bb9fc1e284f"]]
+    assert importer.sideboardList == [[2, "b23900fb-efe9-43ab-9f67-4545dd01fb9c"]]
+    assert importer.commanderList == [[1, "de1aa8f9-8200-4ddd-9ab5-1a8181cc1792"]]
 
 
 EDHREC_TEST_URL = "https://edhrec.com/deckpreview/test-deck"
