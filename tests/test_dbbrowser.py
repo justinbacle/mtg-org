@@ -27,6 +27,9 @@ class DummyLabel:
     def setVisible(self, visible):
         self.visible = visible
 
+    def clear(self):
+        self.text = ""
+
 
 def test_search_request_is_logged(caplog):
     with caplog.at_level(logging.INFO):
@@ -173,3 +176,71 @@ def test_extras_checkbox_disabled_in_bulk_mode(qtApp, monkeypatch):
     form.testParent = parent
 
     assert not form.extrasCB.isEnabled()
+
+
+def test_clear_search_resets_fields(qtApp, monkeypatch):
+    monkeypatch.setattr(
+        dbbrowser.scryfall,
+        "getSets",
+        lambda: [{"id": "set-1", "code": "tst", "name": "Test Set", "released_at": "2024-01-01"}],
+    )
+    monkeypatch.setattr(dbbrowser.scryfall, "getSetReleaseYear", lambda setId: "2024")
+    monkeypatch.setattr(dbbrowser.scryfall, "getFormats", lambda: ["modern"])
+    monkeypatch.setattr(dbbrowser.scryfall, "getTaggerTags", lambda: ([], []))
+
+    parent = QtWidgets.QWidget()
+    parent.proxyglyphFontId = 0
+    parent.keyruneFontId = 0
+    form = dbbrowser.SearchForm(parent=parent)
+    form.testParent = parent
+    form.nameField.setText("bolt")
+    form.typeCB.setCurrentText("creature")
+    form.cmcWidgetValue.setText("10")
+    form.paperCB.setChecked(False)
+    cleared = []
+    form.cleared.connect(lambda: cleared.append(True))
+
+    form.clearSearch()
+
+    assert form.nameField.text() == ""
+    assert form.typeCB.currentText() == ""
+    assert form.cmcWidgetValue.text() == ""
+    assert form.paperCB.isChecked() is True
+    assert cleared == [True]
+
+
+def test_search_cleared_clears_results_and_invalidates_request(caplog):
+    browser = SimpleNamespace(
+        _searchRequestId=5,
+        dbResultsList=DummyCardList(),
+        resultsInfoLabel=DummyLabel(),
+    )
+
+    with caplog.at_level(logging.INFO):
+        dbbrowser.DbBrowser.on_searchCleared(browser)
+
+    assert browser._searchRequestId == 6
+    assert browser.dbResultsList.cards == []
+    assert browser.resultsInfoLabel.visible is False
+    assert "Search cleared" in caplog.text
+
+
+def test_search_buttons_are_outside_scroll_area(qtApp, monkeypatch):
+    monkeypatch.setattr(
+        dbbrowser.scryfall,
+        "getSets",
+        lambda: [{"id": "set-1", "code": "tst", "name": "Test Set", "released_at": "2024-01-01"}],
+    )
+    monkeypatch.setattr(dbbrowser.scryfall, "getSetReleaseYear", lambda setId: "2024")
+    monkeypatch.setattr(dbbrowser.scryfall, "getFormats", lambda: ["modern"])
+    monkeypatch.setattr(dbbrowser.scryfall, "getTaggerTags", lambda: ([], []))
+
+    parent = QtWidgets.QWidget()
+    parent.proxyglyphFontId = 0
+    parent.keyruneFontId = 0
+    browser = dbbrowser.DbBrowser(parent=parent)
+    browser.testParent = parent
+
+    assert browser.qscroll.widget() is browser.searchForm
+    assert not browser.qscroll.isAncestorOf(browser.searchButton)
+    assert browser.searchButtonsWidget.parent() is browser.searchPanel

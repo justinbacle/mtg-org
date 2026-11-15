@@ -39,7 +39,6 @@ Here are the lists of things I'd like to have included in this project :
 - Handling image with multiple pictures (e.g. Urza's mine) and alternate art
 - Keyrune has no icon for some promo/art-series sets; those show the set code instead
 - In bulk mode, art/oracle tag filters fall back to online Scryfall, and the Include Extras checkbox is disabled
-- Missing button to clear all search terms
 - Add tooltip to view card translations
 - Show english name when browsing other languages
 

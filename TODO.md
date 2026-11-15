@@ -53,11 +53,59 @@
 - Default printing order now prefers booster-available, normal set types and
   regular variants; collector/memorabilia/promo-only printings sort last.
   Supplemental insert sets (The List, Special Guests) are demoted too.
+- Card cache accesses are serialized, validated at startup, and corrupt cache
+  files are backed up and recreated automatically.
+- Added a Clear button that resets every search field and clears results.
+- Search and Clear buttons stay pinned below the scrollable search fields.
 
-## Optional follow-ups
+## Backlog
 
-- Run Pyright in CI (config exists, but it needs the venv/stub setup first).
-- Decide on and add a project licence.
-- Optionally test/measure the `all_cards` mode end-to-end.
-- Add drag/drop to move cards between deck sections.
-- Improve format validation edge cases (partners/backgrounds, companions, colour identity).
+### Search / UI
+
+- [ ] Add tooltips to view card translations.
+- [ ] Verify/complete English-name display for non-English cards.
+- [ ] Fix the known sorting / removal bug.
+- [ ] Move large imports to a background thread with progress.
+- [ ] Add a save-to-file export destination.
+- [ ] Consider virtualized result tables if users need very large result sets.
+
+### Deck building / formats
+
+- [ ] Add drag/drop between decks/collections and between deck sections
+  (deferred; right-click move is the current workflow).
+- [ ] Validate partners/backgrounds, companions, colour identity, and per-card
+  format legality.
+- [ ] Refine Limited sideboard rules and other format edge cases.
+- [ ] Infer the commander from EDHRec imports when possible.
+- [ ] Support sideboard/commander import from CSV formats that provide it.
+- [ ] Document the MTGO `.dek` commander-zone limitation in the export UI.
+
+### Images / fonts
+
+- [ ] Fix the card-art race when scrolling quickly.
+- [ ] Handle multi-face and alternate-art image caching.
+- [ ] Add missing half-mana symbols, the 1,000,000 mana symbol, and complete
+  Phyrexian font handling.
+- [ ] Optionally use Scryfall SVG icons for sets Keyrune does not support.
+
+### Offline / bulk data
+
+- [ ] Support Include Extras in bulk mode.
+- [ ] Test and measure the `all_cards` mode end-to-end.
+- [ ] Optionally compress the bulk SQLite index.
+- [ ] Add automatic refresh for the online sets/card cache when a new set is
+  released (currently manual via Clear cache).
+
+### Bigger features
+
+- [ ] Webcam card scanning.
+- [ ] Cloud/Drive synchronization.
+- [ ] GUI translations.
+- [ ] Finish the format-legality UI.
+- [ ] Add more export destinations/formats as needed.
+
+### Infrastructure
+
+- [ ] Run Pyright in CI (needs venv/stub configuration).
+- [ ] Decide on and add a project licence.
+- [ ] Add a CI matrix or release builds.

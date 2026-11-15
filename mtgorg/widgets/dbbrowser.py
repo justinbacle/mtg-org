@@ -51,11 +51,28 @@ class DbBrowser(QtWidgets.QWidget):
         # self.searchForm.setMaximumWidth(300)
         self.searchForm.setMinimumWidth(300)
         self.searchForm.searched.connect(self.on_searchRequest)
+        self.searchForm.cleared.connect(self.on_searchCleared)
         self.qscroll = QtWidgets.QScrollArea()
         self.qscroll.setWidgetResizable(True)
         self.qscroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.qscroll.setWidget(self.searchForm)
-        self.splitter.addWidget(self.qscroll)
+
+        self.searchPanel = QtWidgets.QWidget()
+        self.searchPanelLayout = QtWidgets.QVBoxLayout(self.searchPanel)
+        self.searchPanelLayout.setContentsMargins(0, 0, 0, 0)
+        self.searchPanelLayout.addWidget(self.qscroll, 1)
+
+        self.searchButtonsWidget = QtWidgets.QWidget()
+        self.searchButtonsLayout = QtWidgets.QHBoxLayout(self.searchButtonsWidget)
+        self.searchButtonsLayout.setContentsMargins(0, 0, 0, 0)
+        self.searchButton = QtWidgets.QPushButton("Search")
+        self.searchButton.clicked.connect(self.searchForm.on_searchAction)
+        self.searchButtonsLayout.addWidget(self.searchButton)
+        self.clearButton = QtWidgets.QPushButton("Clear")
+        self.clearButton.clicked.connect(self.searchForm.clearSearch)
+        self.searchButtonsLayout.addWidget(self.clearButton)
+        self.searchPanelLayout.addWidget(self.searchButtonsWidget)
+        self.splitter.addWidget(self.searchPanel)
         # Results table with an optional truncation notice
         self.resultsWidget = QtWidgets.QWidget()
         self.resultsLayout = QtWidgets.QVBoxLayout(self.resultsWidget)
@@ -72,6 +89,13 @@ class DbBrowser(QtWidgets.QWidget):
     @staticmethod
     def _logSearchRequest(searchDict: dict):
         logging.info(f"Search request: {searchDict}")
+
+    def on_searchCleared(self):
+        self._searchRequestId += 1
+        self.dbResultsList.setCards([])
+        self.resultsInfoLabel.clear()
+        self.resultsInfoLabel.setVisible(False)
+        logging.info("Search cleared")
 
     def on_searchRequest(self, searchDict: dict):
         self._logSearchRequest(searchDict)
@@ -145,6 +169,7 @@ class DbBrowser(QtWidgets.QWidget):
 class SearchForm(QtWidgets.QWidget):
 
     searched: QtCore.Signal = QtCore.Signal(dict)   # ? replace with search dict object ?
+    cleared: QtCore.Signal = QtCore.Signal()
 
     # To Build
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -287,10 +312,6 @@ class SearchForm(QtWidgets.QWidget):
         self.paperCB.setChecked(True)
         self.mainLayout.addRow("Paper only", self.paperCB)
 
-        self.searchButton = QtWidgets.QPushButton("Search")
-        self.searchButton.clicked.connect(self.on_searchAction)
-        self.mainLayout.addRow(self.searchButton)
-
         self.updateBulkModeControls()
         self._searchFields = [
             self.nameField,
@@ -307,6 +328,8 @@ class SearchForm(QtWidgets.QWidget):
                 self._searchFields.append(combo.lineEdit())
         for field in self._searchFields:
             field.installEventFilter(self)
+        self.refreshDataSources()
+        self.on_mainTypeChange()
 
     def updateBulkModeControls(self):
         if constants.USE_BULK_FILES:
@@ -325,9 +348,6 @@ class SearchForm(QtWidgets.QWidget):
             self.on_searchAction()
             return True
         return super().eventFilter(obj, event)
-
-        self.refreshDataSources()
-        self.on_mainTypeChange()
 
     def refreshDataSources(self):
         self.updateBulkModeControls()
@@ -353,6 +373,33 @@ class SearchForm(QtWidgets.QWidget):
 
     def on_searchAction(self):
         self.searched.emit(self.getSearchData())
+
+    def clearSearch(self):
+        self.nameField.clear()
+        self.langCB.setCurrentIndex(0)
+        self.manaColorSelectorWidget.reset()
+        self.typeCB.setCurrentText("")
+        self.otherTypeCB.clear()
+        self.oracleTextLE.clear()
+        self.cmcWidgetCB.setCurrentText("=")
+        self.cmcWidgetValue.clear()
+        self.rarityCB.setCurrentText("")
+        self.setSelectorWidget.setCurrentText("")
+        self.formatLegalWidget.setCurrentText("")
+        self.creaturePowerWidgetCB.setCurrentText("<")
+        self.creaturePowerWidgetLE.clear()
+        self.creatureToughnessWidgetCB.setCurrentText("<")
+        self.creatureToughnessWidgetLE.clear()
+        self.planeswalkerLoyaltyWidgetCB.setCurrentText("<")
+        self.planeswalkerLoyaltyWidgetLE.clear()
+        self.priceWidgetCB.setCurrentText("<")
+        self.priceWidgetValue.clear()
+        self.atagECB.setCurrentText("")
+        self.otagECB.setCurrentText("")
+        self.extrasCB.setChecked(False)
+        self.paperCB.setChecked(True)
+        self.on_mainTypeChange()
+        self.cleared.emit()
 
     def on_mainTypeChange(self):
         # TODO setRowVisible() only available on lates pyside6 versions
@@ -436,6 +483,11 @@ class ManaColorSelectorWidget(QtWidgets.QWidget):
             self.colorManaWidgets.update({color: ManaColorWidget(color, parent=self)})
         for colorWidget in self.colorManaWidgets.values():
             self.mainLayout.addWidget(colorWidget)
+
+    def reset(self):
+        for widget in self.colorManaWidgets.values():
+            widget.state = "NS"
+            widget.draw()
 
     def get(self) -> str:
         exclude = ""
