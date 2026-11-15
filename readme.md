@@ -21,7 +21,7 @@ Here are the lists of things I'd like to have included in this project :
 |Organizing cards in decks & collections| Done: format-aware main deck, sideboard, and commander sections in one grouped table, with basic validation. Missing drag/drop between collections/decks |
 |Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs (Legality WIP)|
 |Import| MTGA, CSV (Urza Gatherer, MTG Studio, MTGGoldfish, MTG Manager, Deckbox, Decked Builder, PucaTrade, TCGPlayer, Deckstats), MTGO (.dek), EDHRec URL |
-|Export| Started : export to cardmarket decklist|
+|Export| Cardmarket wants-list text, MTG Arena text, MTGO `.dek`, and plain text with sections |
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
 |Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK |

@@ -2,7 +2,7 @@ from PySide6 import QtWidgets, QtCore
 
 import connector
 import constants
-from lib import importexport
+from lib import deckrules, importexport
 
 
 class DeckDialog(QtWidgets.QDialog):
@@ -146,13 +146,22 @@ class CardStackSelector(QtWidgets.QWidget):
         stackType, name = self.getSelected()
         if stackType == "deck":
             col = connector.getDeck(name)
+            if col is None:
+                return
+            allowed = deckrules.allowedSections(col.get("format", constants.DEFAULT_DECK_FORMAT))
+            sections = {
+                "main": col.get("cardList", []),
+                "commander": col.get("commander", []) if "commander" in allowed else [],
+                "sideboard": col.get("sideboard", []) if "sideboard" in allowed else [],
+            }
         elif stackType == "collection":
             col = connector.getCollection(name)
+            if col is None:
+                return
+            sections = {"main": col["cardList"]}
         else:
-            col = None
-        if col is None:
             return
-        exportDialog = importexport.exportDialog(parent=self, cardList=col["cardList"])
+        exportDialog = importexport.exportDialog(parent=self, sections=sections)
         exportDialog.exec()
 
     def on_addDeck(self):

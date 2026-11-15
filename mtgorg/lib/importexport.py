@@ -8,30 +8,183 @@ import lxml.etree
 import requests
 from bs4 import BeautifulSoup
 import urllib
+from xml.sax.saxutils import escape
 
 import constants
 import connector
 from lib import utils, scryfall, qt
 
 
+def formatCardmarketExport(sections: dict, includeCommander: bool = True,
+                           includeSideboard: bool = True, discardSet: bool = False,
+                           cardLookup=None) -> str:
+    """Return a flat Cardmarket wants-list decklist."""
+    cardLookup = cardLookup or scryfall.getCardById
+    sectionOrder = ["commander", "main", "sideboard"]
+    include = {
+        "main": True,
+        "commander": includeCommander,
+        "sideboard": includeSideboard,
+    }
+    lines = []
+    for section in sectionOrder:
+        if not include.get(section, False):
+            continue
+        for qty, cardId in sections.get(section, []):
+            card = cardLookup(cardId)
+            if card is None:
+                logging.warning(f"Could not export card {cardId}: not found")
+                continue
+            if discardSet:
+                lines.append(f"{qty} {card['name']}")
+            else:
+                lines.append(f"{qty} {card['name']} ({card['set_name']})")
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def formatMTGAExport(sections: dict, includeCommander: bool = True,
+                     includeSideboard: bool = True, cardLookup=None) -> str:
+    cardLookup = cardLookup or scryfall.getCardById
+    parts = []
+    sectionHeaders = [
+        ("main", "Deck", True),
+        ("sideboard", "Sideboard", includeSideboard),
+        ("commander", "Commander", includeCommander),
+    ]
+    for section, header, included in sectionHeaders:
+        if not included:
+            continue
+        entries = sections.get(section, [])
+        if not entries:
+            continue
+        parts.append(header)
+        for qty, cardId in entries:
+            card = cardLookup(cardId)
+            if card is None:
+                logging.warning(f"Could not export card {cardId}: not found")
+                continue
+            parts.append(f"{qty} {card['name']}")
+        parts.append("")
+    return "\n".join(parts).rstrip() + ("\n" if parts else "")
+
+
+def formatPlainTextExport(sections: dict, includeCommander: bool = True,
+                          includeSideboard: bool = True, discardSet: bool = False,
+                          cardLookup=None) -> str:
+    cardLookup = cardLookup or scryfall.getCardById
+    parts = []
+    sectionHeaders = [
+        ("commander", "Commander", includeCommander),
+        ("main", "Main", True),
+        ("sideboard", "Sideboard", includeSideboard),
+    ]
+    for section, header, included in sectionHeaders:
+        if not included:
+            continue
+        entries = sections.get(section, [])
+        if not entries:
+            continue
+        parts.append(header)
+        for qty, cardId in entries:
+            card = cardLookup(cardId)
+            if card is None:
+                logging.warning(f"Could not export card {cardId}: not found")
+                continue
+            if discardSet:
+                parts.append(f"{qty} {card['name']}")
+            else:
+                parts.append(f"{qty} {card['name']} ({card['set_name']})")
+        parts.append("")
+    return "\n".join(parts).rstrip() + ("\n" if parts else "")
+
+
+def formatMTGOExport(sections: dict, includeCommander: bool = True,
+                     includeSideboard: bool = True, cardLookup=None) -> str:
+    cardLookup = cardLookup or scryfall.getCardById
+    cards = []
+
+    def addSection(section: str, sideboard: bool):
+        for qty, cardId in sections.get(section, []):
+            card = cardLookup(cardId)
+            if card is None:
+                logging.warning(f"Could not export card {cardId}: not found")
+                continue
+            mtgoId = card.get("mtgo_id")
+            if mtgoId is None:
+                logging.warning(f"Card {card.get('name')} has no MTGO id; skipping")
+                continue
+            name = escape(card["name"], {'"': "&quot;"})
+            cards.append(
+                f'  <Cards CatID="{mtgoId}" Quantity="{qty}" '
+                f'Sideboard="{str(sideboard).lower()}" Name="{name}" Annotation="0"/>'
+            )
+
+    addSection("main", False)
+    if includeSideboard:
+        addSection("sideboard", True)
+    if includeCommander:
+        if sections.get("commander"):
+            logging.warning("MTGO .dek has no commander zone; exporting commander cards as main deck")
+        addSection("commander", False)
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<Deck xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
+        'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+        "  <NetDeckID>0</NetDeckID>",
+        "  <PreconstructedDeckID>0</PreconstructedDeckID>",
+        *cards,
+        "</Deck>",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 class exportDialog(QtWidgets.QDialog):
-    def __init__(self, cardList: list, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, sections: dict, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
         self.mainLayout = QtWidgets.QVBoxLayout()
         self.setLayout(self.mainLayout)
         self.setWindowTitle("Export tool")
 
-        self.cardList = cardList
+        self.sections = sections
 
         # Export type select
         self.exportTypeSelectorGB = QtWidgets.QGroupBox("Export type")
         self.exportTypeSelectorLayout = QtWidgets.QVBoxLayout()
         self.exportTypeSelectorGB.setLayout(self.exportTypeSelectorLayout)
         self.exportTypeSelector_cardmarketRB = QtWidgets.QRadioButton("Cardmarket")
-        # TODO add others
-        self.exportTypeSelector_cardmarketRB.toggled.connect(self.on_typeSelectToggle)
-        self.exportTypeSelectorLayout.addWidget(self.exportTypeSelector_cardmarketRB)
+        self.exportTypeSelector_mtgaRB = QtWidgets.QRadioButton("MTG Arena text")
+        self.exportTypeSelector_mtgoRB = QtWidgets.QRadioButton("MTGO .dek")
+        self.exportTypeSelector_plainRB = QtWidgets.QRadioButton("Plain text with sections")
+        self.exportTypeSelectorGroup = QtWidgets.QButtonGroup(self)
+        for radio in (
+            self.exportTypeSelector_cardmarketRB,
+            self.exportTypeSelector_mtgaRB,
+            self.exportTypeSelector_mtgoRB,
+            self.exportTypeSelector_plainRB,
+        ):
+            self.exportTypeSelectorGroup.addButton(radio)
+            self.exportTypeSelectorLayout.addWidget(radio)
+            radio.toggled.connect(self.on_typeSelectToggle)
+        self.exportTypeSelector_cardmarketRB.setChecked(True)
         self.mainLayout.addWidget(self.exportTypeSelectorGB)
+
+        # Sections to include
+        self.sectionsGB = QtWidgets.QGroupBox("Sections")
+        self.sectionsLayout = QtWidgets.QVBoxLayout()
+        self.sectionsGB.setLayout(self.sectionsLayout)
+        self.includeCommanderCB = QtWidgets.QCheckBox("Include commander")
+        self.includeSideboardCB = QtWidgets.QCheckBox("Include sideboard")
+        self.includeCommanderCB.setChecked(bool(self.sections.get("commander")))
+        self.includeSideboardCB.setChecked(bool(self.sections.get("sideboard")))
+        self.includeCommanderCB.setVisible(bool(self.sections.get("commander")))
+        self.includeSideboardCB.setVisible(bool(self.sections.get("sideboard")))
+        self.sectionsLayout.addWidget(self.includeCommanderCB)
+        self.sectionsLayout.addWidget(self.includeSideboardCB)
+        self.sectionsGB.setVisible(
+            self.includeCommanderCB.isVisible() or self.includeSideboardCB.isVisible()
+        )
+        self.mainLayout.addWidget(self.sectionsGB)
 
         # Options
         self.exportOptionsGB = QtWidgets.QGroupBox("Options")
@@ -46,6 +199,7 @@ class exportDialog(QtWidgets.QDialog):
         self.destinationSelectorLayout = QtWidgets.QVBoxLayout()
         self.destinationSelectorGB.setLayout(self.destinationSelectorLayout)
         self.destinationSelect_ClipboardRB = QtWidgets.QRadioButton("Clipboard")
+        self.destinationSelect_ClipboardRB.setChecked(True)
         self.destinationSelectorLayout.addWidget(self.destinationSelect_ClipboardRB)
         self.mainLayout.addWidget(self.destinationSelectorGB)
 
@@ -55,26 +209,48 @@ class exportDialog(QtWidgets.QDialog):
         self.mainLayout.addWidget(self.okButton)
 
     def on_typeSelectToggle(self):
+        discardSetCapable = (
+            self.exportTypeSelector_cardmarketRB.isChecked()
+            or self.exportTypeSelector_plainRB.isChecked()
+        )
+        self.exportOptions_discardSetCB.setEnabled(discardSetCapable)
+
+    def buildExportText(self) -> str:
+        includeCommander = self.includeCommanderCB.isChecked()
+        includeSideboard = self.includeSideboardCB.isChecked()
+        discardSet = self.exportOptions_discardSetCB.isChecked()
         if self.exportTypeSelector_cardmarketRB.isChecked():
-            self.exportOptions_discardSetCB.setEnabled(True)
-        else:
-            self.exportOptions_discardSetCB.setEnabled(False)
+            return formatCardmarketExport(
+                self.sections,
+                includeCommander=includeCommander,
+                includeSideboard=includeSideboard,
+                discardSet=discardSet,
+            )
+        if self.exportTypeSelector_mtgaRB.isChecked():
+            return formatMTGAExport(
+                self.sections,
+                includeCommander=includeCommander,
+                includeSideboard=includeSideboard,
+            )
+        if self.exportTypeSelector_mtgoRB.isChecked():
+            return formatMTGOExport(
+                self.sections,
+                includeCommander=includeCommander,
+                includeSideboard=includeSideboard,
+            )
+        if self.exportTypeSelector_plainRB.isChecked():
+            return formatPlainTextExport(
+                self.sections,
+                includeCommander=includeCommander,
+                includeSideboard=includeSideboard,
+                discardSet=discardSet,
+            )
+        raise NotImplementedError
 
     def on_okButtonPressed(self):
-        exportTxt = ""
-        if self.exportTypeSelector_cardmarketRB.isChecked():
-            for qty, cardId in self.cardList:
-                card = connector.getCard(cardId)['data']
-                if self.exportOptions_discardSetCB.isChecked():
-                    exportTxt += f"{qty} {card['name']}\n"
-                else:
-                    exportTxt += f"{qty} {card['name']} ({card['set_name']})\n"
-        else:
-            raise NotImplementedError
-
+        exportTxt = self.buildExportText()
         if self.destinationSelect_ClipboardRB.isChecked():
             pyperclip.copy(exportTxt)
-
         self.close()
 
 

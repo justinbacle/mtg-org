@@ -45,6 +45,8 @@
   collections show only the main list. Section headers follow the active theme.
 - Cards can be added to Main, Commander, or Sideboard from the viewer's
   right-click Add menu, and moved between sections with the row context menu.
+- Export formats: Cardmarket (flat), MTG Arena text, MTGO `.dek`, and plain text
+  with sections. Commander/sideboard inclusion is optional.
 - Search results are capped by a configurable limit (default 100), with a
   truncation notice when more cards match.
 - Table columns are capped and elided instead of expanding for long names/types.
@@ -57,6 +59,5 @@
 - Run Pyright in CI (config exists, but it needs the venv/stub setup first).
 - Decide on and add a project licence.
 - Optionally test/measure the `all_cards` mode end-to-end.
-- Export sideboard/commander sections.
 - Add drag/drop to move cards between deck sections.
 - Improve format validation edge cases (partners/backgrounds, companions, colour identity).
