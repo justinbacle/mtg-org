@@ -39,7 +39,8 @@
 
 ## Optional follow-ups
 
-- Add a `--no-bulk` pytest option (tests currently use mocked Scryfall fixtures).
-- Run Pyright in CI (config exists, but it is not wired into workflows).
+- Cap or virtualize large bulk search result sets: wide filters can return
+  10k+ cards, and populating the table can still stutter the UI.
+- Run Pyright in CI (config exists, but it needs the venv/stub setup first).
 - Decide on and add a project licence.
 - Optionally test/measure the `all_cards` mode end-to-end.
