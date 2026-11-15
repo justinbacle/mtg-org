@@ -93,8 +93,7 @@
 
 - [ ] Fix the card-art race when scrolling quickly.
 - [ ] Handle multi-face and alternate-art image caching.
-- [ ] Add missing half-mana symbols, the 1,000,000 mana symbol, and complete
-  Phyrexian font handling.
+- [ ] Improve Phyrexian rendering beyond the font's single generic glyph.
 - [ ] Optionally use Scryfall SVG icons for sets Keyrune does not support.
 
 ### Offline / bulk data

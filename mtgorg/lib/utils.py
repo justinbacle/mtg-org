@@ -183,6 +183,14 @@ class counter(object):
 
 # --------------------------------- MTG stuff -------------------------------- #
 
+def getCardManaCost(cardData: dict) -> str:
+    """Return the full mana cost, preferring the top-level split/adventure cost."""
+    manaCost = cardData.get("mana_cost")
+    if not manaCost and "card_faces" in cardData and cardData["card_faces"]:
+        manaCost = cardData["card_faces"][0].get("mana_cost", "")
+    return manaCost or ""
+
+
 def getColor(coloridentity: str) -> tuple:
     BASICCOLORS = {
         "W": (249, 250, 244),
@@ -211,6 +219,9 @@ def getColor(coloridentity: str) -> tuple:
 
 def setManaText(inputStr) -> str:
     # NDPMTG / Proxyglyph
+    # The font's "/" glyph is the large split-card divider, so use fraction
+    # slashes when rendering split-card costs such as "{1}{R} // {1}{U}".
+    inputStr = inputStr.replace("//", "⁄⁄")
     for k, v in PROXYGLYPH_SYMBOLS.items():
         inputStr = inputStr.replace(k, v)
     # remove plain circle background symbols, not needed
@@ -294,7 +305,12 @@ def updateManaFontSymbols():
 # Dictionary of symbols as they appear in oracle text, and their corresponding symbols to look correct in NDPMTG font
 # From https://github.com/MrTeferi/Proxyshop/blob/main/src/constants.py
 PROXYGLYPH_SYMBOLS = {
-    # TODO: handle half mana symbols (un-sets)
+    "{HW}": "1⁄2ow",
+    "{HU}": "1⁄2ou",
+    "{HB}": "1⁄2ob",
+    "{HR}": "1⁄2or",
+    "{HG}": "1⁄2og",
+    "{H}": "1⁄2",
     "{W/P}": "Qp",
     "{U/P}": "Qp",
     "{B/P}": "Qp",
@@ -362,5 +378,5 @@ PROXYGLYPH_SYMBOLS = {
     "{S}": "omn",
     "{Q}": "ol",
     "{CHAOS}": "?",
-    "{1000000}": "10000000"  # Gleemax exception, since symbol not available / not pretty
+    "{1000000}": "1000000"  # Gleemax exception, since symbol not available / not pretty
 }

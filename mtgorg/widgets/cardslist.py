@@ -110,7 +110,14 @@ class CardsList(QtWidgets.QWidget):
         self.infoPanel.setValidationDetails(None)
 
     def replaceCardInAnySection(self, oldCardId: str, newCardId: str):
-        if self.stackType != "deck" or self.stackName is None:
+        if self.stackName is None:
+            return
+        if self.stackType == "collection":
+            connector.replaceCardInCollection(self.stackName, oldCardId, newCardId)
+            self.cardsList.reloadFromDatabase()
+            self.refreshValidation()
+            return
+        if self.stackType != "deck":
             return
         deck = connector.getDeck(self.stackName)
         if deck is None:

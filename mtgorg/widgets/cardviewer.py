@@ -127,7 +127,8 @@ class CardViewer(QtWidgets.QWidget):
         self.cardFaceChooser.setVisible(False)
         self.cardFaceChooser.clicked.connect(self.on_cardflip)
         self.mainLayout.addWidget(self.cardFaceChooser, line.val(), 0)
-        self.applyToDeckPB = QtWidgets.QPushButton("Apply set to deck \u2713")
+        self.applyToDeckPB = QtWidgets.QPushButton("Apply set \u2713")
+        self.applyToDeckPB.setToolTip("Apply the selected printing to the current deck or collection")
         self.applyToDeckPB.setVisible(False)
         self.applyToDeckPB.clicked.connect(self.on_applyToDeck)
         self.mainLayout.addWidget(self.applyToDeckPB, line.postinc(), 1)
@@ -333,11 +334,7 @@ class CardViewer(QtWidgets.QWidget):
         else:
             self.englishNameLabel.setVisible(False)
 
-        if "card_faces" in self.card.keys():
-            manaCost = self.card["card_faces"][0]["mana_cost"]
-        else:
-            manaCost = self.card["mana_cost"]
-
+        manaCost = utils.getCardManaCost(self.card)
         self.manacostLabel.setText(utils.setManaText(manaCost))
         self.setManaFont()
 

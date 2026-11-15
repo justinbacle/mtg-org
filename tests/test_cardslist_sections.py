@@ -179,3 +179,24 @@ def test_deck_dialog_keeps_bracket_suggestion(qtApp, monkeypatch):
 
     assert "Suggested minimum: Bracket 3" in dialog.estimateLabel.text()
     assert "Selected bracket 2 is below" in dialog.estimateLabel.text()
+
+
+def test_cardslist_applies_set_to_collection(qtApp, monkeypatch):
+    widget = cardslist.CardsList()
+    widget.cardsList = DummyTable()
+    widget.stackType = "collection"
+    widget.stackName = "Test Collection"
+    calls = []
+    monkeypatch.setattr(
+        cardslist.connector,
+        "replaceCardInCollection",
+        lambda name, oldId, newId: calls.append((name, oldId, newId)),
+    )
+    widget.cardsList.reloadFromDatabase = lambda: calls.append(("reload",))
+
+    widget.replaceCardInAnySection("old-id", "new-id")
+
+    assert calls == [
+        ("Test Collection", "old-id", "new-id"),
+        ("reload",),
+    ]

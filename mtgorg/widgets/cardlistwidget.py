@@ -144,9 +144,8 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                     flag = QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
                     item.setFlags(flag)
                 # mana cost handling
-                if "card_faces" in cardData.keys():
-                    if column == "mana_cost":
-                        text = cardData["card_faces"][0][column]
+                if column == "mana_cost":
+                    text = utils.getCardManaCost(cardData)
                 if column == "mana_cost":
                     font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
                         qt.findAttrInParents(self, "proxyglyphFontId")))
