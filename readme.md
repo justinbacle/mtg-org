@@ -25,7 +25,8 @@ Here are the lists of things I'd like to have included in this project :
 |Export| Cardmarket wants-list text, MTG Arena text, MTGO `.dek` (zone limits noted in the export dialog), and plain text with sections |
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
-|Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK |
+|Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK, with automated release builds |
+|Themes| System (Fusion), System (KDE) on KDE, and Material dark teal; switching applies immediately |
 |Offline mode| Done: opt-in Scryfall bulk data (card data offline, images online)|
 
 ## Known issues
@@ -46,7 +47,13 @@ Here are the lists of things I'd like to have included in this project :
 
 ## Install / Usage
 
-For now, this is not packaged in an executable file, so you have to run it from source code.
+### Releases
+
+Every push to `master` builds Linux, Windows, and macOS packages with GitHub
+Actions and publishes them under **GitHub Releases**. Download the archive for
+your platform; no Python installation is needed.
+
+### From source
 
 Clone this repo, then when in the folder, install dependencies
 
@@ -68,6 +75,9 @@ Click the status bar message to open the full session log.
 
 **Settings > Search** caps how many matching cards are shown (default 100). If
 more cards match, a notice above the results tells you the list was truncated.
+
+**Settings > Appearance** switches between System (Fusion), System (KDE) on KDE,
+and Material dark teal. The change applies immediately.
 
 ## Deck sections
 
@@ -107,8 +117,9 @@ exact printing you want.
     - `card_imgs/`: card images
     - `sets_icons/`: set icon SVGs
     - `infos/sets.json`: set metadata
+    - `infos/data_version.json`: cache generation and set fingerprint
     - `scryfall_bulk/`: downloaded bulk files and their SQLite indexes
-  - Use **Settings > Scryfall > Clear cache** to clean everything except your decks, collections, and downloaded bulk files.
+  - Use **Settings > Scryfall > Clear cache** to clean everything except your decks, collections, and downloaded bulk files. See `DATA_FRESHNESS.md` for refresh details.
 
 - Search/Import is slow
   - In online-only mode, data is fetched and cached as you request it, so large imports depend on your connection and Scryfall rate limits.
@@ -119,6 +130,7 @@ exact printing you want.
 - [Scryfall](https://scryfall.com/)
 - Andrew Gioia : [Keyrune](https://github.com/andrewgioia/keyrune) : expansion symbols (used under GPL 3.0 license)
 - MrTeferi : [Proxyshop](https://github.com/MrTeferi/Proxyshop) : proxygliyph font mana symbols (Mozilla public license 2.0)
+- qt_material : Material themes for Qt applications
 - NandaScott : [Scrython](https://github.com/NandaScott/Scrython) : Python wrapper for scryfall requests (MIT License)
 - WotC, card creators, artists, and MTG community for everything MTG.
 
