@@ -20,7 +20,7 @@ import constants
 
 # Register a custom Scryfall User-Agent whenever this module is imported.
 ScrythonRequestHandler.set_user_agent(
-    "MTGOrganizer/1.0 (https://github.com/justinmtg/mtg-org)"
+    "MTGOrganizer/1.0 (https://github.com/justinbacle/mtg-org)"
 )
 
 _sets_memory_cache: list | None = None
@@ -123,16 +123,13 @@ def getCardReprints(cardId: str):
     card = getCardById(cardId)
     if card is None:
         return []
-    if "sets" not in card.keys():  # Cache
-        reprintsDict = utils.getUrlJsonData(card["prints_search_uri"])
-        sets = [_["set"] for _ in reprintsDict["data"]]
-        while reprintsDict["has_more"]:
-            reprintsDict = utils.getUrlJsonData(reprintsDict["next_page"])
-            sets += [_["set"] for _ in reprintsDict["data"]]
-        sets = list(set(sets))
-        connector.updateCard(cardId, {"sets": sets})
-    else:
-        sets = card["sets"]
+    if "sets" in card.keys():  # Cache
+        return card["sets"]
+    allPrintings = _getPrintsSearchData(card)
+    if not allPrintings:
+        return []
+    sets = sorted({printing["set"] for printing in allPrintings if "set" in printing})
+    connector.updateCard(cardId, {"sets": sets})
     return sets
 
 

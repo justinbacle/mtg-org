@@ -1,15 +1,16 @@
 import os
 import requests
 import functools
+import logging
 import operator
 from dotmap import DotMap
 import json
 import platform
-import threading
-import time
+import urllib.parse
 from pathlib import Path
 import html
 from bs4 import BeautifulSoup
+from scrython.rate_limiter import RateLimiter, SlowRateLimiter
 
 import constants
 
@@ -40,39 +41,35 @@ def isMac() -> bool:
 # -------------------------------- Misc utils -------------------------------- #
 
 DEFAULT_HEADERS = {
-    "User-Agent": "MTGOrganizer/1.0 (https://github.com/justinmtg/mtg-org)",
+    "User-Agent": "MTGOrganizer/1.0 (https://github.com/justinbacle/mtg-org)",
     "Accept": "application/json;q=0.9,*/*;q=0.8",
 }
 
 
-class RateLimiter:
-    """Simple thread-safe rate limiter for direct HTTP requests."""
-
-    def __init__(self, calls_per_second: float = 10.0):
-        self.min_interval = 1.0 / calls_per_second
-        self.last_call = 0.0
-        self.lock = threading.Lock()
-
-    def wait(self):
-        with self.lock:
-            now = time.time()
-            elapsed = now - self.last_call
-            if elapsed < self.min_interval:
-                time.sleep(self.min_interval - elapsed)
-            self.last_call = time.time()
+# Scryfall allows 10 requests/second for most endpoints, but search/named/
+# random/collection endpoints are limited to 2/second. Share scrython's global
+# limiters so direct requests and scrython requests never exceed the combined
+# per-endpoint rate (separate limiters would allow 4 req/s on /cards/search).
+_SLOW_ENDPOINT_PREFIXES = ("/cards/search", "/cards/named", "/cards/random", "/cards/collection")
+_slow_url_rate_limiter = SlowRateLimiter.get_global_limiter()
+_default_url_rate_limiter = RateLimiter.get_global_limiter()
 
 
-# Scryfall allows 10 requests/second for most endpoints (e.g. prints_search_uri).
-# Search/named/random/collection endpoints are limited to 2/second and are
-# handled by scrython's own SlowRateLimiter.
-_url_rate_limiter = RateLimiter(calls_per_second=10.0)
+def _getUrlRateLimiter(url: str) -> RateLimiter:
+    path = urllib.parse.urlparse(url).path
+    if any(path.startswith(prefix) for prefix in _SLOW_ENDPOINT_PREFIXES):
+        return _slow_url_rate_limiter
+    return _default_url_rate_limiter
 
 
 def getUrlData(url, headers=None):
     if url is None:
         return None
-    _url_rate_limiter.wait()
+    _getUrlRateLimiter(url).wait()
     r = requests.get(url, headers=headers if headers is not None else DEFAULT_HEADERS)
+    if r.status_code != 200:
+        logging.warning(f"Request to {url} failed with {r.status_code}: {r.text[:200]}")
+        return None
     return r.text
 
 

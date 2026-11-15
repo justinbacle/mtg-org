@@ -1,3 +1,5 @@
+import urllib.parse
+
 from mtgorg.lib import importexport  # noqa E402
 
 
@@ -239,7 +241,7 @@ def test_MTGO_DEK_import():
     assert importer.deckList == MTGO_DEK_DECKLIST
 
 
-EDHREC_URL = "https://edhrec.com/deckpreview/0qIYCFl_tMPMnmGV0swWeg"
+EDHREC_TEST_URL = "https://edhrec.com/deckpreview/test-deck"
 
 EDHREC_PLAYLIST = [
     [1, "c5f9326a-2a41-45b3-97c3-548f0bdc0882"],
@@ -408,7 +410,22 @@ EDHREC_PARSED_NAMES = [
 ]
 
 
-def test_EDHREC_import():
+def test_EDHREC_import(monkeypatch):
+    # EDHRec deck URLs expire/change, so feed the parser a deterministic page
+    # containing the same Card Kingdom export link format.
+    exportList = "\n".join(f"{qty} {name}" for qty, name in EDHREC_PARSED_NAMES)
+    encodedList = urllib.parse.quote(exportList, safe="")
+    page = (
+        "<html><body>"
+        f'<a href="https://www.cardkingdom.com/builder?c={encodedList}">Card Kingdom</a>'
+        "</body></html>"
+    )
+
+    class FakeResponse:
+        text = page
+
+    monkeypatch.setattr(importexport.requests, "get", lambda url: FakeResponse())
+
     importer = importexport.EDHRec_importer()
-    parsed = importer.parseInput(EDHREC_URL)
+    parsed = importer.parseInput(EDHREC_TEST_URL)
     assert parsed == EDHREC_PARSED_NAMES
