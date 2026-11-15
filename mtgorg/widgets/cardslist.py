@@ -26,6 +26,7 @@ class CardsList(QtWidgets.QWidget):
         self.setLayout(self.mainLayout)
 
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal, self)
+        qt.configureSplitter(self.splitter)
         self.mainLayout.addWidget(self.splitter)
 
         # Left (main pane) is cards list
@@ -81,6 +82,9 @@ class CardsList(QtWidgets.QWidget):
         self.splitter.setSizes([900, 420])
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 0)
+
+    def applyTheme(self):
+        self.infoPanel.applyTheme()
 
     def setCardStack(self, cardStack, stackType: str | None, stackName: str | None):
         self.stackType = stackType
@@ -271,11 +275,23 @@ class InfoWidget(QtWidgets.QWidget):
         self.typePieChartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         self.typePieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], int(GRAPH_MIN_SIZE[1] * 1.2))
         self.mainLayout.addWidget(self.typePieChartView)
+        self._lastValues = None
+        self.applyTheme()
+
+    def applyTheme(self):
+        for chart in (self.manaChart, self.colorPieChart, self.typePieChart):
+            qt.styleChart(chart)
+        for view in (self.manaChartView, self.colorPieChartView, self.typePieChartView):
+            qt.styleChartView(view)
+        if self._lastValues is not None:
+            self.updateValues(self._lastValues)
 
     def setValidationDetails(self, details: dict | None):
         self.formatLegalityWidget.setDetails(details)
 
     def updateValues(self, updateDict: dict):
+        self._lastValues = updateDict
+        labelColor = qt.chartTextColor()
         # Main data
         self.deckStatsWidget.setData(updateDict)
         # Mana values graph
@@ -290,6 +306,7 @@ class InfoWidget(QtWidgets.QWidget):
             else:
                 _slice = QtCharts.QPieSlice(f"colorless: {qty}", qty)
             _slice.setLabelVisible()
+            _slice.setLabelColor(labelColor)
             _color = utils.getColor(color)
             _slice.setColor(QtGui.QColor(_color[0], _color[1], _color[2]))
             self.colorPieSeries.append(_slice)
@@ -298,6 +315,7 @@ class InfoWidget(QtWidgets.QWidget):
         for type, qty in updateDict["typePie"].items():
             _slice = QtCharts.QPieSlice(f"{type}: {qty}", qty)
             _slice.setLabelVisible()
+            _slice.setLabelColor(labelColor)
             self.typePieSeries.append(_slice)
 
 

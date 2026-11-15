@@ -1,10 +1,30 @@
+import os
+import sys
 from pathlib import Path
 
 # ------------------------------------ QT ------------------------------------ #
-THEME = "fusion"  # ["fusion", "material"]
+THEME = "fusion"
+THEMES = {
+    "fusion": "System (Fusion)",
+    "kde": "System (KDE)",
+    "material": "Material (dark teal)",
+}
+
+
+def kdeThemeAvailable() -> bool:
+    if not sys.platform.startswith("linux"):
+        return False
+    desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
+    return "kde" in desktop or bool(os.environ.get("KDE_FULL_SESSION"))
+
+
+def availableThemes() -> dict:
+    return {key: label for key, label in THEMES.items() if key != "kde" or kdeThemeAvailable()}
+
+
 IMG_DOWNLOAD_METHOD = "qt"  # ["direct", "qt"]
 IMG_SIZE = "large"  # small, normal, large, png
-QSPLITTER_HANDLE_WIDTH = 8
+QSPLITTER_HANDLE_WIDTH = 6
 
 # ----------------------------------- UTILS ---------------------------------- #
 DATETIME_FORMAT = "%d/%m/%y %H:%M:%S"

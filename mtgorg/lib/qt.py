@@ -3,6 +3,7 @@ import typing
 from pathlib import Path
 from PySide6 import QtGui, QtWidgets, QtSvg, QtCore, QtCharts
 
+import constants
 from lib import system
 
 
@@ -183,9 +184,138 @@ class FlowLayout(QtWidgets.QLayout):
         return y + line_height - rect.y()
 
 
+def isDarkPalette() -> bool:
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return True
+    return app.palette().color(QtGui.QPalette.ColorRole.Window).lightness() < 128
+
+
+_systemStylePathsAdded = False
+
+
+def addSystemStylePaths():
+    global _systemStylePathsAdded
+    if _systemStylePathsAdded:
+        return
+    for path in (
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins",
+        "/usr/lib/aarch64-linux-gnu/qt6/plugins",
+        "/usr/lib64/qt6/plugins",
+        "/usr/lib/qt6/plugins",
+    ):
+        if Path(path).is_dir():
+            QtCore.QCoreApplication.addLibraryPath(path)
+    _systemStylePathsAdded = True
+
+
+def applySystemTheme(app: QtWidgets.QApplication, palette: QtGui.QPalette | None = None):
+    addSystemStylePaths()
+    app.setStyleSheet("")
+    for name in ("Breeze", "Oxygen"):
+        style = QtWidgets.QStyleFactory.create(name)
+        if style is not None:
+            app.setStyle(style)
+            return
+    logging.warning("KDE Breeze style is unavailable; using Fusion with the KDE palette")
+    app.setStyle("Fusion")
+    if palette is not None:
+        app.setPalette(palette)
+
+
+def applyFusionTheme(app: QtWidgets.QApplication):
+    app.setStyleSheet("")
+    app.setStyle("Fusion")
+    app.setPalette(app.style().standardPalette())
+    selectPalette(app)
+
+
+def themedSvgIcon(path: str | Path, color: QtGui.QColor, size: int = 20) -> QtGui.QIcon:
+    renderer = QtSvg.QSvgRenderer(str(path))
+    pixmap = QtGui.QPixmap(size, size)
+    pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+    painter = QtGui.QPainter(pixmap)
+    renderer.render(painter)
+    painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_SourceIn)
+    painter.fillRect(pixmap.rect(), color)
+    painter.end()
+    return QtGui.QIcon(pixmap)
+
+
+def iconColor() -> QtGui.QColor:
+    if constants.THEME == "material":
+        return QtGui.QColor("#1de9b6")
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return QtGui.QColor("#333333")
+    return app.palette().color(QtGui.QPalette.ColorRole.ButtonText)
+
+
+def configureSplitter(splitter: QtWidgets.QSplitter):
+    splitter.setHandleWidth(constants.QSPLITTER_HANDLE_WIDTH)
+    splitter.setStyleSheet(
+        "QSplitter::handle:horizontal, QSplitter::handle:vertical {"
+        " background-color: palette(mid); image: none; }"
+    )
+
+
+def isDarkTheme() -> bool:
+    return constants.THEME == "material" or isDarkPalette()
+
+
+def chartTextColor() -> QtGui.QColor:
+    if constants.THEME == "material":
+        return QtGui.QColor("#eceff1")
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return QtGui.QColor("white")
+    return app.palette().color(QtGui.QPalette.ColorRole.WindowText)
+
+
+def chartGridColor() -> QtGui.QColor:
+    if constants.THEME == "material":
+        color = QtGui.QColor("white")
+        color.setAlpha(40)
+        return color
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return QtGui.QColor(128, 128, 128, 80)
+    color = QtGui.QColor(app.palette().color(QtGui.QPalette.ColorRole.Mid))
+    color.setAlpha(80)
+    return color
+
+
 def getChartsTheme():
-    theme = QtCharts.QChart.ChartTheme.ChartThemeDark
-    return theme
+    return (
+        QtCharts.QChart.ChartTheme.ChartThemeDark
+        if isDarkTheme()
+        else QtCharts.QChart.ChartTheme.ChartThemeLight
+    )
+
+
+def styleChartView(view: QtCharts.QChartView):
+    view.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+    view.setBackgroundBrush(QtGui.QBrush(QtCore.Qt.BrushStyle.NoBrush))
+    view.setStyleSheet("background: transparent; border: none;")
+
+
+def styleChart(chart: QtCharts.QChart):
+    text = chartTextColor()
+    grid = chartGridColor()
+
+    chart.setTheme(getChartsTheme())
+    chart.setBackgroundVisible(False)
+    chart.setPlotAreaBackgroundVisible(False)
+    chart.setMargins(QtCore.QMargins(4, 4, 4, 4))
+    chart.setTitleBrush(QtGui.QBrush(text))
+    chart.setTitleFont(QtWidgets.QApplication.font())
+    if chart.legend() is not None:
+        chart.legend().setLabelColor(text)
+    for axis in chart.axes():
+        axis.setLabelsColor(text)
+        axis.setTitleBrush(QtGui.QBrush(text))
+        axis.setLinePenColor(grid)
+        axis.setGridLineColor(grid)
 
 
 class NoWheelComboBox(QtWidgets.QComboBox):

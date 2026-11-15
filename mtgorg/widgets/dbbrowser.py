@@ -45,6 +45,7 @@ class DbBrowser(QtWidgets.QWidget):
         self.setLayout(self.mainLayout)
 
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal, self)
+        qt.configureSplitter(self.splitter)
         self.mainLayout.addWidget(self.splitter)
 
         self.searchForm = SearchForm(parent=self)

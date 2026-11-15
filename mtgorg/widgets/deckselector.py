@@ -1,4 +1,6 @@
-from PySide6 import QtWidgets, QtCore
+from pathlib import Path
+
+from PySide6 import QtWidgets, QtCore, QtGui
 
 import connector
 import constants
@@ -111,6 +113,7 @@ class CardStackSelector(QtWidgets.QWidget):
         self.setLayout(self._layout)
 
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical, self)
+        qt.configureSplitter(self.splitter)
         self._layout.addWidget(self.splitter)
 
         # Collections
@@ -164,12 +167,22 @@ class CardStackSelector(QtWidgets.QWidget):
         self.exportPB = QtWidgets.QPushButton("Export...")
         self.exportPB.clicked.connect(self.on_exportPBclicked)
         self.deckImportExportLayout.addWidget(self.exportPB)
-        self.settingsPB = QtWidgets.QPushButton("\u2699")
+        self.settingsPB = QtWidgets.QPushButton()
         self.settingsPB.setToolTip("Settings (Ctrl+,)")
         self.settingsPB.setFixedWidth(36)
         self.settingsPB.clicked.connect(self.settingsRequested.emit)
         self.deckImportExportLayout.addWidget(self.settingsPB)
+        self.applyTheme()
         self.decksWidgetLayout.addLayout(self.deckImportExportLayout)
+
+    def applyTheme(self):
+        iconPath = Path("resources/icons/settings.svg")
+        if iconPath.is_file():
+            self.settingsPB.setIcon(qt.themedSvgIcon(iconPath, qt.iconColor(), 18))
+            self.settingsPB.setIconSize(QtCore.QSize(18, 18))
+        else:
+            self.settingsPB.setText("\u2699")
+            self.settingsPB.setFont(QtGui.QFont("DejaVu Sans"))
 
     def on_addColl(self):
         collName, ok = QtWidgets.QInputDialog.getText(

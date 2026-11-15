@@ -34,6 +34,7 @@ Here are the lists of things I'd like to have included in this project :
 - Card searches run in the background, but some heavy operations (like importing a large collection) can still freeze the GUI while they load data.
 - Phyrexian mana uses a single generic font glyph; per-color phyrexian rendering needs custom text drawing
 - Keyrune has no icon for some promo/art-series sets; those show the set code instead
+- On KDE, the native Breeze widget style needs a PySide6 build matching the system Qt version; otherwise the KDE option falls back to Fusion with the KDE palette
 - In bulk mode, art/oracle tag filters fall back to online Scryfall, and the Include Extras checkbox is disabled
 - Add tooltip to view card translations
 - Show english name when browsing other languages

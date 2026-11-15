@@ -50,3 +50,31 @@ def test_search_result_limit_roundtrip(tmp_path, monkeypatch):
 
     config.loadSearchSettings()
     assert constants.SEARCH_RESULT_LIMIT == 250
+
+
+def test_ui_theme_roundtrip_and_fallback(tmp_path, monkeypatch):
+    configPath = tmp_path / "settings.ini"
+    monkeypatch.setattr(constants, "DEFAULT_CONFIGURATION_FILE", configPath)
+    monkeypatch.setattr(constants, "THEME", "fusion")
+    config.createConfigFile()
+
+    assert config.getUISettings() == {"theme": "fusion"}
+
+    config.saveUISettings("material")
+    config.loadUISettings()
+    assert constants.THEME == "material"
+    assert config.getUISettings() == {"theme": "material"}
+
+    config.writeValue("invalid", "UI", "theme")
+    assert config.getUISettings() == {"theme": "fusion"}
+
+
+def test_kde_theme_is_only_listed_on_kde(monkeypatch):
+    monkeypatch.setattr(constants.sys, "platform", "win32")
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    monkeypatch.delenv("KDE_FULL_SESSION", raising=False)
+    assert "kde" not in constants.availableThemes()
+
+    monkeypatch.setattr(constants.sys, "platform", "linux")
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "KDE")
+    assert "kde" in constants.availableThemes()

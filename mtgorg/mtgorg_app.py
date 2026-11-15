@@ -29,6 +29,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._systemPalette = self.app.palette()
 
         self.statusbar = ClickableStatusBar()
         self.statusbar.setToolTip("Click to view the full log")
@@ -55,8 +56,9 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         self.setStatusBar(self.statusbar)
 
-        if constants.THEME == "material":
-            qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '0'})
+        self.initUserFolders()
+        self.initSettings()
+        self.applyTheme()
 
         # FIXME: not working on KDE ubuntu, only seeing wayland's "W" icon
         # ? see : https://doc.qt.io/qtforpython-6/overviews/appicon.html
@@ -79,12 +81,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             logging.error("Unhandled system platform")
             ...
 
-        if constants.THEME == "fusion":
-            qt.selectPalette(self.app)
-
         # Update resources
-        self.initUserFolders()
-        self.initSettings()
         self.updateResources()
 
         # Set Font
@@ -106,6 +103,58 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.setRefreshTimer.setInterval(7 * 24 * 60 * 60 * 1000)
         self.setRefreshTimer.timeout.connect(self.startSetRefreshCheck)
         self.setRefreshTimer.start()
+
+    def _showThemeBusy(self):
+        if not self.isVisible():
+            return None
+        busy = QtWidgets.QProgressDialog("Applying theme...", None, 0, 0, self)
+        busy.setWindowTitle("Theme")
+        busy.setWindowModality(QtCore.Qt.WindowModality.ApplicationModal)
+        busy.setMinimumDuration(0)
+        busy.setAutoClose(False)
+        busy.show()
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
+        QtWidgets.QApplication.processEvents()
+        return busy
+
+    def applyTheme(self):
+        busy = self._showThemeBusy()
+        if busy is None:
+            self._applyTheme()
+            return
+        # Let the modal indicator paint before the stylesheet repolish blocks the GUI thread.
+        QtCore.QTimer.singleShot(50, lambda: self._finishThemeApply(busy))
+
+    def _finishThemeApply(self, busy):
+        try:
+            self._applyTheme()
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
+            busy.close()
+            QtWidgets.QApplication.processEvents()
+
+    def _applyTheme(self):
+        if constants.THEME == "material":
+            qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '0'})
+            self.app.setStyleSheet(self.app.styleSheet() + """
+QComboBox::item:selected,
+QComboBox QAbstractItemView::item:selected {
+    color: #232629;
+    background-color: #6effe8;
+}
+QMenu::item:selected {
+    color: #232629;
+    background-color: #6effe8;
+}
+""")
+        elif constants.THEME == "kde":
+            qt.applySystemTheme(self.app, self._systemPalette)
+        else:
+            qt.applyFusionTheme(self.app)
+        if hasattr(self, "decklist"):
+            self.decklist.applyTheme()
+        if hasattr(self, "deckSelector"):
+            self.deckSelector.applyTheme()
 
     def startSetRefreshCheck(self):
         """Check for a new Scryfall set without blocking the UI."""
@@ -138,6 +187,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             config.createConfigFile()
         config.loadScryfallSettings()
         config.loadSearchSettings()
+        config.loadUISettings()
 
     def initShortcuts(self):
         settingsAction = QtGui.QAction(self)
@@ -269,6 +319,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.setCentralWidget(self._centralWidget)
         self.mainLayout = QtWidgets.QHBoxLayout(self._centralWidget)
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal, self._centralWidget)
+        qt.configureSplitter(self.splitter)
         self.mainLayout.addWidget(self.splitter)
 
         # Left pane is card viewer
@@ -282,6 +333,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.cardBrowsersWidget.setLayout(self.cardBrowsersLayout)
         self.splitter.addWidget(self.cardBrowsersWidget)
         self.cardBrowsersSplitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical, self.cardBrowsersWidget)
+        qt.configureSplitter(self.cardBrowsersSplitter)
         self.cardBrowsersLayout.addWidget(self.cardBrowsersSplitter)
 
         # Top one is decklist

@@ -76,6 +76,17 @@ class SettingsDialog(QtWidgets.QDialog):
         self.mainLayout = QtWidgets.QVBoxLayout()
         self.setLayout(self.mainLayout)
 
+        self.appearanceGroup = QtWidgets.QGroupBox("Appearance")
+        self.appearanceLayout = QtWidgets.QFormLayout()
+        self.appearanceGroup.setLayout(self.appearanceLayout)
+        self.mainLayout.addWidget(self.appearanceGroup)
+
+        self.themeCB = qt.NoWheelComboBox()
+        for theme, label in constants.availableThemes().items():
+            self.themeCB.addItem(label, theme)
+        self.themeCB.setToolTip("Apply the selected theme immediately.")
+        self.appearanceLayout.addRow("Theme", self.themeCB)
+
         self.scryfallGroup = QtWidgets.QGroupBox("Scryfall")
         self.scryfallLayout = QtWidgets.QFormLayout()
         self.scryfallGroup.setLayout(self.scryfallLayout)
@@ -168,6 +179,11 @@ class SettingsDialog(QtWidgets.QDialog):
         self.updateStorageStats()
 
     def loadSettings(self):
+        uiSettings = config.getUISettings()
+        themeIndex = self.themeCB.findData(uiSettings["theme"])
+        self.themeCB.setCurrentIndex(max(themeIndex, 0))
+        self._initialTheme = self.themeCB.currentData()
+
         settings = config.getScryfallSettings()
         self.useBulkCB.setChecked(settings["use_bulk_files"])
         self.autoUpdateCB.setChecked(settings["bulk_auto_update"])
@@ -276,8 +292,11 @@ class SettingsDialog(QtWidgets.QDialog):
                 if not downloadBulkDataWithProgress(self, manager):
                     return
 
+        themeChanged = self.themeCB.currentData() != self._initialTheme
+        config.saveUISettings(self.themeCB.currentData())
         config.saveScryfallSettings(useBulkFiles, autoUpdate, languageMode)
         config.saveSearchSettings(self.resultLimitCB.currentData())
+        config.loadUISettings()
         config.loadScryfallSettings()
         config.loadSearchSettings()
         if constants.USE_BULK_FILES and manager.getLocalBulkFile() is None:
@@ -286,3 +305,13 @@ class SettingsDialog(QtWidgets.QDialog):
         scryfall.resetDataCaches()
         self.updateStorageStats()
         super().accept()
+        if themeChanged:
+            applyTheme = getattr(self.parent(), "applyTheme", None)
+            if callable(applyTheme):
+                applyTheme()
+            else:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Theme changed",
+                    "Restart MTG Organizer to apply the new theme.",
+                )

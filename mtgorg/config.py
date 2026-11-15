@@ -13,6 +13,10 @@ DEFAULT_SEARCH_SETTINGS = {
     "result_limit": "100",
 }
 
+DEFAULT_UI_SETTINGS = {
+    "theme": "fusion",
+}
+
 
 def configFileExists() -> bool:
     if constants.DEFAULT_CONFIGURATION_FILE.is_file():
@@ -28,6 +32,7 @@ def createConfigFile():
     }
     config['SCRYFALL'] = DEFAULT_SCRYFALL_SETTINGS
     config['SEARCH'] = DEFAULT_SEARCH_SETTINGS
+    config['UI'] = DEFAULT_UI_SETTINGS
     with open(constants.DEFAULT_CONFIGURATION_FILE.as_posix(), 'w') as _f:
         config.write(_f)
 
@@ -90,3 +95,21 @@ def saveSearchSettings(resultLimit: int):
 
 def loadSearchSettings():
     constants.SEARCH_RESULT_LIMIT = getSearchSettings()["result_limit"]
+
+
+def getUISettings() -> dict:
+    settings = {**DEFAULT_UI_SETTINGS, **readConfig().get("UI", {})}
+    theme = settings.get("theme", "fusion")
+    if theme not in constants.availableThemes():
+        theme = "fusion"
+    return {"theme": theme}
+
+
+def saveUISettings(theme: str):
+    if theme not in constants.availableThemes():
+        theme = "fusion"
+    writeValue(theme, "UI", "theme")
+
+
+def loadUISettings():
+    constants.THEME = getUISettings()["theme"]
