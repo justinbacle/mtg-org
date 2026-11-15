@@ -24,6 +24,17 @@ class CardLoaderWorker(QtCore.QObject):
 COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
 USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
 
+COLUMN_MAX_WIDTHS = {
+    "qty": 50,
+    "name": 200,
+    "mana_cost": 120,
+    "type_line": 220,
+    "set": 70,
+    "sets": 120,
+    "rarity": 80,
+    "price": 100,
+}
+
 
 class CardSearchListWidget(QtWidgets.QTableWidget):
     def __init__(self, parent=None, columns=COLUMNS) -> None:
@@ -39,6 +50,14 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)  # ? Not working with selection
         self.setHorizontalHeaderLabels(self.columns)
         self.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.SizeAdjustPolicy.AdjustToContents)
+        self.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
+
+    def resizeColumnsToContents(self):
+        super().resizeColumnsToContents()
+        for index, column in enumerate(self.columns):
+            maxWidth = COLUMN_MAX_WIDTHS.get(column)
+            if maxWidth is not None:
+                self.setColumnWidth(index, min(self.columnWidth(index), maxWidth))
 
     def updateCardListInfos(self):
         # TODO update cardStack before
@@ -137,6 +156,8 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                     else:
                         text = "N/A"
                 item.setData(QtCore.Qt.ItemDataRole.DisplayRole, text)
+                if column in ("name", "type_line") and isinstance(text, str):
+                    item.setToolTip(text)
                 item.setData(QtCore.Qt.ItemDataRole.UserRole, {"data": cardData, "column": column})
                 dataList.append(item)
         return dataList

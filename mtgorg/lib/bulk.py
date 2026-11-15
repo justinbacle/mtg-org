@@ -572,11 +572,14 @@ class BulkCache:
                 params.extend([f"$.{currency}", float(target)])
         return clauses, params
 
-    def iterCardsFiltered(self, searchDict: dict):
+    def iterCardsFiltered(self, searchDict: dict, limit: int | None = None):
         clauses, params = self._filterClauses(searchDict)
         query = "SELECT data FROM cards"
         if clauses:
             query += " WHERE " + " AND ".join(clauses)
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(int(limit))
         with self._lock:
             self.ensureReady()
             with self._connect() as connection:

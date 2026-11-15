@@ -37,6 +37,9 @@ BULK_AUTO_UPDATE = True
 BULK_METADATA_FILENAME = "bulk_info.json"
 BULK_INFO_CACHE_SECONDS = 3600
 
+# ---------------------------------- SEARCH ---------------------------------- #
+SEARCH_RESULT_LIMIT = 100
+
 # ------------------------------------ MTG ----------------------------------- #
 RARITIES = {
     "common": {

@@ -104,6 +104,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         if not config.configFileExists():
             config.createConfigFile()
         config.loadScryfallSettings()
+        config.loadSearchSettings()
 
     def initShortcuts(self):
         settingsAction = QtGui.QAction(self)

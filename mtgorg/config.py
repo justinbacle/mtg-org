@@ -9,6 +9,10 @@ DEFAULT_SCRYFALL_SETTINGS = {
     "bulk_language_mode": "english",
 }
 
+DEFAULT_SEARCH_SETTINGS = {
+    "result_limit": "100",
+}
+
 
 def configFileExists() -> bool:
     if constants.DEFAULT_CONFIGURATION_FILE.is_file():
@@ -23,6 +27,7 @@ def createConfigFile():
         "resources_date": ""
     }
     config['SCRYFALL'] = DEFAULT_SCRYFALL_SETTINGS
+    config['SEARCH'] = DEFAULT_SEARCH_SETTINGS
     with open(constants.DEFAULT_CONFIGURATION_FILE.as_posix(), 'w') as _f:
         config.write(_f)
 
@@ -68,3 +73,20 @@ def loadScryfallSettings():
     constants.USE_BULK_FILES = settings["use_bulk_files"]
     constants.BULK_AUTO_UPDATE = settings["bulk_auto_update"]
     constants.BULK_LANGUAGE_MODE = settings["bulk_language_mode"]
+
+
+def getSearchSettings() -> dict:
+    settings = {**DEFAULT_SEARCH_SETTINGS, **readConfig().get("SEARCH", {})}
+    try:
+        resultLimit = int(settings["result_limit"])
+    except (TypeError, ValueError):
+        resultLimit = int(DEFAULT_SEARCH_SETTINGS["result_limit"])
+    return {"result_limit": max(1, resultLimit)}
+
+
+def saveSearchSettings(resultLimit: int):
+    writeValue(str(max(1, int(resultLimit))), "SEARCH", "result_limit")
+
+
+def loadSearchSettings():
+    constants.SEARCH_RESULT_LIMIT = getSearchSettings()["result_limit"]

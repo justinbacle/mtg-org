@@ -16,6 +16,18 @@ class DummyCardList:
         self.cards = cards
 
 
+class DummyLabel:
+    def __init__(self):
+        self.text = ""
+        self.visible = False
+
+    def setText(self, text):
+        self.text = text
+
+    def setVisible(self, visible):
+        self.visible = visible
+
+
 def test_search_request_is_logged(caplog):
     with caplog.at_level(logging.INFO):
         dbbrowser.DbBrowser._logSearchRequest({"loy": ">5", "types": ["planeswalker"]})
@@ -25,32 +37,51 @@ def test_search_request_is_logged(caplog):
 
 
 def test_no_results_search_is_logged(monkeypatch, caplog):
-    browser = SimpleNamespace(dbResultsList=DummyCardList())
+    browser = SimpleNamespace(dbResultsList=DummyCardList(), resultsInfoLabel=DummyLabel())
 
     with caplog.at_level(logging.INFO):
         dbbrowser.DbBrowser._applySearchResults(browser, [], "zzzzzzzz")
 
     assert "No cards found for search" in caplog.text
     assert browser.dbResultsList.cards == []
+    assert browser.resultsInfoLabel.visible is False
+
+
+def test_truncated_search_shows_indicator(caplog):
+    browser = SimpleNamespace(dbResultsList=DummyCardList(), resultsInfoLabel=DummyLabel())
+
+    with caplog.at_level(logging.INFO):
+        dbbrowser.DbBrowser._applySearchResults(browser, [{"id": "1"}], "lightning", True)
+
+    assert "more cards match" in caplog.text
+    assert browser.resultsInfoLabel.visible is True
+    assert "Refine your search" in browser.resultsInfoLabel.text
+    assert browser.dbResultsList.cards == [(1, {"id": "1"})]
 
 
 def test_search_worker_emits_results(monkeypatch):
-    monkeypatch.setattr(dbbrowser.scryfall, "searchCards", lambda searchDict: [{"id": "card-1"}])
-    worker = dbbrowser.SearchWorker(3, {"name": "x"})
+    monkeypatch.setattr(
+        dbbrowser.scryfall,
+        "searchCardsLimited",
+        lambda searchDict, limit: ([{"id": "card-1"}], False),
+    )
+    worker = dbbrowser.SearchWorker(3, {"name": "x"}, 100)
     results = []
-    worker.finished.connect(lambda requestId, cards: results.append((requestId, cards)))
+    worker.finished.connect(
+        lambda requestId, cards, truncated: results.append((requestId, cards, truncated))
+    )
 
     worker.run()
 
-    assert results == [(3, [{"id": "card-1"}])]
+    assert results == [(3, [{"id": "card-1"}], False)]
 
 
 def test_search_worker_emits_failure(monkeypatch):
-    def fail(searchDict):
+    def fail(searchDict, limit):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(dbbrowser.scryfall, "searchCards", fail)
-    worker = dbbrowser.SearchWorker(4, {"name": "x"})
+    monkeypatch.setattr(dbbrowser.scryfall, "searchCardsLimited", fail)
+    worker = dbbrowser.SearchWorker(4, {"name": "x"}, 100)
     failures = []
     worker.failed.connect(lambda requestId, error: failures.append((requestId, error)))
 

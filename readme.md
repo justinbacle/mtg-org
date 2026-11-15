@@ -70,6 +70,9 @@ then run the main program from the repository root
 
 Click the status bar message to open the full session log.
 
+**Settings > Search** caps how many matching cards are shown (default 100). If
+more cards match, a notice above the results tells you the list was truncated.
+
 ## Offline mode
 
 Open **Settings > Scryfall...** to enable offline bulk data. Choose between

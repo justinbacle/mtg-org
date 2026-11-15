@@ -193,6 +193,8 @@ def test_exact_search_prefers_regular_nonfoil_printing(tmp_path, monkeypatch):
             "set": "fra",
             "set_id": "set-fra",
             "set_name": "Reality Fracture",
+            "set_type": "expansion",
+            "booster": True,
             "lang": "en",
             "released_at": "2026-10-02",
             "collector_number": "418",
@@ -208,6 +210,8 @@ def test_exact_search_prefers_regular_nonfoil_printing(tmp_path, monkeypatch):
             "set": "fra",
             "set_id": "set-fra",
             "set_name": "Reality Fracture",
+            "set_type": "expansion",
+            "booster": True,
             "lang": "en",
             "released_at": "2026-10-02",
             "collector_number": "128",
@@ -222,6 +226,8 @@ def test_exact_search_prefers_regular_nonfoil_printing(tmp_path, monkeypatch):
             "set": "pfra",
             "set_id": "set-pfra",
             "set_name": "Reality Fracture Promos",
+            "set_type": "promo",
+            "booster": False,
             "lang": "en",
             "released_at": "2026-10-02",
             "collector_number": "128p",
@@ -229,6 +235,22 @@ def test_exact_search_prefers_regular_nonfoil_printing(tmp_path, monkeypatch):
             "promo_types": ["promopack", "stamped"],
             "finishes": ["nonfoil", "foil"],
             "prices": {"eur": "2.66", "eur_foil": "3.99"},
+        },
+        {
+            "id": "collectors-edition",
+            "oracle_id": "oracle-denzilore",
+            "name": "Denzilore Fatehold",
+            "set": "ced",
+            "set_id": "set-ced",
+            "set_name": "Collectors' Edition",
+            "set_type": "memorabilia",
+            "booster": False,
+            "lang": "en",
+            "released_at": "2027-01-01",
+            "collector_number": "131",
+            "frame_effects": ["legendary"],
+            "finishes": ["nonfoil"],
+            "prices": {"eur": "6.54"},
         },
     ]
     folder = tmp_path / "bulk"
@@ -245,7 +267,74 @@ def test_exact_search_prefers_regular_nonfoil_printing(tmp_path, monkeypatch):
     assert scryfall.getCardReprintId("regular", "fra", "en")[0] == "regular"
     printings = scryfall.getCardPrintings("regular")
     assert printings[0]["id"] == "regular"
-    assert {printing["id"] for printing in printings} == {"regular", "showcase-foil", "promo"}
+    assert {printing["id"] for printing in printings} == {
+        "regular",
+        "showcase-foil",
+        "promo",
+        "collectors-edition",
+    }
+    assert printings[-1]["id"] == "collectors-edition"
+
+
+def test_supplemental_sets_do_not_outrank_normal_boosters(tmp_path, monkeypatch):
+    common = {
+        "id": "normal-set",
+        "oracle_id": "oracle-normal-set",
+        "name": "Normal Card",
+        "set": "dmr",
+        "set_id": "set-dmr",
+        "set_name": "Dominaria Remastered",
+        "set_type": "masters",
+        "booster": True,
+        "lang": "en",
+        "released_at": "2023-01-13",
+        "collector_number": "1",
+        "finishes": ["nonfoil"],
+        "prices": {"eur": "0.10"},
+    }
+    supplemental = {
+        "id": "the-list",
+        "oracle_id": "oracle-normal-set",
+        "name": "Normal Card",
+        "set": "plst",
+        "set_id": "set-plst",
+        "set_name": "The List",
+        "set_type": "masters",
+        "booster": True,
+        "lang": "en",
+        "released_at": "2024-08-02",
+        "collector_number": "DMR-1",
+        "finishes": ["nonfoil"],
+        "prices": {"eur": "0.05"},
+    }
+    folder = tmp_path / "bulk"
+    folder.mkdir()
+    (folder / "default-cards-20240101000000.json").write_text(
+        json.dumps([supplemental, common])
+    )
+    monkeypatch.setattr(constants, "DEFAULT_BULK_FOLDER_LOCATION", folder)
+    monkeypatch.setattr(constants, "USE_BULK_FILES", True)
+    monkeypatch.setattr(constants, "BULK_LANGUAGE_MODE", "english")
+    scryfall.resetBulkDataCache()
+    scryfall.resetSetsCache()
+
+    results = scryfall.searchCards({"name": "Normal Card"}, exact=True)
+
+    assert [card["id"] for card in results] == ["normal-set", "the-list"]
+
+
+def test_bulk_search_result_limit(bulkFolder):
+    cards, truncated = scryfall.searchCardsLimited({"name": "Lightning Bolt"}, 1, exact=True)
+    assert len(cards) == 1
+    assert truncated is True
+
+    cards, truncated = scryfall.searchCardsLimited({"name": "Lightning Bolt"}, 100)
+    assert cards
+    assert truncated is False
+
+    cards, truncated = scryfall.searchCardsLimited({"lang": "en", "game": "paper"}, 2)
+    assert len(cards) <= 2
+    assert truncated is True
 
 
 def test_bulk_search_cmc_filter(bulkFolder):

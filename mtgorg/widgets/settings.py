@@ -5,7 +5,7 @@ from PySide6 import QtCore, QtWidgets
 import config
 import constants
 import connector
-from lib import bulk, scryfall
+from lib import bulk, qt, scryfall
 
 
 def downloadBulkDataWithProgress(parent: QtWidgets.QWidget, manager: bulk.BulkDataManager) -> bool:
@@ -102,6 +102,19 @@ class SettingsDialog(QtWidgets.QDialog):
         self.downloadPB.clicked.connect(self.on_downloadClicked)
         self.scryfallLayout.addRow(self.downloadPB)
 
+        self.searchGroup = QtWidgets.QGroupBox("Search")
+        self.searchLayout = QtWidgets.QFormLayout()
+        self.searchGroup.setLayout(self.searchLayout)
+        self.mainLayout.addWidget(self.searchGroup)
+
+        self.resultLimitCB = qt.NoWheelComboBox()
+        for limit in (100, 1000, 10000):
+            self.resultLimitCB.addItem(f"{limit:,} cards", limit)
+        self.resultLimitCB.setToolTip(
+            "Only the first N matching cards are shown. Refine filters to see more."
+        )
+        self.searchLayout.addRow("Maximum results", self.resultLimitCB)
+
         self.cacheGroup = QtWidgets.QGroupBox("Cache")
         self.cacheLayout = QtWidgets.QVBoxLayout()
         self.cacheGroup.setLayout(self.cacheLayout)
@@ -160,6 +173,12 @@ class SettingsDialog(QtWidgets.QDialog):
         self.autoUpdateCB.setChecked(settings["bulk_auto_update"])
         languageIndex = self.languageCB.findData(settings["bulk_language_mode"])
         self.languageCB.setCurrentIndex(max(languageIndex, 0))
+        resultLimit = config.getSearchSettings()["result_limit"]
+        resultLimitIndex = self.resultLimitCB.findData(resultLimit)
+        if resultLimitIndex < 0:
+            self.resultLimitCB.addItem(f"{resultLimit:,} cards", resultLimit)
+            resultLimitIndex = self.resultLimitCB.count() - 1
+        self.resultLimitCB.setCurrentIndex(resultLimitIndex)
 
     def manager(self) -> bulk.BulkDataManager:
         languageMode = self.languageCB.currentData()
@@ -262,7 +281,9 @@ class SettingsDialog(QtWidgets.QDialog):
                     return
 
         config.saveScryfallSettings(useBulkFiles, autoUpdate, languageMode)
+        config.saveSearchSettings(self.resultLimitCB.currentData())
         config.loadScryfallSettings()
+        config.loadSearchSettings()
         if constants.USE_BULK_FILES and manager.getLocalBulkFile() is None:
             logging.warning("Bulk data missing, using online-only mode for this session")
             constants.USE_BULK_FILES = False

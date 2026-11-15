@@ -8,22 +8,23 @@ import constants
 
 
 class SearchWorker(QtCore.QObject):
-    finished = QtCore.Signal(int, list)
+    finished = QtCore.Signal(int, list, bool)
     failed = QtCore.Signal(int, str)
 
-    def __init__(self, requestId: int, searchDict: dict):
+    def __init__(self, requestId: int, searchDict: dict, limit: int):
         super().__init__()
         self._requestId = requestId
         self._searchDict = searchDict
+        self._limit = limit
 
     def run(self):
         try:
-            cards = scryfall.searchCards(self._searchDict)
+            cards, truncated = scryfall.searchCardsLimited(self._searchDict, self._limit)
         except Exception:
             logging.exception("Card search failed")
             self.failed.emit(self._requestId, traceback.format_exc())
         else:
-            self.finished.emit(self._requestId, cards)
+            self.finished.emit(self._requestId, cards, truncated)
 
 
 class DbBrowser(QtWidgets.QWidget):
@@ -55,10 +56,17 @@ class DbBrowser(QtWidgets.QWidget):
         self.qscroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.qscroll.setWidget(self.searchForm)
         self.splitter.addWidget(self.qscroll)
-        # QListWidget on the right for results
+        # Results table with an optional truncation notice
+        self.resultsWidget = QtWidgets.QWidget()
+        self.resultsLayout = QtWidgets.QVBoxLayout(self.resultsWidget)
+        self.resultsInfoLabel = QtWidgets.QLabel("")
+        self.resultsInfoLabel.setWordWrap(True)
+        self.resultsInfoLabel.setVisible(False)
+        self.resultsLayout.addWidget(self.resultsInfoLabel)
         self.dbResultsList = CardSearchListWidget()
         self.dbResultsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
-        self.splitter.addWidget(self.dbResultsList)
+        self.resultsLayout.addWidget(self.dbResultsList)
+        self.splitter.addWidget(self.resultsWidget)
         self.splitter.setSizes([300, 600])
 
     @staticmethod
@@ -76,7 +84,11 @@ class DbBrowser(QtWidgets.QWidget):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
 
         self._searchThread = QtCore.QThread(self)
-        self._searchWorker = SearchWorker(self._searchRequestId, searchDict)
+        self._searchWorker = SearchWorker(
+            self._searchRequestId,
+            searchDict,
+            constants.SEARCH_RESULT_LIMIT,
+        )
         self._searchWorker.moveToThread(self._searchThread)
         self._searchThread.started.connect(self._searchWorker.run)
         self._searchWorker.finished.connect(self._on_searchFinished)
@@ -88,10 +100,10 @@ class DbBrowser(QtWidgets.QWidget):
         self._searchThread.finished.connect(self._on_searchThreadFinished)
         self._searchThread.start()
 
-    def _on_searchFinished(self, requestId: int, cards: list):
+    def _on_searchFinished(self, requestId: int, cards: list, truncated: bool):
         if requestId != self._searchRequestId:
             return
-        self._applySearchResults(cards, self._searchLabel)
+        self._applySearchResults(cards, self._searchLabel, truncated)
 
     def _on_searchFailed(self, requestId: int, error: str):
         if requestId != self._searchRequestId:
@@ -105,11 +117,20 @@ class DbBrowser(QtWidgets.QWidget):
         self._searchThread = None
         self._searchWorker = None
 
-    def _applySearchResults(self, cards: list, searchLabel: str):
+    def _applySearchResults(self, cards: list, searchLabel: str, truncated: bool = False):
         if not cards:
             logging.info(f"No cards found for search {searchLabel!r}")
+        elif truncated:
+            logging.info(
+                f"Showing the first {len(cards)} results; more cards match"
+            )
         else:
             logging.info(f"Search returned {len(cards)} cards")
+        self.resultsInfoLabel.setVisible(truncated)
+        if truncated:
+            self.resultsInfoLabel.setText(
+                f"Showing the first {len(cards)} results; more cards match. Refine your search."
+            )
         cardList = [(1, card) for card in cards]
         self.dbResultsList.setCards(cardList)
 

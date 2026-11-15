@@ -18,6 +18,9 @@ Implemented:
 - Tests for bulk download, indexes, lookups, filters, config, and parser mocks.
 - Opt-in live bulk metadata/download test (`MTGORG_TEST_LIVE_BULK=1`).
 - Progress feedback while the SQLite cache is first built.
+- Default printing order uses booster/set-type/variant ranking, so memorabilia
+  and Collector's Edition printings do not win by release date alone. The List
+  and Special Guests are demoted as supplemental insert sets.
 - Fuzzy name fallback for non-exact search when no substring match is found.
 - SQLite prefilters for common search fields, plus background card searching.
 

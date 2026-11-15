@@ -194,29 +194,67 @@ def _copyBulkCard(card: dict) -> Card:
     return Card(dict(card))
 
 
+SUPPLEMENTAL_SET_CODES = {"plst", "spg", "ulst"}
+
+SET_TYPE_RANK = {
+    "core": 0,
+    "expansion": 0,
+    "masters": 0,
+    "commander": 0,
+    "draft_innovation": 0,
+    "starter": 1,
+    "duel_deck": 1,
+    "archenemy": 1,
+    "planechase": 1,
+    "box": 2,
+    "arsenal": 2,
+    "from_the_vault": 2,
+    "premium_deck": 2,
+    "spellbook": 2,
+    "treasure_chest": 2,
+    "masterpiece": 2,
+    "eternal": 2,
+    "promo": 3,
+    "alchemy": 3,
+    "funny": 3,
+    "memorabilia": 4,
+    "token": 5,
+    "vanguard": 5,
+    "minigame": 5,
+}
+
+
+def _collectorSortKey(card: dict) -> int:
+    numbers = re.findall(r"\d+", str(card.get("collector_number", "")))
+    return int(numbers[-1]) if numbers else 999999
+
+
 def _printingPreference(card: dict) -> tuple:
-    """Prefer regular nonfoil printings over showcase, promo, and foil-only ones."""
+    """Prefer common booster printings, then regular nonfoil variants."""
     frameEffects = set(card.get("frame_effects") or [])
     specialFrame = bool(frameEffects - {"legendary"})
-    isPromo = bool(card.get("promo_types"))
+    isPromo = bool(card.get("promo_types")) or bool(card.get("promo"))
     finishes = card.get("finishes") or []
     hasNonfoil = "nonfoil" in finishes
     prices = card.get("prices") or {}
     hasNonfoilPrice = prices.get(constants.CURRENCY[0]) is not None
-    collectorMatch = re.match(r"(\d+)", str(card.get("collector_number", "")))
-    collectorNumber = int(collectorMatch.group(1)) if collectorMatch is not None else 999999
+    setRank = SET_TYPE_RANK.get(card.get("set_type"), 3)
+    if card.get("set") in SUPPLEMENTAL_SET_CODES:
+        setRank = 3
     return (
+        0 if card.get("booster") else 1,
+        setRank,
         isPromo,
         specialFrame,
         not hasNonfoil,
         not hasNonfoilPrice,
-        collectorNumber,
     )
 
 
 def _sortPrintings(cards: list) -> list:
-    cards = sorted(cards, key=_printingPreference)
-    return sorted(cards, key=lambda card: card.get("released_at", ""), reverse=True)
+    cards = sorted(cards, key=_collectorSortKey)
+    cards = sorted(cards, key=lambda card: card.get("released_at", ""), reverse=True)
+    return sorted(cards, key=_printingPreference)
 
 
 def _dedupeByOracle(cards: list) -> list:
@@ -240,7 +278,27 @@ def searchCards(searchDict: dict, exact: bool = False):
     return searchCardsOnline(searchDict, exact)
 
 
-def searchCardsLocal(searchDict: dict, exact: bool = False):
+def _searchCardsLocalNoName(searchDict: dict, limit: int) -> tuple[list, bool]:
+    cache = _getBulkCache()
+    cards = _filterCards(cache.iterCardsFiltered(searchDict, limit=limit + 1), searchDict)
+    truncated = len(cards) > limit
+    cards = _sortPrintings(cards)
+    cards = _dedupeByOracle(cards)
+    return [_copyBulkCard(card) for card in cards[:limit]], truncated
+
+
+def searchCardsLimited(searchDict: dict, limit: int, exact: bool = False):
+    if constants.USE_BULK_FILES and not (searchDict.get("atag") or searchDict.get("otag")):
+        if not searchDict.get("name"):
+            return _searchCardsLocalNoName(searchDict, limit)
+        cards = searchCardsLocal(searchDict, exact, limit=limit + 1)
+    else:
+        cards = searchCards(searchDict, exact)
+    truncated = len(cards) > limit
+    return cards[:limit], truncated
+
+
+def searchCardsLocal(searchDict: dict, exact: bool = False, limit: int | None = None):
     cache = _getBulkCache()
     name = searchDict.get("name", "")
     if exact and name:
@@ -282,7 +340,7 @@ def searchCardsLocal(searchDict: dict, exact: bool = False):
         candidates = _dedupeByOracle(candidates)
         return [_copyBulkCard(card) for card in candidates]
 
-    cards = _filterCards(cache.iterCardsFiltered(searchDict), searchDict)
+    cards = _filterCards(cache.iterCardsFiltered(searchDict, limit=limit), searchDict)
     cards = _sortPrintings(cards)
     cards = _dedupeByOracle(cards)
     return [_copyBulkCard(card) for card in cards]
@@ -426,7 +484,7 @@ def getCardReprintId(cardId: str, setCode: str, lang: str = "en") -> list:
     if card is None:
         return []
     if constants.USE_BULK_FILES:
-        allPrintings = sorted(_getLocalPrintings(card), key=_printingPreference)
+        allPrintings = _sortPrintings(_getLocalPrintings(card))
         localIds = [
             printing["id"] for printing in allPrintings
             if printing.get("set", "").lower() == setCode.lower()

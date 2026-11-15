@@ -36,11 +36,15 @@
 - Search dropdowns ignore mouse-wheel changes, and Enter triggers search from
   every text field (including CMC, power, toughness, and loyalty).
 - Packaging metadata fixed and runtime/dev requirements split.
+- Search results are capped by a configurable limit (default 100), with a
+  truncation notice when more cards match.
+- Table columns are capped and elided instead of expanding for long names/types.
+- Default printing order now prefers booster-available, normal set types and
+  regular variants; collector/memorabilia/promo-only printings sort last.
+  Supplemental insert sets (The List, Special Guests) are demoted too.
 
 ## Optional follow-ups
 
-- Cap or virtualize large bulk search result sets: wide filters can return
-  10k+ cards, and populating the table can still stutter the UI.
 - Run Pyright in CI (config exists, but it needs the venv/stub setup first).
 - Decide on and add a project licence.
 - Optionally test/measure the `all_cards` mode end-to-end.

@@ -35,3 +35,18 @@ def test_invalid_bulk_language_mode_falls_back_to_english(tmp_path, monkeypatch)
     config.createConfigFile()
     config.writeValue("invalid", "SCRYFALL", "bulk_language_mode")
     assert config.getScryfallSettings()["bulk_language_mode"] == "english"
+
+
+def test_search_result_limit_roundtrip(tmp_path, monkeypatch):
+    configPath = tmp_path / "settings.ini"
+    monkeypatch.setattr(constants, "DEFAULT_CONFIGURATION_FILE", configPath)
+    monkeypatch.setattr(constants, "SEARCH_RESULT_LIMIT", 100)
+    config.createConfigFile()
+
+    assert config.getSearchSettings() == {"result_limit": 100}
+
+    config.saveSearchSettings(250)
+    assert config.getSearchSettings() == {"result_limit": 250}
+
+    config.loadSearchSettings()
+    assert constants.SEARCH_RESULT_LIMIT == 250

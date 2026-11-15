@@ -121,6 +121,7 @@ def test_settings_shows_storage_sizes(qtApp, monkeypatch):
     )
     dialog = settings.SettingsDialog()
 
+    assert dialog.resultLimitCB.currentData() == 100
     assert dialog.storageLabels["decks"].text() == "0 B"
     assert dialog.storageLabels["card_cache"].text() == "1.0 KB"
     assert dialog.storageLabels["images"].text() == "2.0 KB"

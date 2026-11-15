@@ -2,7 +2,7 @@ import json
 
 import constants
 from PySide6 import QtWidgets
-from widgets.cardlistwidget import CardSearchListWidget
+from widgets.cardlistwidget import COLUMN_MAX_WIDTHS, CardSearchListWidget
 
 
 def makeWidget(qtApp):
@@ -46,3 +46,33 @@ def test_missing_keyrune_file_does_not_crash(tmp_path, monkeypatch, qtApp):
     item = widget.getCardTableItem({"set": "slc"}, columns=["set"])[0]
 
     assert item.text() == "SLC"
+
+
+def test_table_columns_are_capped(tmp_path, monkeypatch, qtApp):
+    fonts = tmp_path / "fonts"
+    fonts.mkdir()
+    (fonts / "keyrune.json").write_text(json.dumps({"tst": "&#xe602;"}))
+    monkeypatch.setattr(constants, "DEFAULT_FONTS_LOCATION", fonts)
+
+    parent = QtWidgets.QWidget()
+    parent.keyruneFontId = 0
+    parent.proxyglyphFontId = 0
+    parent.phyrexianFontId = 0
+    widget = CardSearchListWidget(parent)
+    widget.testParent = parent
+    card = {
+        "id": "card-1",
+        "name": "Terra, Magical Adept // Esper Terra",
+        "mana_cost": "{2}{W}{U}",
+        "type_line": "Legendary Creature - Human Wizard // Legendary Creature - Human Wizard Warrior",
+        "set": "tst",
+        "rarity": "rare",
+        "prices": {"eur": "1.00"},
+    }
+
+    widget.setCards([(1, card)])
+
+    typeColumn = widget.columns.index("type_line")
+    nameColumn = widget.columns.index("name")
+    assert widget.columnWidth(typeColumn) <= COLUMN_MAX_WIDTHS["type_line"]
+    assert widget.columnWidth(nameColumn) <= COLUMN_MAX_WIDTHS["name"]
