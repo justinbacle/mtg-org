@@ -304,7 +304,7 @@ class BulkCache:
             and int(schemaVersion) == self.SCHEMA_VERSION
         )
 
-    def _build(self):
+    def _build(self, progress_callback=None):
         logging.info(f"Building bulk cache for {self.sourcePath.name}...")
         tmpPath = self.dbPath.with_suffix(self.dbPath.suffix + ".tmp")
         tmpPath.unlink(missing_ok=True)
@@ -368,6 +368,8 @@ class BulkCache:
                         batch,
                     )
                     batch.clear()
+                    if progress_callback is not None:
+                        progress_callback(recordCount)
             if batch:
                 connection.executemany(
                     "INSERT OR REPLACE INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -396,7 +398,7 @@ class BulkCache:
         self._readySource = self._sourceStat()
         logging.info(f"Bulk cache built with {recordCount} records")
 
-    def ensureReady(self) -> bool:
+    def ensureReady(self, progress_callback=None) -> bool:
         with self._lock:
             currentStat = self._sourceStat()
             if self._ready and self._readySource == currentStat and self.dbPath.is_file():
@@ -405,7 +407,7 @@ class BulkCache:
                 self._ready = True
                 self._readySource = currentStat
                 return True
-            self._build()
+            self._build(progress_callback=progress_callback)
             return True
 
     def _fetchAll(self, query: str, params: tuple = ()) -> list[dict]:

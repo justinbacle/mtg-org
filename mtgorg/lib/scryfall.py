@@ -72,8 +72,10 @@ def getBulkCardCount() -> int:
     return _getBulkCache().count()
 
 
-def ensureBulkDataReady() -> int:
-    return _getBulkCache().count()
+def ensureBulkDataReady(progress_callback=None) -> int:
+    cache = _getBulkCache()
+    cache.ensureReady(progress_callback=progress_callback)
+    return cache.count()
 
 
 def _getLocalPrintings(card: dict) -> list:

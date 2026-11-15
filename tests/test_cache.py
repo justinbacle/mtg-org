@@ -126,3 +126,17 @@ def test_settings_shows_storage_sizes(qtApp, monkeypatch):
     assert dialog.storageLabels["images"].text() == "2.0 KB"
     assert dialog.storageLabels["bulk_files"].text() == "1.0 MB"
     assert dialog.storageLabels["bulk_index"].text() == "1.0 GB"
+
+
+def test_ensure_bulk_cache_with_progress(qtApp, monkeypatch):
+    calls = []
+
+    def fakeEnsure(progress_callback=None):
+        progress_callback(10)
+        calls.append(True)
+        return 10
+
+    monkeypatch.setattr(settings.scryfall, "ensureBulkDataReady", fakeEnsure)
+
+    assert settings.ensureBulkCacheWithProgress(None) is True
+    assert calls == [True]

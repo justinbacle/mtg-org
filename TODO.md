@@ -19,13 +19,13 @@
 - Keyrune auto-refresh when set icons are missing, with set-code fallback.
 - Settings dialog shows cache/database sizes and can clear caches/bulk index.
 - Bulk-mode card images now load/download correctly.
+- First SQLite bulk-index build shows a progress dialog.
 - Packaging metadata fixed and runtime/dev requirements split.
 
 ## Optional follow-ups
 
 - Add fuzzy ranking for non-exact bulk search if substring ranking is not enough.
 - Add a `--no-bulk` pytest option (tests currently use mocked Scryfall fixtures).
-- Show progress while the first SQLite bulk index is built (~10 s).
 - Run Pyright in CI (config exists, but it is not wired into workflows).
 - Decide on and add a project licence.
 - Optionally test/measure the `all_cards` mode end-to-end.

@@ -359,6 +359,14 @@ def test_bulk_loads_gzipped_jsonl(bulkFolder):
     assert [card["id"] for card in results] == ["bolt-new", "bolt-old"]
 
 
+def test_bulk_cache_reports_build_progress(bulkFolder, monkeypatch):
+    monkeypatch.setattr(bulk.BulkCache, "BATCH_SIZE", 2)
+    calls = []
+
+    assert scryfall.ensureBulkDataReady(progress_callback=calls.append) == 4
+    assert calls == [2, 4]
+
+
 def test_bulk_cache_creates_sqlite_file(bulkFolder):
     assert scryfall.getBulkCardCount() == 4
     assert (bulkFolder / "default-cards-cache.sqlite3").is_file()

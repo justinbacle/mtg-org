@@ -76,8 +76,9 @@ and legalities work offline; card images and missing non-English printings still
 use Scryfall online, with rate limiting applied.
 
 On first use, the bulk file is converted to a local SQLite index (about 10
-seconds for `default_cards`). Later lookups are fast and low-memory. The same
-dialog shows the downloaded file and data date, reports disk usage for decks,
+seconds for `default_cards`, with a progress dialog). Later lookups are fast and
+low-memory. The same dialog shows the downloaded file and data date, reports
+disk usage for decks,
 caches, bulk files, and the SQLite index, can check for updates, and has
 **Clear cache** to remove cached cards, images, set icons, set metadata, and the
 SQLite index without deleting the downloaded bulk file.

@@ -17,6 +17,7 @@ Implemented:
 - Startup prompt/download flow with online-only fallback and corrupt-file retry.
 - Tests for bulk download, indexes, lookups, filters, config, and parser mocks.
 - Opt-in live bulk metadata/download test (`MTGORG_TEST_LIVE_BULK=1`).
+- Progress feedback while the SQLite cache is first built.
 
 Remaining optional work:
 

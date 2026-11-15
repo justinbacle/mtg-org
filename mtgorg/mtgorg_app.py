@@ -11,7 +11,7 @@ from widgets.cardviewer import CardViewer
 from widgets.deckselector import CardStackSelector
 from widgets.dbbrowser import DbBrowser
 from widgets.cardslist import CardsList
-from widgets.settings import SettingsDialog, downloadBulkDataWithProgress
+from widgets.settings import SettingsDialog, downloadBulkDataWithProgress, ensureBulkCacheWithProgress
 
 import connector
 import config
@@ -154,10 +154,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
                 if answer == QtWidgets.QMessageBox.StandardButton.Yes:
                     if not downloadBulkDataWithProgress(self, manager):
                         logging.warning("Bulk data update failed, keeping the existing file")
-        try:
-            scryfall.ensureBulkDataReady()
-        except Exception as e:
-            logging.error(f"Bulk data could not be loaded: {e}")
+        if not ensureBulkCacheWithProgress(self):
+            logging.error("Bulk data could not be loaded")
             answer = QtWidgets.QMessageBox.question(
                 self,
                 "Scryfall bulk data",
@@ -165,10 +163,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             )
             if answer == QtWidgets.QMessageBox.StandardButton.Yes and downloadBulkDataWithProgress(self, manager):
                 scryfall.resetBulkDataCache()
-                try:
-                    scryfall.ensureBulkDataReady()
-                except Exception as retryError:
-                    logging.error(f"Bulk data still could not be loaded: {retryError}")
+                if not ensureBulkCacheWithProgress(self):
+                    logging.error("Bulk data still could not be loaded")
                     constants.USE_BULK_FILES = False
                     logging.warning("Using online-only mode for this session")
             else:

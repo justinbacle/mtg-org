@@ -42,6 +42,31 @@ def downloadBulkDataWithProgress(parent: QtWidgets.QWidget, manager: bulk.BulkDa
     return True
 
 
+def ensureBulkCacheWithProgress(parent: QtWidgets.QWidget) -> bool:
+    progress = QtWidgets.QProgressDialog(
+        "Preparing offline card index...",
+        None,
+        0,
+        0,
+        parent,
+    )
+    progress.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+    progress.setMinimumDuration(500)
+
+    def progressCallback(recordsProcessed: int):
+        progress.setLabelText(f"Preparing offline card index... {recordsProcessed} cards")
+        QtWidgets.QApplication.processEvents()
+
+    try:
+        scryfall.ensureBulkDataReady(progress_callback=progressCallback)
+    except Exception as e:
+        logging.error(f"Could not prepare bulk index: {e}")
+        return False
+    finally:
+        progress.close()
+    return True
+
+
 class SettingsDialog(QtWidgets.QDialog):
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
@@ -214,6 +239,9 @@ class SettingsDialog(QtWidgets.QDialog):
         scryfall.resetBulkDataCache()
         scryfall.resetSetsCache()
         scryfall.resetFormatsCache()
+        if not ensureBulkCacheWithProgress(self):
+            QtWidgets.QMessageBox.critical(self, "Bulk index failed", "Could not prepare the offline card index.")
+            return
         self.updateStatus()
         self.updateStorageStats()
 
