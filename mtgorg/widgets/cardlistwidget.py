@@ -24,12 +24,13 @@ class CardLoaderWorker(QtCore.QObject):
 COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
 USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
 
-SECTION_ORDER = ("commander", "main", "sideboard")
+SECTION_ORDER = ("commander", "companion", "main", "sideboard")
 
 SECTION_LABELS = {
     "main": "Main",
     "sideboard": "Sideboard",
     "commander": "Commander",
+    "companion": "Companion",
 }
 
 COLUMN_MAX_WIDTHS = {
@@ -413,6 +414,7 @@ class CardStackListWidget(CardSearchListWidget):
                 "main": deck.get("cardList", []),
                 "sideboard": deck.get("sideboard", []),
                 "commander": deck.get("commander", []),
+                "companion": deck.get("companion", []),
             }
         elif stackType == "collection":
             collection = connector.getCollection(stackName)

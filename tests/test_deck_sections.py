@@ -91,3 +91,17 @@ def test_deck_bracket_metadata():
         assert connector.getDeckBracket(name) is None
     finally:
         connector.removeDeck(name)
+
+
+def test_companion_section_crud():
+    name = "Companion Section Test"
+    connector.createDeck(name, format="commander", companion=[])
+    try:
+        connector.addCardToDeck(name, 1, "companion-card", section="companion")
+        assert connector.getDeckSection(name, "companion") == [[1, "companion-card"]]
+
+        connector.moveCardInDeck(name, "companion-card", "companion", "sideboard")
+        assert connector.getDeckSection(name, "companion") == []
+        assert connector.getDeckSection(name, "sideboard") == [[1, "companion-card"]]
+    finally:
+        connector.removeDeck(name)

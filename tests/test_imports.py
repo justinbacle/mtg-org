@@ -459,3 +459,46 @@ def test_EDHREC_import(monkeypatch):
     importer = importexport.EDHRec_importer()
     parsed = importer.parseInput(EDHREC_TEST_URL)
     assert parsed == EDHREC_PARSED_NAMES
+
+
+def test_MTGA_import_companion(monkeypatch):
+    text = """Deck
+1 Lightning Bolt
+Companion
+1 Lutri, the Spellchaser
+"""
+    monkeypatch.setattr(
+        importexport.scryfall,
+        "searchCards",
+        lambda searchDict, exact=False: [{"id": "companion-id", "name": searchDict["name"]}],
+    )
+    monkeypatch.setattr(importexport.scryfall, "getCardReprints", lambda cardId: [])
+
+    importer = importexport.MTGA_importer()
+    importer.loadInput(text)
+
+    assert importer.companionList == [[1, "companion-id"]]
+
+
+def test_MTGO_import_detects_companion(monkeypatch):
+    text = """<?xml version="1.0" encoding="UTF-8"?>
+<Deck>
+  <Cards CatID="999" Quantity="1" Sideboard="true" Name="Lutri, the Spellchaser" Annotation="0"/>
+</Deck>
+"""
+    monkeypatch.setattr(
+        importexport.scryfall,
+        "getCardByMTGOId",
+        lambda mtgoId: {
+            "id": "companion-id",
+            "name": "Lutri, the Spellchaser",
+            "oracle_text": "Companion — Your starting deck contains only cards with even mana values.",
+            "keywords": ["Companion"],
+        },
+    )
+
+    importer = importexport.MTGO_DEK_importer()
+    importer.loadInput(text)
+
+    assert importer.companionList == [[1, "companion-id"]]
+    assert importer.sideboardList == []

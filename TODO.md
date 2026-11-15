@@ -64,7 +64,10 @@
 - The info panel shows a per-format legality table with deck-level issues and
   per-card status/reason rows.
 - Commander decks store a manual Bracket 1–5 and show a heuristic minimum based
-  on Game Changers, extra turns, mass land denial, and tutor counts.
+  on Game Changers, extra turns, mass land denial, tutor counts, and curated
+  two-card combo detection with manual-intent guidance.
+- Decks support a Companion section, including MTGA/MTGO import detection,
+  export support, colour-identity checks, and companion validation.
 
 ## Backlog
 
@@ -80,8 +83,7 @@
 
 - [ ] Add drag/drop between decks/collections and between deck sections
   (deferred; right-click move is the current workflow).
-- [ ] Add companion-zone support and companion validation.
-- [ ] Improve bracket heuristics with combo detection and intent-aware guidance.
+- [ ] Integrate a fuller combo database (e.g. Commander Spellbook) for exhaustive combo detection.
 - [ ] Refine Limited sideboard rules and other format edge cases.
 - [ ] Infer the commander from EDHRec imports when possible.
 - [ ] Support sideboard/commander import from CSV formats that provide it.

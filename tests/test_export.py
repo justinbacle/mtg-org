@@ -7,11 +7,16 @@ CARDS = {
     "cmd": {"id": "cmd", "name": "Nekusar, the Mindrazer", "set_name": "Commander 2013", "mtgo_id": 1},
     "bolt": {"id": "bolt", "name": "Lightning Bolt", "set_name": "Seventh Edition", "mtgo_id": 2},
     "pyro": {"id": "pyro", "name": "Pyroblast", "set_name": "Ice Age", "mtgo_id": 3},
+    "cmp": {"id": "cmp", "name": "Lutri, the Spellchaser", "set_name": "Ikoria", "mtgo_id": 4},
 }
 SECTIONS = {
     "commander": [[1, "cmd"]],
     "main": [[4, "bolt"]],
     "sideboard": [[2, "pyro"]],
+}
+COMPANION_SECTIONS = {
+    **SECTIONS,
+    "companion": [[1, "cmp"]],
 }
 
 
@@ -127,3 +132,35 @@ def test_export_dialog_switches_formats(qtApp, monkeypatch):
     assert dialog.buildExportText().startswith("Commander\n")
 
     dialog.close()
+
+
+def test_companion_export_in_flat_and_sectioned_formats():
+    cardmarket = importexport.formatCardmarketExport(COMPANION_SECTIONS, cardLookup=lookup)
+    assert "Lutri, the Spellchaser" in cardmarket
+
+    mtga = importexport.formatMTGAExport(COMPANION_SECTIONS, cardLookup=lookup)
+    assert "Companion\n1 Lutri, the Spellchaser" in mtga
+
+    plain = importexport.formatPlainTextExport(COMPANION_SECTIONS, cardLookup=lookup)
+    assert "Companion\n1 Lutri, the Spellchaser" in plain
+
+    from lxml import etree
+    mtgo = importexport.formatMTGOExport(COMPANION_SECTIONS, cardLookup=lookup)
+    root = etree.fromstring(mtgo.encode("utf-8"))
+    companion = [card for card in root.findall("Cards") if card.attrib["Name"] == "Lutri, the Spellchaser"]
+    assert len(companion) == 1
+    assert companion[0].attrib["Sideboard"] == "true"
+
+
+def test_companion_export_can_be_excluded():
+    text = importexport.formatCardmarketExport(
+        COMPANION_SECTIONS, includeCompanion=False, cardLookup=lookup
+    )
+    assert "Lutri" not in text
+
+
+def test_export_dialog_includes_companion_checkbox(qtApp, monkeypatch):
+    monkeypatch.setattr(importexport.scryfall, "getCardById", lookup)
+    dialog = importexport.exportDialog(COMPANION_SECTIONS)
+    assert dialog.includeCompanionCB.isChecked()
+    assert dialog.includeCompanionCB.isVisible() or not dialog.includeCompanionCB.isHidden()

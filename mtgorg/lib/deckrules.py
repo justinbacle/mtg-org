@@ -38,6 +38,28 @@ MASS_LAND_DENIAL_CARDS = {
     "Ravages of War",
 }
 
+KNOWN_TWO_CARD_COMBOS = [
+    ("Thassa's Oracle", "Demonic Consultation"),
+    ("Thassa's Oracle", "Tainted Pact"),
+    ("Kiki-Jiki, Mirror Breaker", "Zealous Conscripts"),
+    ("Kiki-Jiki, Mirror Breaker", "Restoration Angel"),
+    ("Heliod, Sun-Crowned", "Walking Ballista"),
+    ("Exquisite Blood", "Sanguine Bond"),
+    ("Exquisite Blood", "Vito, Thorn of the Dusk Rose"),
+    ("Niv-Mizzet, Parun", "Curiosity"),
+    ("Niv-Mizzet, the Firemind", "Curiosity"),
+    ("Isochron Scepter", "Dramatic Reversal"),
+    ("Underworld Breach", "Brain Freeze"),
+    ("Worldgorger Dragon", "Animate Dead"),
+    ("Mikaeus, the Unhallowed", "Triskelion"),
+    ("Godo, Bandit Warlord", "Helm of the Host"),
+    ("Kinnan, Bonder Prodigy", "Basalt Monolith"),
+    ("Food Chain", "Eternal Scourge"),
+    ("Food Chain", "Misthollow Griffin"),
+    ("Devoted Druid", "Vizier of Remedies"),
+    ("Dockside Extortionist", "Temur Sabertooth"),
+]
+
 MASS_LAND_DENIAL_TEXT = (
     "destroy all lands",
     "destroy each land",
@@ -81,6 +103,8 @@ def allowedSections(formatKey: str) -> set[str]:
         sections.add("sideboard")
     if info.get("commander"):
         sections.add("commander")
+    if info.get("companion"):
+        sections.add("companion")
     return sections
 
 
@@ -154,21 +178,30 @@ def _cardIssue(card: dict | None, cardId: str, status: str, reason: str) -> dict
     }
 
 
-def analyzeCommanderBracket(deck: dict) -> dict | None:
+def analyzeCommanderBracket(deck: dict, cardCache: dict | None = None) -> dict | None:
     if deck.get("format", constants.DEFAULT_DECK_FORMAT) != "commander":
         return None
-    cards = {}
-    for section in ("cardList", "sideboard", "commander"):
+    cardCache = cardCache if cardCache is not None else {}
+    for section in ("cardList", "sideboard", "commander", "companion"):
         for _qty, cardId in deck.get(section) or []:
-            if cardId in cards:
-                continue
-            cards[cardId] = scryfall.getCardById(cardId)
+            if cardId not in cardCache:
+                cardCache[cardId] = scryfall.getCardById(cardId)
+    cards = {cardId: cardCache.get(cardId) for section in ("cardList", "sideboard", "commander", "companion")
+             for _qty, cardId in deck.get(section) or []}
 
     gameChangers = []
     extraTurns = []
     massLandDenial = []
     tutors = []
     infinite = []
+    names = set()
+    for card in cards.values():
+        if card is not None:
+            names.add(card.get("name", ""))
+    possibleCombos = []
+    for first, second in KNOWN_TWO_CARD_COMBOS:
+        if first in names and second in names:
+            possibleCombos.append(f"{first} + {second}")
     for card in cards.values():
         if card is None:
             continue
@@ -192,6 +225,8 @@ def analyzeCommanderBracket(deck: dict) -> dict | None:
         floor = max(floor, 3)
     if len(gameChangers) > 3 or massLandDenial:
         floor = max(floor, 4)
+    if possibleCombos:
+        floor = max(floor, 3)
 
     selected = deck.get("bracket")
     if selected is not None:
@@ -211,6 +246,20 @@ def analyzeCommanderBracket(deck: dict) -> dict | None:
             issues.append(f"Bracket {selected} does not allow mass land denial.")
         if selected == 1 and extraTurns:
             issues.append("Bracket 1 does not allow extra-turn cards.")
+        if selected <= 2 and possibleCombos:
+            issues.append("Bracket 1/2 does not allow intentional two-card combos.")
+        if selected <= 3 and len(extraTurns) > 2:
+            issues.append("Multiple extra-turn cards detected; verify there is no chaining/loop.")
+        if selected <= 2 and len(tutors) > 5:
+            issues.append(f"Bracket {selected} expects sparse tutors; {len(tutors)} detected.")
+
+    guidance = [
+        "Automatic estimate cannot determine intent, combo timing, tutor density, or cEDH mindset.",
+    ]
+    if possibleCombos:
+        guidance.append("Review detected combos and whether they are early-game/cheap.")
+    if selected == 3 and possibleCombos:
+        issues.append("Possible two-card combos detected; Bracket 3 disallows early-game combos.")
 
     return {
         "floor": floor,
@@ -221,6 +270,8 @@ def analyzeCommanderBracket(deck: dict) -> dict | None:
         "massLandDenial": sorted(massLandDenial),
         "tutors": sorted(tutors),
         "infinite": sorted(infinite),
+        "possibleCombos": possibleCombos,
+        "guidance": guidance,
     }
 
 
@@ -230,6 +281,7 @@ def validateDeckDetails(deck: dict) -> dict:
     main = deck.get("cardList") or []
     sideboard = deck.get("sideboard") or []
     commander = deck.get("commander") or []
+    companion = deck.get("companion") or []
     issues = []
     cardIssues = []
 
@@ -242,7 +294,21 @@ def validateDeckDetails(deck: dict) -> dict:
 
     sideboardCount = _count(sideboard)
     commanderCount = _count(commander)
+    companionCount = _count(companion)
     mainCount = _count(main)
+
+    if companionCount > 1:
+        issues.append("A deck can only have one companion.")
+    for _qty, cardId in companion:
+        card = getCard(cardId)
+        if card is None:
+            continue
+        text = _cardText(card)
+        if "companion" not in text:
+            cardIssues.append(_cardIssue(
+                card, cardId, "✗ companion", "Card does not have the companion ability"
+            ))
+            issues.append(f"{card.get('name', cardId)} is not a companion card.")
 
     if sideboardCount > 0 and not info.get("sideboard"):
         issues.append(f"Sideboard is not allowed in {info['label']}.")
@@ -284,7 +350,7 @@ def validateDeckDetails(deck: dict) -> dict:
             for card in commanderCards:
                 colorIdentity.update(card.get("color_identity", []))
             outside = []
-            for _qty, cardId in main + commander:
+            for _qty, cardId in main + commander + companion:
                 card = getCard(cardId)
                 if card is None:
                     continue
@@ -304,7 +370,7 @@ def validateDeckDetails(deck: dict) -> dict:
     legalityKey = LEGALITY_KEYS.get(formatKey)
     if legalityKey is not None:
         illegal = []
-        for _qty, cardId in main + sideboard + commander:
+        for _qty, cardId in main + sideboard + commander + companion:
             card = getCard(cardId)
             if card is None:
                 continue
@@ -372,9 +438,44 @@ def validateDeckDetails(deck: dict) -> dict:
                 f"{qty} copies (max 4)",
             ))
 
-    bracket = analyzeCommanderBracket(deck)
+    bracket = analyzeCommanderBracket(deck, cardCache)
     if bracket is not None:
         issues.extend(bracket["issues"])
+        cardByName = {}
+        for _qty, cardId in main + sideboard + commander + companion:
+            card = getCard(cardId)
+            if card is not None:
+                cardByName[card.get("name", cardId)] = (cardId, card)
+        selected = bracket.get("selected")
+
+        def addBracketCard(name: str, status: str, reason: str):
+            cardId, card = cardByName.get(name, (name, None))
+            cardIssues.append(_cardIssue(card, cardId, status, reason))
+
+        if selected is not None:
+            if selected <= 2:
+                for name in bracket["gameChangers"]:
+                    addBracketCard(name, "✗ game changer", f"Not allowed in Bracket {selected}")
+            if selected <= 3:
+                for name in bracket["massLandDenial"]:
+                    addBracketCard(name, "✗ land denial", f"Not allowed in Bracket {selected}")
+            if selected == 1:
+                for name in bracket["extraTurns"]:
+                    addBracketCard(name, "✗ extra turn", "Not allowed in Bracket 1")
+            if selected <= 3 and len(bracket["extraTurns"]) > 2:
+                for name in bracket["extraTurns"]:
+                    addBracketCard(name, "✗ extra turns", "Multiple extra turns risk chaining/loops")
+            if selected <= 2:
+                for combo in bracket["possibleCombos"]:
+                    first, _, second = combo.partition(" + ")
+                    addBracketCard(first, "✗ combo", f"Possible combo with {second}")
+                    addBracketCard(second, "✗ combo", f"Possible combo with {first}")
+                if len(bracket["tutors"]) > 5:
+                    for name in bracket["tutors"]:
+                        addBracketCard(
+                            name, "✗ tutor density",
+                            f"Bracket {selected} expects sparse tutors ({len(bracket['tutors'])} detected)",
+                        )
 
     return {
         "format": formatKey,

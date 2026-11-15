@@ -76,11 +76,15 @@ class DeckDialog(QtWidgets.QDialog):
             f"Game Changers: {len(analysis['gameChangers'])} · "
             f"Extra turns: {len(analysis['extraTurns'])} · "
             f"Mass land denial: {len(analysis['massLandDenial'])} · "
-            f"Tutors: {len(analysis['tutors'])}"
+            f"Tutors: {len(analysis['tutors'])} · "
+            f"Possible combos: {len(analysis['possibleCombos'])}"
         )
         if selected is not None and selected < floor:
             text += f"\nSelected bracket {selected} is below the suggested minimum."
+        if analysis["possibleCombos"]:
+            text += "\nPossible combos detected; manual review required."
         self.estimateLabel.setText(text)
+        self.estimateLabel.setToolTip("\n".join(analysis.get("guidance", [])))
 
     def values(self) -> tuple[str, str, int | None]:
         formatKey = self.formatCB.currentData()
@@ -207,6 +211,7 @@ class CardStackSelector(QtWidgets.QWidget):
             sections = {
                 "main": col.get("cardList", []),
                 "commander": col.get("commander", []) if "commander" in allowed else [],
+                "companion": col.get("companion", []) if "companion" in allowed else [],
                 "sideboard": col.get("sideboard", []) if "sideboard" in allowed else [],
             }
         elif stackType == "collection":

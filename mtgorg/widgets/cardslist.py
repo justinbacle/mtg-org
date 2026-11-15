@@ -92,6 +92,7 @@ class CardsList(QtWidgets.QWidget):
                 "main": cardStack.get("cardList", []),
                 "sideboard": cardStack.get("sideboard", []),
                 "commander": cardStack.get("commander", []),
+                "companion": cardStack.get("companion", []),
             }
         else:
             allowed = {"main"}
@@ -377,10 +378,12 @@ class FormatLegalityWidget(QtWidgets.QWidget):
                 f"Game Changers: {len(bracket.get('gameChangers', []))} · "
                 f"Extra turns: {len(bracket.get('extraTurns', []))} · "
                 f"Mass land denial: {len(bracket.get('massLandDenial', []))} · "
-                f"Tutors: {len(bracket.get('tutors', []))}"
+                f"Tutors: {len(bracket.get('tutors', []))} · "
+                f"Possible combos: {len(bracket.get('possibleCombos', []))}"
             )
             self.bracketLabel.setText(f"{bracketText}\n{counts}")
             self.bracketLabel.setStyleSheet(f"color:{color};")
+            self.bracketLabel.setToolTip("\n".join(bracket.get("guidance", [])))
             self.bracketLabel.setVisible(True)
         issues = details.get("issues", [])
         cards = details.get("cards", [])

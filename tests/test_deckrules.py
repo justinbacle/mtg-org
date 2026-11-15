@@ -2,12 +2,13 @@ import constants
 from lib import deckrules
 
 
-def makeDeck(formatKey, main=None, sideboard=None, commander=None):
+def makeDeck(formatKey, main=None, sideboard=None, commander=None, companion=None):
     return {
         "format": formatKey,
         "cardList": main or [],
         "sideboard": sideboard or [],
         "commander": commander or [],
+        "companion": companion or [],
     }
 
 
@@ -66,7 +67,7 @@ def test_singleton_allows_basic_lands(monkeypatch):
 
 def test_allowed_sections_by_format():
     assert deckrules.allowedSections("modern") == {"main", "sideboard"}
-    assert deckrules.allowedSections("commander") == {"main", "commander"}
+    assert deckrules.allowedSections("commander") == {"main", "commander", "companion"}
     assert deckrules.allowedSections("casual") == {"main", "sideboard", "commander"}
     assert deckrules.allowedSections(constants.DEFAULT_DECK_FORMAT) == {
         "main",
@@ -177,6 +178,10 @@ def test_commander_bracket_game_changers(monkeypatch):
     details = deckrules.validateDeckDetails(deck)
     assert details["bracket"]["floor"] == 3
     assert any("below the suggested minimum" in issue for issue in details["issues"])
+    assert any(
+        issue["card"] == "Rhystic Study" and issue["status"] == "✗ game changer"
+        for issue in details["cards"]
+    )
 
     deck["bracket"] = 3
     details = deckrules.validateDeckDetails(deck)
@@ -196,9 +201,77 @@ def test_commander_bracket_extra_turns_and_mld(monkeypatch):
     extraDetails = deckrules.validateDeckDetails(extra)
     assert extraDetails["bracket"]["floor"] == 2
     assert any("Bracket 1 does not allow extra-turn" in issue for issue in extraDetails["issues"])
+    assert any(
+        issue["card"] == "Time Warp" and issue["status"] == "✗ extra turn"
+        for issue in extraDetails["cards"]
+    )
 
     mld = makeDeck("commander", main=[[1, "mld"]], commander=[[1, "cmd"]])
     mld["bracket"] = 3
     mldDetails = deckrules.validateDeckDetails(mld)
     assert mldDetails["bracket"]["floor"] == 4
     assert any("mass land denial" in issue for issue in mldDetails["issues"])
+    assert any(
+        issue["card"] == "Armageddon" and issue["status"] == "✗ land denial"
+        for issue in mldDetails["cards"]
+    )
+
+
+def test_companion_validation(monkeypatch):
+    cards = {
+        "companion": card("companion", name="Lutri, the Spellchaser",
+                          text="Companion — Your starting deck contains only cards with even mana values."),
+        "not-companion": card("not-companion", name="Sol Ring"),
+        "commander": card("commander", text=""),
+    }
+    monkeypatch.setattr(deckrules.scryfall, "getCardById", lambda cardId: cards.get(cardId))
+
+    valid = makeDeck("commander", main=[[99, "commander"]], commander=[[1, "commander"]],
+                     companion=[[1, "companion"]])
+    valid["bracket"] = None
+    assert not any("not a companion" in issue for issue in deckrules.validateDeckDetails(valid)["issues"])
+
+    invalid = makeDeck("commander", main=[[99, "commander"]], commander=[[1, "commander"]],
+                       companion=[[1, "not-companion"]])
+    invalid["bracket"] = None
+    details = deckrules.validateDeckDetails(invalid)
+    assert any("not a companion" in issue for issue in details["issues"])
+
+
+def test_multiple_companions_rejected(monkeypatch):
+    cards = {
+        "companion": card("companion", name="Lutri", text="Companion — test"),
+        "commander": card("commander"),
+    }
+    monkeypatch.setattr(deckrules.scryfall, "getCardById", lambda cardId: cards.get(cardId))
+    deck = makeDeck("commander", main=[[99, "commander"]], commander=[[1, "commander"]],
+                    companion=[[1, "companion"], [1, "companion"]])
+    details = deckrules.validateDeckDetails(deck)
+    assert any("only have one companion" in issue for issue in details["issues"])
+
+
+def test_commander_bracket_detects_combo(monkeypatch):
+    cards = {
+        "oracle": card("oracle", name="Thassa's Oracle", text="Companion"),
+        "consult": card("consult", name="Demonic Consultation", text="Search your library"),
+        "cmd": card("cmd"),
+    }
+    monkeypatch.setattr(deckrules.scryfall, "getCardById", lambda cardId: cards.get(cardId))
+    deck = makeDeck("commander", main=[[1, "oracle"], [1, "consult"]], commander=[[1, "cmd"]])
+    deck["bracket"] = 2
+
+    details = deckrules.validateDeckDetails(deck)
+    analysis = details["bracket"]
+
+    assert analysis["floor"] == 3
+    assert analysis["possibleCombos"] == ["Thassa's Oracle + Demonic Consultation"]
+    assert any("intentional two-card combos" in issue for issue in details["issues"])
+    assert any("combo timing" in guidance for guidance in analysis["guidance"])
+    assert any(
+        issue["card"] == "Thassa's Oracle" and issue["status"] == "✗ combo"
+        for issue in details["cards"]
+    )
+    assert any(
+        issue["card"] == "Demonic Consultation" and issue["status"] == "✗ combo"
+        for issue in details["cards"]
+    )

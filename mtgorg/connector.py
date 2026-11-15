@@ -173,6 +173,7 @@ DECK_SECTION_KEYS = {
     "main": "cardList",
     "sideboard": "sideboard",
     "commander": "commander",
+    "companion": "companion",
 }
 
 
@@ -190,11 +191,12 @@ def _getDeckSection(deck: dict, section: str) -> list:
 
 
 def createDeck(deckName, cardList: list | None = None, sideboard: list | None = None,
-               commander: list | None = None, format: str = constants.DEFAULT_DECK_FORMAT,
-               bracket: int | None = None):
+               commander: list | None = None, companion: list | None = None,
+               format: str = constants.DEFAULT_DECK_FORMAT, bracket: int | None = None):
     cardList = cardList if cardList is not None else []
     sideboard = sideboard if sideboard is not None else []
     commander = commander if commander is not None else []
+    companion = companion if companion is not None else []
     if format not in constants.DECK_FORMATS:
         format = constants.DEFAULT_DECK_FORMAT
     if bracket is not None:
@@ -212,6 +214,7 @@ def createDeck(deckName, cardList: list | None = None, sideboard: list | None = 
                 "cardList": cardList,
                 "sideboard": sideboard,
                 "commander": commander,
+                "companion": companion,
             }
         )
     else:

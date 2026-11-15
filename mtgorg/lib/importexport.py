@@ -16,14 +16,15 @@ from lib import utils, scryfall, qt
 
 
 def formatCardmarketExport(sections: dict, includeCommander: bool = True,
-                           includeSideboard: bool = True, discardSet: bool = False,
-                           cardLookup=None) -> str:
+                           includeCompanion: bool = True, includeSideboard: bool = True,
+                           discardSet: bool = False, cardLookup=None) -> str:
     """Return a flat Cardmarket wants-list decklist."""
     cardLookup = cardLookup or scryfall.getCardById
-    sectionOrder = ["commander", "main", "sideboard"]
+    sectionOrder = ["commander", "companion", "main", "sideboard"]
     include = {
         "main": True,
         "commander": includeCommander,
+        "companion": includeCompanion,
         "sideboard": includeSideboard,
     }
     lines = []
@@ -43,13 +44,15 @@ def formatCardmarketExport(sections: dict, includeCommander: bool = True,
 
 
 def formatMTGAExport(sections: dict, includeCommander: bool = True,
-                     includeSideboard: bool = True, cardLookup=None) -> str:
+                     includeCompanion: bool = True, includeSideboard: bool = True,
+                     cardLookup=None) -> str:
     cardLookup = cardLookup or scryfall.getCardById
     parts = []
     sectionHeaders = [
         ("main", "Deck", True),
         ("sideboard", "Sideboard", includeSideboard),
         ("commander", "Commander", includeCommander),
+        ("companion", "Companion", includeCompanion),
     ]
     for section, header, included in sectionHeaders:
         if not included:
@@ -69,12 +72,13 @@ def formatMTGAExport(sections: dict, includeCommander: bool = True,
 
 
 def formatPlainTextExport(sections: dict, includeCommander: bool = True,
-                          includeSideboard: bool = True, discardSet: bool = False,
-                          cardLookup=None) -> str:
+                          includeCompanion: bool = True, includeSideboard: bool = True,
+                          discardSet: bool = False, cardLookup=None) -> str:
     cardLookup = cardLookup or scryfall.getCardById
     parts = []
     sectionHeaders = [
         ("commander", "Commander", includeCommander),
+        ("companion", "Companion", includeCompanion),
         ("main", "Main", True),
         ("sideboard", "Sideboard", includeSideboard),
     ]
@@ -99,7 +103,8 @@ def formatPlainTextExport(sections: dict, includeCommander: bool = True,
 
 
 def formatMTGOExport(sections: dict, includeCommander: bool = True,
-                     includeSideboard: bool = True, cardLookup=None) -> str:
+                     includeCompanion: bool = True, includeSideboard: bool = True,
+                     cardLookup=None) -> str:
     cardLookup = cardLookup or scryfall.getCardById
     cards = []
 
@@ -126,6 +131,10 @@ def formatMTGOExport(sections: dict, includeCommander: bool = True,
         if sections.get("commander"):
             logging.warning("MTGO .dek has no commander zone; exporting commander cards as main deck")
         addSection("commander", False)
+    if includeCompanion:
+        if sections.get("companion"):
+            logging.warning("MTGO .dek has no companion zone; exporting companion cards to sideboard")
+        addSection("companion", True)
 
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -174,15 +183,21 @@ class exportDialog(QtWidgets.QDialog):
         self.sectionsLayout = QtWidgets.QVBoxLayout()
         self.sectionsGB.setLayout(self.sectionsLayout)
         self.includeCommanderCB = QtWidgets.QCheckBox("Include commander")
+        self.includeCompanionCB = QtWidgets.QCheckBox("Include companion")
         self.includeSideboardCB = QtWidgets.QCheckBox("Include sideboard")
         self.includeCommanderCB.setChecked(bool(self.sections.get("commander")))
+        self.includeCompanionCB.setChecked(bool(self.sections.get("companion")))
         self.includeSideboardCB.setChecked(bool(self.sections.get("sideboard")))
         self.includeCommanderCB.setVisible(bool(self.sections.get("commander")))
+        self.includeCompanionCB.setVisible(bool(self.sections.get("companion")))
         self.includeSideboardCB.setVisible(bool(self.sections.get("sideboard")))
         self.sectionsLayout.addWidget(self.includeCommanderCB)
+        self.sectionsLayout.addWidget(self.includeCompanionCB)
         self.sectionsLayout.addWidget(self.includeSideboardCB)
         self.sectionsGB.setVisible(
-            self.includeCommanderCB.isVisible() or self.includeSideboardCB.isVisible()
+            self.includeCommanderCB.isVisible()
+            or self.includeCompanionCB.isVisible()
+            or self.includeSideboardCB.isVisible()
         )
         self.mainLayout.addWidget(self.sectionsGB)
 
@@ -217,12 +232,14 @@ class exportDialog(QtWidgets.QDialog):
 
     def buildExportText(self) -> str:
         includeCommander = self.includeCommanderCB.isChecked()
+        includeCompanion = self.includeCompanionCB.isChecked()
         includeSideboard = self.includeSideboardCB.isChecked()
         discardSet = self.exportOptions_discardSetCB.isChecked()
         if self.exportTypeSelector_cardmarketRB.isChecked():
             return formatCardmarketExport(
                 self.sections,
                 includeCommander=includeCommander,
+                includeCompanion=includeCompanion,
                 includeSideboard=includeSideboard,
                 discardSet=discardSet,
             )
@@ -230,18 +247,21 @@ class exportDialog(QtWidgets.QDialog):
             return formatMTGAExport(
                 self.sections,
                 includeCommander=includeCommander,
+                includeCompanion=includeCompanion,
                 includeSideboard=includeSideboard,
             )
         if self.exportTypeSelector_mtgoRB.isChecked():
             return formatMTGOExport(
                 self.sections,
                 includeCommander=includeCommander,
+                includeCompanion=includeCompanion,
                 includeSideboard=includeSideboard,
             )
         if self.exportTypeSelector_plainRB.isChecked():
             return formatPlainTextExport(
                 self.sections,
                 includeCommander=includeCommander,
+                includeCompanion=includeCompanion,
                 includeSideboard=includeSideboard,
                 discardSet=discardSet,
             )
@@ -413,6 +433,7 @@ class importer:
         self.deckList = []
         self.sideboardList = []
         self.commanderList = []
+        self.companionList = []
 
     def toDatabase(self, deckName):
         if self.parent.collectionChooser.currentText() == "Deck":
@@ -424,12 +445,13 @@ class importer:
                 self.deckList,
                 sideboard=self.sideboardList,
                 commander=self.commanderList,
+                companion=self.companionList,
                 format=formatKey,
             )
         elif self.parent.collectionChooser.currentText() == "Collection":
             connector.createCollection(
                 deckName,
-                self.deckList + self.sideboardList + self.commanderList,
+                self.deckList + self.sideboardList + self.commanderList + self.companionList,
             )
         else:
             raise NotImplementedError
@@ -514,6 +536,7 @@ class MTGA_importer(importer):
         self.deckList = []
         self.sideboardList = []
         self.commanderList = []
+        self.companionList = []
         section = "main"
         for line in lines:
             stripped = line.strip()
@@ -526,6 +549,9 @@ class MTGA_importer(importer):
                 continue
             if header == "commander":
                 section = "commander"
+                continue
+            if header == "companion":
+                section = "companion"
                 continue
             if not stripped or stripped.startswith("#"):
                 continue
@@ -545,6 +571,8 @@ class MTGA_importer(importer):
                 continue
             if section == "commander":
                 targetList = self.commanderList
+            elif section == "companion":
+                targetList = self.companionList
             elif section == "sideboard":
                 targetList = self.sideboardList
             else:
@@ -672,6 +700,7 @@ class MTGO_DEK_importer(importer):
         self.deckList = []
         self.sideboardList = []
         self.commanderList = []
+        self.companionList = []
         xmlRoot = lxml.etree.fromstring(text.encode(encoding="utf-8"))
         for card in xmlRoot.findall("Cards"):
             qty = int(card.attrib["Quantity"])
@@ -681,7 +710,15 @@ class MTGO_DEK_importer(importer):
                 logging.error(f"Could not find card for MTGO id {mtgoId}")
                 continue
             isSideboard = card.attrib.get("Sideboard", "false").lower() == "true"
-            targetList = self.sideboardList if isSideboard else self.deckList
+            isCompanion = isSideboard and "companion" in (
+                cardData.get("oracle_text", "") + " " + " ".join(cardData.get("keywords", []))
+            ).lower()
+            if isCompanion:
+                targetList = self.companionList
+            elif isSideboard:
+                targetList = self.sideboardList
+            else:
+                targetList = self.deckList
             targetList.append(
                 [qty, cardData["id"]]
             )

@@ -69,7 +69,7 @@ def test_cardslist_limits_sections_by_format(qtApp, monkeypatch):
     }
     monkeypatch.setattr(cardslist.connector, "getDeck", lambda name: commander)
     widget.setCardStack(commander, "deck", "Commander Deck")
-    assert dummy.allowed == {"main", "commander"}
+    assert dummy.allowed == {"main", "commander", "companion"}
 
 
 def test_cardslist_collection_uses_main_only(qtApp, monkeypatch):
