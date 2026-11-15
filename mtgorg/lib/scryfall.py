@@ -2,7 +2,8 @@ import datetime
 import logging
 import re
 from pathlib import Path
-from fuzzywuzzy import fuzz, process
+from rapidfuzz import fuzz, process
+from rapidfuzz.distance import DamerauLevenshtein
 import aiohttp
 import requests
 import os
@@ -304,6 +305,14 @@ def searchCardsLimited(searchDict: dict, limit: int, exact: bool = False):
     return cards[:limit], truncated
 
 
+def _bestWordSimilarity(query: str, name: str) -> float:
+    words = re.findall(r"[a-z0-9]+", name.lower())
+    return max(
+        (DamerauLevenshtein.normalized_similarity(query, word) for word in words),
+        default=0.0,
+    )
+
+
 def searchCardsLocal(searchDict: dict, exact: bool = False, limit: int | None = None):
     cache = _getBulkCache()
     name = searchDict.get("name", "")
@@ -319,16 +328,35 @@ def searchCardsLocal(searchDict: dict, exact: bool = False, limit: int | None = 
         candidates = cache.searchNameSubstring(needle)
         if not candidates:
             fuzzyScores = {}
-            fuzzyMatches = process.extractBests(
-                needle,
-                cache.getDistinctNames(),
-                scorer=fuzz.WRatio,
-                score_cutoff=80,
-                limit=20,
-            )
-            for matchedName, score in fuzzyMatches:
-                fuzzyScores[matchedName] = score
-                candidates.extend(cache.getCardsByName(matchedName))
+            singleWord = " " not in needle.strip()
+            if singleWord:
+                minScore = 0.7 if len(needle.strip()) <= 4 else 0.8
+                wordIndex = cache.getWordIndex()
+                wordMatches = process.extract(
+                    needle,
+                    wordIndex.keys(),
+                    scorer=DamerauLevenshtein.normalized_similarity,
+                    score_cutoff=minScore,
+                    limit=30,
+                )
+                matchedNames = set()
+                for word, score, _ in wordMatches:
+                    for matchedName in wordIndex[word]:
+                        fuzzyScores[matchedName] = max(fuzzyScores.get(matchedName, 0.0), score)
+                        if matchedName not in matchedNames:
+                            matchedNames.add(matchedName)
+                            candidates.extend(cache.getCardsByName(matchedName))
+            else:
+                fuzzyMatches = process.extract(
+                    needle,
+                    cache.getDistinctNames(),
+                    scorer=fuzz.ratio,
+                    score_cutoff=80,
+                    limit=20,
+                )
+                for matchedName, score, _ in fuzzyMatches:
+                    fuzzyScores[matchedName] = score
+                    candidates.extend(cache.getCardsByName(matchedName))
         candidates = _filterCards(candidates, searchDict)
         candidates = _sortPrintings(candidates)
         if fuzzyScores is not None:

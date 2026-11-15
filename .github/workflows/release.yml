@@ -66,3 +66,5 @@ jobs:
           files: |
             artifacts/*.tar.gz
             artifacts/*.zip
+            LICENSE
+            THIRD_PARTY_NOTICES.md

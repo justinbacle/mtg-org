@@ -169,7 +169,7 @@ The user must be able to switch between these two modes and re-download when swi
    - Sort by `released_at` descending to keep deterministic behavior consistent with online mode.
 2. **Non-exact search**
    - Use substring matching against the name index keys, ranked by length/position.
-   - Optionally add fuzzy matching with `fuzzywuzzy` but limit to top N results to keep it fast.
+   - Optionally add fuzzy matching with RapidFuzz but limit to top N results to keep it fast.
 3. **Set filtering**
    - Support `searchDict["set"]` in both local and online modes.
 4. **Return consistent API**

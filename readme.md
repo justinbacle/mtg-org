@@ -128,7 +128,7 @@ exact printing you want.
 ## Credits
 
 - [Scryfall](https://scryfall.com/)
-- Andrew Gioia : [Keyrune](https://github.com/andrewgioia/keyrune) : expansion symbols (used under GPL 3.0 license)
+- Andrew Gioia : [Keyrune](https://github.com/andrewgioia/keyrune) : expansion symbols (icons/data GPL-3.0, font OFL-1.1)
 - MrTeferi : [Proxyshop](https://github.com/MrTeferi/Proxyshop) : proxygliyph font mana symbols (Mozilla public license 2.0)
 - qt_material : Material themes for Qt applications
 - NandaScott : [Scrython](https://github.com/NandaScott/Scrython) : Python wrapper for scryfall requests (MIT License)
@@ -136,4 +136,5 @@ exact printing you want.
 
 ## Licence
 
-I have absolutely no idea all of this works, I'm not a software engineer and do not have a law degree. From what I understand, this code should be GPL v3 compatible (since it uses parts which are MIT/GPL3/MPL2) but I would prefer to seek help from the community before choosing a licence.
+GPL-3.0-or-later. See `LICENSE` for the full text and `THIRD_PARTY_NOTICES.md`
+for bundled dependencies.

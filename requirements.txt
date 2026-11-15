@@ -1,12 +1,11 @@
 beautifulsoup4
 dotmap
-fuzzywuzzy
 lxml
 pyperclip
 pyside6
-python-Levenshtein
 qt_material
 requests
+rapidfuzz
 scrython
 tinydb
 aiohttp

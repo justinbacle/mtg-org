@@ -76,6 +76,8 @@
   Keyrune while keeping images.
 - GitHub Actions builds Linux, Windows, and macOS release artifacts on every
   push to `master` and publishes them as a GitHub release.
+- Project licensed GPL-3.0-or-later; GPL-2-only fuzzy matching was replaced with
+  MIT-licensed RapidFuzz.
 
 ## Backlog
 
@@ -117,4 +119,3 @@
 ### Infrastructure
 
 - [ ] Run Pyright in CI (needs venv/stub configuration).
-- [ ] Decide on and add a project licence.

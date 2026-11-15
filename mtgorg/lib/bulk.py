@@ -285,6 +285,7 @@ class BulkCache:
         self._ready = False
         self._readySource = None
         self._distinctNames = None
+        self._wordIndex = None
 
     @contextmanager
     def _connect(self):
@@ -495,6 +496,16 @@ class BulkCache:
                         row[0] for row in connection.execute("SELECT DISTINCT name_lower FROM cards")
                     ]
             return self._distinctNames
+
+    def getWordIndex(self) -> dict[str, list[str]]:
+        with self._lock:
+            if self._wordIndex is None:
+                index: dict[str, list[str]] = {}
+                for name in self.getDistinctNames():
+                    for word in set(re.findall(r"[a-z0-9]+", name)):
+                        index.setdefault(word, []).append(name)
+                self._wordIndex = index
+            return self._wordIndex
 
     def searchNameSubstring(self, needle: str) -> list[dict]:
         escaped = needle.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")

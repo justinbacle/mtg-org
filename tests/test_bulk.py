@@ -399,6 +399,22 @@ def test_bulk_fuzzy_search_fallback(bulkFolder):
     assert results[0]["name"] == "Lightning Bolt"
 
 
+def test_bulk_fuzzy_search_matches_partial_single_word(bulkFolder):
+    results = scryfall.searchCards({"name": "Lightnig"})
+
+    assert results[0]["name"].startswith("Lightning")
+
+    assert scryfall._bestWordSimilarity("champing", "chomping mastasaur") > (
+        scryfall._bestWordSimilarity("champing", "champion")
+    )
+
+
+def test_bulk_fuzzy_search_handles_short_transposition(bulkFolder):
+    results = scryfall.searchCards({"name": "botl"})
+
+    assert results[0]["name"] == "Lightning Bolt"
+
+
 def test_bulk_fuzzy_search_survives_search_form_filters(bulkFolder):
     searchDict = {
         "name": "Lightnig Bolt",
