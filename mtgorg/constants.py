@@ -4,10 +4,11 @@ from pathlib import Path
 
 # ------------------------------------ QT ------------------------------------ #
 THEME = "fusion"
+AUTO_CHECK_UPDATES = True
 THEMES = {
-    "fusion": "System (Fusion)",
+    "fusion": "Fusion",
     "kde": "System (KDE)",
-    "material": "Material (dark teal)",
+    "material": "Material",
 }
 
 
@@ -39,6 +40,17 @@ DEFAULT_INFOS_LOCATION = DEFAULT_ROOT_USER_FOLDER / "infos"
 DEFAULT_FONTS_LOCATION = DEFAULT_ROOT_USER_FOLDER / "fonts"
 DEFAULT_SET_ICONS_LOCATION = DEFAULT_ROOT_USER_FOLDER / "sets_icons"
 DEFAULT_CARDIMAGES_LOCATION = DEFAULT_ROOT_USER_FOLDER / "card_imgs"
+
+
+def appVersion() -> str:
+    import json
+    path = resourcePath("build_info.json")
+    if path.is_file():
+        try:
+            return str(json.loads(path.read_text(encoding="utf-8")).get("version", "0.1.dev"))
+        except (OSError, ValueError):
+            pass
+    return "0.1.dev"
 
 
 def resourcePath(*parts: str) -> Path:

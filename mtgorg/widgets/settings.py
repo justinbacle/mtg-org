@@ -1,11 +1,11 @@
 import logging
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import config
 import constants
 import connector
-from lib import bulk, qt, scryfall
+from lib import bulk, qt, scryfall, updates
 
 
 def downloadBulkDataWithProgress(parent: QtWidgets.QWidget, manager: bulk.BulkDataManager) -> bool:
@@ -86,6 +86,16 @@ class SettingsDialog(QtWidgets.QDialog):
             self.themeCB.addItem(label, theme)
         self.themeCB.setToolTip("Apply the selected theme immediately.")
         self.appearanceLayout.addRow("Theme", self.themeCB)
+
+        self.updatesGroup = QtWidgets.QGroupBox("Updates")
+        self.updatesLayout = QtWidgets.QFormLayout()
+        self.updatesGroup.setLayout(self.updatesLayout)
+        self.mainLayout.addWidget(self.updatesGroup)
+        self.autoCheckUpdatesCB = QtWidgets.QCheckBox("Check for new releases automatically")
+        self.updatesLayout.addRow(self.autoCheckUpdatesCB)
+        self.checkUpdatesPB = QtWidgets.QPushButton("Check now")
+        self.checkUpdatesPB.clicked.connect(self.on_checkUpdatesClicked)
+        self.updatesLayout.addRow(self.checkUpdatesPB)
 
         self.scryfallGroup = QtWidgets.QGroupBox("Scryfall")
         self.scryfallLayout = QtWidgets.QFormLayout()
@@ -183,6 +193,7 @@ class SettingsDialog(QtWidgets.QDialog):
         themeIndex = self.themeCB.findData(uiSettings["theme"])
         self.themeCB.setCurrentIndex(max(themeIndex, 0))
         self._initialTheme = self.themeCB.currentData()
+        self.autoCheckUpdatesCB.setChecked(config.getUpdateSettings()["auto_check"])
 
         settings = config.getScryfallSettings()
         self.useBulkCB.setChecked(settings["use_bulk_files"])
@@ -237,6 +248,29 @@ class SettingsDialog(QtWidgets.QDialog):
             f"{sizeMb:.1f} MB - data updated {updatedAt}"
         )
         self.downloadPB.setText("Update now")
+
+    def on_checkUpdatesClicked(self):
+        self.checkUpdatesPB.setEnabled(False)
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
+        try:
+            result = updates.checkForUpdate(force=True)
+        except Exception as e:
+            logging.warning(f"Could not check for updates: {e}")
+            result = None
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
+            self.checkUpdatesPB.setEnabled(True)
+        if result is None:
+            QtWidgets.QMessageBox.information(self, "Updates", "MTG Organizer is up to date.")
+            return
+        box = QtWidgets.QMessageBox(self)
+        box.setWindowTitle("Update available")
+        box.setText(f"MTG Organizer {result['version']} is available.")
+        openButton = box.addButton("Open release", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        box.addButton("Close", QtWidgets.QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        if box.clickedButton() is openButton and result.get("url"):
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl(result["url"]))
 
     def on_clearCacheClicked(self):
         answer = QtWidgets.QMessageBox.question(
@@ -294,9 +328,11 @@ class SettingsDialog(QtWidgets.QDialog):
 
         themeChanged = self.themeCB.currentData() != self._initialTheme
         config.saveUISettings(self.themeCB.currentData())
+        config.saveUpdateSettings(self.autoCheckUpdatesCB.isChecked())
         config.saveScryfallSettings(useBulkFiles, autoUpdate, languageMode)
         config.saveSearchSettings(self.resultLimitCB.currentData())
         config.loadUISettings()
+        config.loadUpdateSettings()
         config.loadScryfallSettings()
         config.loadSearchSettings()
         if constants.USE_BULK_FILES and manager.getLocalBulkFile() is None:

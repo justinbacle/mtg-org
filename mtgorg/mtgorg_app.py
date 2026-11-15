@@ -13,18 +13,20 @@ from widgets.dbbrowser import DbBrowser
 from widgets.cardslist import CardsList
 from widgets.settings import SettingsDialog, downloadBulkDataWithProgress, ensureBulkCacheWithProgress
 from widgets.logviewer import ClickableStatusBar, LogHistoryHandler, LogViewerDialog
+from widgets.onboarding import OnboardingWizard
 
 import connector
 import config
 import constants
 
-from lib import bulk, datarefresh, qt, scryfall, utils
+from lib import bulk, datarefresh, qt, scryfall, updates, utils
 
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
     logMessage = QtCore.Signal(str)
     setRefreshFinished = QtCore.Signal(bool)
+    updateAvailable = QtCore.Signal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -35,6 +37,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.statusbar.clicked.connect(self.on_showLogs)
         self.logMessage.connect(self.statusbar.showMessage)
         self.setRefreshFinished.connect(self.onSetRefreshFinished)
+        self.updateAvailable.connect(self.onUpdateAvailable)
         self._setRefreshRunning = False
 
         self.logHistory = LogHistoryHandler()
@@ -57,6 +60,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         self.initUserFolders()
         self.initSettings()
+        self._onboarding = self.runOnboarding()
         self.applyTheme()
 
         # FIXME: not working on KDE ubuntu, only seeing wayland's "W" icon
@@ -95,9 +99,11 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         # Load frontend
         self.setupUi()
         self.initShortcuts()
+        self._maybeDownloadOnboardingBulk()
         self.initBulkData()
 
         QtCore.QTimer.singleShot(0, self.startSetRefreshCheck)
+        QtCore.QTimer.singleShot(1000, self.startUpdateCheck)
         self.setRefreshTimer = QtCore.QTimer(self)
         self.setRefreshTimer.setInterval(7 * 24 * 60 * 60 * 1000)
         self.setRefreshTimer.timeout.connect(self.startSetRefreshCheck)
@@ -134,7 +140,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
     def _applyTheme(self):
         if constants.THEME == "material":
-            qt_material.apply_stylesheet(self.app, theme='dark_teal.xml', extra={'density_scale': '0'})
+            themeFile = "dark_teal.xml" if qt.systemPrefersDark() else "light_teal.xml"
+            qt_material.apply_stylesheet(self.app, theme=themeFile, extra={'density_scale': '0'})
             self.app.setStyleSheet(self.app.styleSheet() + """
 QComboBox::item:selected,
 QComboBox QAbstractItemView::item:selected {
@@ -187,6 +194,64 @@ QMenu::item:selected {
         config.loadScryfallSettings()
         config.loadSearchSettings()
         config.loadUISettings()
+        config.loadUpdateSettings()
+
+    def runOnboarding(self):
+        if config.getUISettings()["onboarding_done"]:
+            return None
+        wizard = OnboardingWizard()
+        accepted = wizard.exec() == QtWidgets.QDialog.DialogCode.Accepted
+        values = wizard.values() if accepted else {
+            "use_bulk": constants.USE_BULK_FILES,
+            "bulk_language": constants.BULK_LANGUAGE_MODE,
+            "download_bulk": False,
+            "theme": constants.THEME,
+            "check_updates": constants.AUTO_CHECK_UPDATES,
+        }
+        config.saveUISettings(values["theme"], onboardingDone=True)
+        config.saveScryfallSettings(values["use_bulk"], True, values["bulk_language"])
+        config.saveUpdateSettings(values["check_updates"])
+        config.loadUISettings()
+        config.loadScryfallSettings()
+        config.loadUpdateSettings()
+        return values
+
+    def _maybeDownloadOnboardingBulk(self):
+        if not self._onboarding or not self._onboarding.get("download_bulk"):
+            return
+        manager = bulk.BulkDataManager()
+        if manager.getLocalBulkFile() is not None:
+            return
+        if downloadBulkDataWithProgress(self, manager):
+            ensureBulkCacheWithProgress(self)
+
+    def startUpdateCheck(self):
+        if not constants.AUTO_CHECK_UPDATES:
+            return
+        threading.Thread(target=self._checkForUpdates, daemon=True).start()
+
+    def _checkForUpdates(self):
+        try:
+            result = updates.checkForUpdate()
+        except Exception as e:
+            logging.warning(f"Could not check for updates: {e}")
+            return
+        if result is not None:
+            self.updateAvailable.emit(result)
+
+    def onUpdateAvailable(self, result: dict):
+        box = QtWidgets.QMessageBox(self)
+        box.setWindowTitle("Update available")
+        box.setText(f"MTG Organizer {result['version']} is available.")
+        box.setInformativeText("Open the GitHub release to download the new version.")
+        openButton = box.addButton("Open release", QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+        skipButton = box.addButton("Skip this version", QtWidgets.QMessageBox.ButtonRole.DestructiveRole)
+        box.addButton("Later", QtWidgets.QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        if box.clickedButton() is openButton and result.get("url"):
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl(result["url"]))
+        elif box.clickedButton() is skipButton:
+            config.saveUpdateSettings(constants.AUTO_CHECK_UPDATES, skippedVersion=result["version"])
 
     def initShortcuts(self):
         settingsAction = QtGui.QAction(self)

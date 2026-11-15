@@ -78,6 +78,9 @@
   push to `master` and publishes them as a GitHub release.
 - Project licensed GPL-3.0-or-later; GPL-2-only fuzzy matching was replaced with
   MIT-licensed RapidFuzz.
+- First-launch onboarding covers card-data mode, appearance, and update checks.
+- Automatic update checks use GitHub Releases once per day, with links to the
+  release page and a per-version skip option.
 
 ## Backlog
 

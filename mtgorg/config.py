@@ -15,6 +15,13 @@ DEFAULT_SEARCH_SETTINGS = {
 
 DEFAULT_UI_SETTINGS = {
     "theme": "fusion",
+    "onboarding_done": "false",
+}
+
+DEFAULT_UPDATE_SETTINGS = {
+    "auto_check": "true",
+    "last_check": "",
+    "skipped_version": "",
 }
 
 
@@ -33,6 +40,7 @@ def createConfigFile():
     config['SCRYFALL'] = DEFAULT_SCRYFALL_SETTINGS
     config['SEARCH'] = DEFAULT_SEARCH_SETTINGS
     config['UI'] = DEFAULT_UI_SETTINGS
+    config['UPDATES'] = DEFAULT_UPDATE_SETTINGS
     with open(constants.DEFAULT_CONFIGURATION_FILE.as_posix(), 'w') as _f:
         config.write(_f)
 
@@ -102,14 +110,42 @@ def getUISettings() -> dict:
     theme = settings.get("theme", "fusion")
     if theme not in constants.availableThemes():
         theme = "fusion"
-    return {"theme": theme}
+    return {
+        "theme": theme,
+        "onboarding_done": settings.get("onboarding_done", "false").lower() == "true",
+    }
 
 
-def saveUISettings(theme: str):
+def saveUISettings(theme: str, onboardingDone: bool | None = None):
     if theme not in constants.availableThemes():
         theme = "fusion"
     writeValue(theme, "UI", "theme")
+    if onboardingDone is not None:
+        writeValue(str(onboardingDone).lower(), "UI", "onboarding_done")
 
 
 def loadUISettings():
     constants.THEME = getUISettings()["theme"]
+
+
+def getUpdateSettings() -> dict:
+    settings = {**DEFAULT_UPDATE_SETTINGS, **readConfig().get("UPDATES", {})}
+    return {
+        "auto_check": settings.get("auto_check", "true").lower() == "true",
+        "last_check": settings.get("last_check", ""),
+        "skipped_version": settings.get("skipped_version", ""),
+    }
+
+
+def saveUpdateSettings(autoCheck: bool, skippedVersion: str | None = None):
+    writeValue(str(autoCheck).lower(), "UPDATES", "auto_check")
+    if skippedVersion is not None:
+        writeValue(skippedVersion, "UPDATES", "skipped_version")
+
+
+def saveUpdateCheck(checkedAt: str):
+    writeValue(checkedAt, "UPDATES", "last_check")
+
+
+def loadUpdateSettings():
+    constants.AUTO_CHECK_UPDATES = getUpdateSettings()["auto_check"]

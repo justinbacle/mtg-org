@@ -7,11 +7,24 @@ import constants
 from lib import system
 
 
+def systemPrefersDark() -> bool:
+    app = QtWidgets.QApplication.instance()
+    if app is not None:
+        scheme = app.styleHints().colorScheme()
+        if scheme == QtCore.Qt.ColorScheme.Dark:
+            return True
+        if scheme == QtCore.Qt.ColorScheme.Light:
+            return False
+    if system.isWin():
+        return system.isWin10Dark()
+    return True
+
+
 def selectPalette(app):
-    # Overriden by material
+    # Overridden by material
     try:
-        palette = QtGui.QPalette()
-        if system.isWin10Dark():  # Dark theme enabled
+        palette = app.style().standardPalette()
+        if systemPrefersDark():  # Dark theme enabled
 
             # Force the style to be the same on all OSs:
             if "Fusion" in QtWidgets.QStyleFactory.keys():
@@ -244,7 +257,7 @@ def themedSvgIcon(path: str | Path, color: QtGui.QColor, size: int = 20) -> QtGu
 
 def iconColor() -> QtGui.QColor:
     if constants.THEME == "material":
-        return QtGui.QColor("#1de9b6")
+        return QtGui.QColor("#1de9b6" if systemPrefersDark() else "#00796b")
     app = QtWidgets.QApplication.instance()
     if app is None:
         return QtGui.QColor("#333333")
@@ -260,11 +273,17 @@ def configureSplitter(splitter: QtWidgets.QSplitter):
 
 
 def isDarkTheme() -> bool:
-    return constants.THEME == "material" or isDarkPalette()
+    if constants.THEME == "material":
+        return systemPrefersDark()
+    return isDarkPalette()
+
+
+def mutedTextColor() -> QtGui.QColor:
+    return QtGui.QColor("#b8bcc2" if isDarkTheme() else "#5f6368")
 
 
 def chartTextColor() -> QtGui.QColor:
-    if constants.THEME == "material":
+    if constants.THEME == "material" and systemPrefersDark():
         return QtGui.QColor("#eceff1")
     app = QtWidgets.QApplication.instance()
     if app is None:
@@ -273,7 +292,7 @@ def chartTextColor() -> QtGui.QColor:
 
 
 def chartGridColor() -> QtGui.QColor:
-    if constants.THEME == "material":
+    if constants.THEME == "material" and systemPrefersDark():
         color = QtGui.QColor("white")
         color.setAlpha(40)
         return color

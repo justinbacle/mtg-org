@@ -149,7 +149,7 @@ class CardViewer(QtWidgets.QWidget):
 
         # English name (shown for non-English cards)
         self.englishNameLabel = QtWidgets.QLabel()
-        self.englishNameLabel.setStyleSheet("font-style: italic; color: gray;")
+        self.englishNameLabel.setStyleSheet(f"font-style: italic; color: {qt.mutedTextColor().name()};")
         self.englishNameLabel.setVisible(False)
         self.mainLayout.addWidget(self.englishNameLabel, line.postinc(), 0, 1, 2)
 

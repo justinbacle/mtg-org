@@ -24,6 +24,13 @@ def arch() -> str:
 
 
 def build() -> None:
+    payload = BUILD / "payload"
+    shutil.rmtree(payload, ignore_errors=True)
+    shutil.copytree(ROOT / "resources", payload / "resources")
+    (payload / "resources" / "build_info.json").write_text(
+        f'{{"version": "{os.environ.get("MTGORG_VERSION", "0.1.dev")}"}}',
+        encoding="utf-8",
+    )
     subprocess.run(
         [
             sys.executable,
@@ -43,7 +50,7 @@ def build() -> None:
             "--paths",
             str(ROOT / "mtgorg"),
             "--add-data",
-            f"{ROOT / 'resources'}{os.pathsep}resources",
+            f"{payload / 'resources'}{os.pathsep}resources",
             "--collect-data",
             "qt_material",
             "--noconfirm",

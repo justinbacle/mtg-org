@@ -21,7 +21,7 @@ def test_settings_dialog_saves_theme(qtApp, tmp_path, monkeypatch):
     dialog.themeCB.setCurrentIndex(dialog.themeCB.findData("material"))
     dialog.accept()
 
-    assert config.getUISettings() == {"theme": "material"}
+    assert config.getUISettings()["theme"] == "material"
     assert messages == ["Theme changed"]
 
 

@@ -26,7 +26,7 @@ Here are the lists of things I'd like to have included in this project :
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
 |Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK, with automated release builds |
-|Themes| System (Fusion), System (KDE) on KDE, and Material dark teal; switching applies immediately |
+|Themes| Fusion and Material follow system light/dark; System (KDE) on KDE. Switching applies immediately |
 |Offline mode| Done: opt-in Scryfall bulk data (card data offline, images online)|
 
 ## Known issues
@@ -73,11 +73,16 @@ then run the main program from the repository root
 
 Click the status bar message to open the full session log.
 
+On first launch, a setup wizard asks whether to use online card data or the
+offline bulk database, lets you choose the appearance, and configures release
+update checks. Existing users see it once after upgrading.
+
 **Settings > Search** caps how many matching cards are shown (default 100). If
 more cards match, a notice above the results tells you the list was truncated.
 
-**Settings > Appearance** switches between System (Fusion), System (KDE) on KDE,
-and Material dark teal. The change applies immediately.
+**Settings > Appearance** switches between Fusion, System (KDE) on KDE,
+and Material. Fusion and Material follow the system light/dark preference; KDE
+uses its own palette. **Settings > Updates** controls automatic release checks.
 
 ## Deck sections
 
@@ -95,8 +100,9 @@ and legalities work offline; card images and missing non-English printings still
 use Scryfall online, with rate limiting applied.
 
 On first use, the bulk file is converted to a local SQLite index (about 10
-seconds for `default_cards`, with a progress dialog). Later lookups are fast and
-low-memory. The same dialog shows the downloaded file and data date, reports
+seconds for `default_cards`, with a progress dialog). The compressed download is
+about 80 MB, but the SQLite index uses roughly 0.8–1 GB (more for `all_cards`).
+Later lookups are fast and low-memory. The same dialog shows the downloaded file and data date, reports
 disk usage for decks,
 caches, bulk files, and the SQLite index, can check for updates, and has
 **Clear cache** to remove cached cards, images, set icons, set metadata, and the
