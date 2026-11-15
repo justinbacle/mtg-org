@@ -301,6 +301,8 @@ def clearCache() -> dict:
     for folder in (constants.DEFAULT_CARDIMAGES_LOCATION, constants.DEFAULT_SET_ICONS_LOCATION):
         if folder.is_dir():
             targets.extend(path for path in folder.iterdir() if path.is_file())
+    if constants.DEFAULT_BULK_FOLDER_LOCATION.is_dir():
+        targets.extend(constants.DEFAULT_BULK_FOLDER_LOCATION.glob("*-cache.sqlite3*"))
 
     for target in targets:
         if not target.is_file():
@@ -312,3 +314,43 @@ def clearCache() -> dict:
             errors.append(error)
 
     return {"files": filesRemoved, "bytes": bytesRemoved, "errors": errors}
+
+
+def _fileSize(path: Path) -> int:
+    try:
+        return path.stat().st_size if path.is_file() else 0
+    except OSError:
+        return 0
+
+
+def _folderSize(folder: Path) -> int:
+    if not folder.is_dir():
+        return 0
+    total = 0
+    for path in folder.iterdir():
+        if path.is_file():
+            total += _fileSize(path)
+    return total
+
+
+def getStorageStats() -> dict:
+    """Return byte sizes for the user database and local caches."""
+    bulkFiles = 0
+    bulkIndex = 0
+    if constants.DEFAULT_BULK_FOLDER_LOCATION.is_dir():
+        for path in constants.DEFAULT_BULK_FOLDER_LOCATION.iterdir():
+            if not path.is_file():
+                continue
+            if "-cache.sqlite3" in path.name:
+                bulkIndex += _fileSize(path)
+            else:
+                bulkFiles += _fileSize(path)
+    return {
+        "decks": _fileSize(constants.DEFAULT_DB_LOCATION),
+        "card_cache": _fileSize(constants.DEFAULT_CACHE_DB_LOCATION),
+        "images": _folderSize(constants.DEFAULT_CARDIMAGES_LOCATION),
+        "set_icons": _folderSize(constants.DEFAULT_SET_ICONS_LOCATION),
+        "set_metadata": _fileSize(constants.DEFAULT_INFOS_LOCATION / "sets.json"),
+        "bulk_files": bulkFiles,
+        "bulk_index": bulkIndex,
+    }

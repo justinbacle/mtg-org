@@ -83,15 +83,38 @@ class SettingsDialog(QtWidgets.QDialog):
         self.mainLayout.addWidget(self.cacheGroup)
 
         self.cacheLabel = QtWidgets.QLabel(
-            "Cached card data, card images, set icons, and set metadata. "
-            "Decks and collections are not affected."
+            "Cached card data, card images, set icons, set metadata, and the "
+            "local bulk index. Decks, collections, and downloaded bulk files are "
+            "not affected."
         )
         self.cacheLabel.setWordWrap(True)
         self.cacheLayout.addWidget(self.cacheLabel)
 
+        self.storageForm = QtWidgets.QFormLayout()
+        self.cacheLayout.addLayout(self.storageForm)
+        self.storageLabels = {}
+        for key, label in (
+            ("decks", "Decks & collections"),
+            ("card_cache", "Card cache"),
+            ("images", "Card images"),
+            ("set_icons", "Set icons"),
+            ("set_metadata", "Set metadata"),
+            ("bulk_files", "Bulk files"),
+            ("bulk_index", "Bulk index"),
+        ):
+            valueLabel = QtWidgets.QLabel("-")
+            self.storageLabels[key] = valueLabel
+            self.storageForm.addRow(label, valueLabel)
+        self.storageLabels["decks"].setToolTip("Not removed by Clear cache")
+
+        cacheButtons = QtWidgets.QHBoxLayout()
         self.clearCachePB = QtWidgets.QPushButton("Clear cache")
         self.clearCachePB.clicked.connect(self.on_clearCacheClicked)
-        self.cacheLayout.addWidget(self.clearCachePB)
+        cacheButtons.addWidget(self.clearCachePB)
+        self.refreshStoragePB = QtWidgets.QPushButton("Refresh sizes")
+        self.refreshStoragePB.clicked.connect(self.updateStorageStats)
+        cacheButtons.addWidget(self.refreshStoragePB)
+        self.cacheLayout.addLayout(cacheButtons)
 
         self.buttonBox = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
@@ -104,6 +127,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self.useBulkCB.toggled.connect(self.updateControls)
         self.languageCB.currentIndexChanged.connect(self.updateControls)
         self.updateControls()
+        self.updateStorageStats()
 
     def loadSettings(self):
         settings = config.getScryfallSettings()
@@ -124,6 +148,22 @@ class SettingsDialog(QtWidgets.QDialog):
         self.downloadPB.setEnabled(enabled)
         self.updateStatus()
 
+    @staticmethod
+    def formatSize(sizeBytes: int) -> str:
+        size = float(sizeBytes)
+        for unit in ("B", "KB", "MB", "GB"):
+            if size < 1024 or unit == "GB":
+                if unit == "B":
+                    return f"{int(size)} B"
+                return f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{size:.1f} GB"
+
+    def updateStorageStats(self):
+        stats = connector.getStorageStats()
+        for key, label in self.storageLabels.items():
+            label.setText(self.formatSize(stats.get(key, 0)))
+
     def updateStatus(self):
         status = self.manager().getStatus()
         if status["local_path"] is None:
@@ -142,14 +182,17 @@ class SettingsDialog(QtWidgets.QDialog):
         answer = QtWidgets.QMessageBox.question(
             self,
             "Clear cache",
-            "Delete cached card data, card images, set icons, and set metadata?\n"
-            "Your decks and collections will not be affected.",
+            "Delete cached card data, card images, set icons, set metadata, and "
+            "the bulk index?\n"
+            "Your decks, collections, and downloaded bulk files will not be affected.",
         )
         if answer != QtWidgets.QMessageBox.StandardButton.Yes:
             return
         stats = connector.clearCache()
+        scryfall.resetBulkDataCache()
         scryfall.resetSetsCache()
         scryfall.resetFormatsCache()
+        self.updateStorageStats()
         if stats["errors"]:
             QtWidgets.QMessageBox.warning(
                 self,
@@ -172,6 +215,7 @@ class SettingsDialog(QtWidgets.QDialog):
         scryfall.resetSetsCache()
         scryfall.resetFormatsCache()
         self.updateStatus()
+        self.updateStorageStats()
 
     def accept(self):
         useBulkFiles = self.useBulkCB.isChecked()
@@ -197,4 +241,5 @@ class SettingsDialog(QtWidgets.QDialog):
         scryfall.resetBulkDataCache()
         scryfall.resetSetsCache()
         scryfall.resetFormatsCache()
+        self.updateStorageStats()
         super().accept()

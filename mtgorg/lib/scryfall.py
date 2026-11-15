@@ -1,6 +1,5 @@
 import datetime
 import logging
-import random
 import re
 from pathlib import Path
 from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results  # noqa F401
@@ -26,15 +25,6 @@ _bulkSetsCache: list | None = None
 _formats_memory_cache: list | None = None
 _failedSetIcons: set[str] = set()
 
-_bulkDataCache: dict = {
-    "path": None,
-    "mtime": None,
-    "size": None,
-    "data": None,
-    "indexes": None,
-}
-
-
 SEARCH_DICT_KEYS = [
     'order',
     'unique',
@@ -52,14 +42,8 @@ class Card(dict):
 
 
 def resetBulkDataCache():
-    global _bulkDataCache, _bulkSetsCache
-    _bulkDataCache = {
-        "path": None,
-        "mtime": None,
-        "size": None,
-        "data": None,
-        "indexes": None,
-    }
+    global _bulkSetsCache
+    bulk.resetBulkCaches()
     _bulkSetsCache = None
 
 
@@ -80,80 +64,23 @@ def resetFormatsCache():
     _formats_memory_cache = None
 
 
-def _getBulkFilePath() -> Path:
-    manager = bulk.BulkDataManager()
-    localFile = manager.getLocalBulkFile()
-    if localFile is None:
-        raise RuntimeError("No Scryfall bulk file available")
-    return localFile
+def _getBulkCache() -> bulk.BulkCache:
+    return bulk.getBulkCache()
 
 
-def _buildBulkIndexes(cards: list) -> dict:
-    indexes = {
-        "id": {},
-        "name": {},
-        "mtgo_id": {},
-        "oracle_id": {},
-        "set": {},
-    }
-    for card in cards:
-        cardId = card.get("id")
-        if cardId is not None:
-            indexes["id"][cardId] = card
-        name = card.get("name")
-        if name:
-            indexes["name"].setdefault(name.lower(), []).append(card)
-        mtgoId = card.get("mtgo_id")
-        if mtgoId is not None:
-            indexes["mtgo_id"][mtgoId] = card
-        oracleId = card.get("oracle_id")
-        if oracleId:
-            indexes["oracle_id"].setdefault(oracleId, []).append(card)
-        setCode = card.get("set")
-        if setCode:
-            indexes["set"].setdefault(setCode, []).append(card)
-    return indexes
+def getBulkCardCount() -> int:
+    return _getBulkCache().count()
 
 
-def _loadBulkData():
-    global _bulkDataCache
-    path = _getBulkFilePath()
-    stat = path.stat()
-    cacheFresh = (
-        _bulkDataCache["data"] is not None
-        and _bulkDataCache["path"] == str(path)
-        and _bulkDataCache["mtime"] == stat.st_mtime
-        and _bulkDataCache["size"] == stat.st_size
-    )
-    if cacheFresh:
-        return
-    data = list(bulk.iterBulkRecords(path))
-    if not data:
-        raise RuntimeError(f"Bulk file {path} is empty")
-    _bulkDataCache = {
-        "path": str(path),
-        "mtime": stat.st_mtime,
-        "size": stat.st_size,
-        "data": data,
-        "indexes": _buildBulkIndexes(data),
-    }
-
-
-def getBulkData() -> list:
-    _loadBulkData()
-    return _bulkDataCache["data"]
-
-
-def getBulkIndexes() -> dict:
-    _loadBulkData()
-    return _bulkDataCache["indexes"]
+def ensureBulkDataReady() -> int:
+    return _getBulkCache().count()
 
 
 def _getLocalPrintings(card: dict) -> list:
     oracleId = card.get("oracle_id")
     if oracleId is None:
         return []
-    return getBulkIndexes()["oracle_id"].get(oracleId, [])
+    return _getBulkCache().getCardsByOracleId(oracleId)
 
 
 def _matchesColorFilter(card: dict, colorFilter: str) -> bool:
@@ -306,22 +233,19 @@ def searchCards(searchDict: dict, exact: bool = False):
 
 
 def searchCardsLocal(searchDict: dict, exact: bool = False):
-    indexes = getBulkIndexes()
+    cache = _getBulkCache()
     name = searchDict.get("name", "")
     if exact and name:
-        cards = indexes["name"].get(name.lower(), [])
+        cards = cache.getCardsByName(name)
         cards = _filterCards(cards, searchDict)
         cards = _sortPrintings(cards)
         return [_copyBulkCard(card) for card in cards]
 
     if name:
         needle = name.lower()
-        candidates = []
-        for indexedName, indexedCards in indexes["name"].items():
-            if needle in indexedName:
-                candidates.extend(indexedCards)
+        candidates = cache.searchNameSubstring(needle)
         candidates = _filterCards(candidates, searchDict)
-        candidates.sort(key=lambda card: card.get("released_at", ""), reverse=True)
+        candidates = _sortPrintings(candidates)
         candidates.sort(
             key=lambda card: (
                 card.get("name", "").lower().find(needle),
@@ -331,7 +255,7 @@ def searchCardsLocal(searchDict: dict, exact: bool = False):
         candidates = _dedupeByOracle(candidates)
         return [_copyBulkCard(card) for card in candidates]
 
-    cards = _filterCards(getBulkData(), searchDict)
+    cards = _filterCards(cache.iterCards(), searchDict)
     cards = _sortPrintings(cards)
     cards = _dedupeByOracle(cards)
     return [_copyBulkCard(card) for card in cards]
@@ -485,7 +409,7 @@ def getCardReprintId(cardId: str, setCode: str, lang: str = "en") -> list:
 
 def _fetchCardById(id: str) -> dict | None:
     if constants.USE_BULK_FILES:
-        card = getBulkIndexes()["id"].get(id)
+        card = _getBulkCache().getCardById(id)
         return _copyBulkCard(card) if card is not None else None
     try:
         scryfallReq = scrython.cards.ById(id=id)
@@ -511,7 +435,7 @@ def getCardById(id: str, force: bool = False):
 
 def getCardByMTGOId(mtgoId: int) -> dict | None:
     if constants.USE_BULK_FILES:
-        cardData = getBulkIndexes()["mtgo_id"].get(mtgoId)
+        cardData = _getBulkCache().getCardByMTGOId(mtgoId)
         if cardData is None:
             logging.warning(f"Could not find card for {mtgoId=}")
             return None
@@ -526,7 +450,10 @@ def getCardByMTGOId(mtgoId: int) -> dict | None:
 
 def getRandomCard() -> dict:
     if constants.USE_BULK_FILES:
-        return _copyBulkCard(random.choice(getBulkData()))
+        card = _getBulkCache().getRandomCard()
+        if card is None:
+            raise RuntimeError("No cards available in bulk data")
+        return _copyBulkCard(card)
     return scrython.cards.Random().to_dict()
 
 
@@ -615,20 +542,8 @@ def getOnlineSetData():
 
 def _getSetsFromBulk() -> list:
     global _bulkSetsCache
-    if _bulkSetsCache is not None:
-        return _bulkSetsCache
-    indexes = getBulkIndexes()
-    sets = []
-    for setCode, cards in indexes["set"].items():
-        card = cards[0]
-        sets.append({
-            "id": card.get("set_id", setCode),
-            "code": setCode,
-            "name": card.get("set_name", setCode),
-            "released_at": card.get("released_at", ""),
-        })
-    sets.sort(key=lambda setData: setData.get("released_at", ""))
-    _bulkSetsCache = sets
+    if _bulkSetsCache is None:
+        _bulkSetsCache = _getBulkCache().getSets()
     return _bulkSetsCache
 
 
@@ -710,9 +625,9 @@ def getFormats() -> list:
     if _formats_memory_cache is not None:
         return _formats_memory_cache
     if constants.USE_BULK_FILES:
-        data = getBulkData()
-        if data:
-            _formats_memory_cache = list(data[0].get("legalities", {}).keys())
+        card = _getBulkCache().getAnyCard()
+        if card is not None:
+            _formats_memory_cache = list(card.get("legalities", {}).keys())
             return _formats_memory_cache
     card = getRandomCard()
     _formats_memory_cache = list(card.get("legalities", {}).keys())

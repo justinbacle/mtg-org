@@ -3,6 +3,9 @@ import gzip
 import json
 import logging
 import os
+import sqlite3
+import threading
+from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -251,3 +254,253 @@ class BulkDataManager:
             "updated_at": metadata.get("updated_at", ""),
             "downloaded_at": metadata.get("downloaded_at", ""),
         }
+
+
+class BulkCache:
+    """Disk-backed card cache built from a bulk file."""
+
+    SCHEMA_VERSION = 1
+    BATCH_SIZE = 1000
+
+    def __init__(self, folder: str | Path, bulkType: str, sourcePath: str | Path):
+        self.folder = Path(folder)
+        self.bulkType = bulkType
+        self.sourcePath = Path(sourcePath)
+        self.dbPath = self.folder / f"{bulkType.replace('_', '-')}-cache.sqlite3"
+        self._lock = threading.RLock()
+        self._ready = False
+        self._readySource = None
+
+    @contextmanager
+    def _connect(self):
+        connection = sqlite3.connect(self.dbPath, timeout=30)
+        try:
+            yield connection
+        finally:
+            connection.close()
+
+    def _sourceStat(self) -> tuple[float, int]:
+        stat = self.sourcePath.stat()
+        return stat.st_mtime, stat.st_size
+
+    def _isCurrent(self) -> bool:
+        if not self.dbPath.is_file():
+            return False
+        try:
+            with self._connect() as connection:
+                row = connection.execute(
+                    "SELECT source_path, source_mtime, source_size, schema_version FROM meta LIMIT 1"
+                ).fetchone()
+        except sqlite3.Error:
+            return False
+        if row is None:
+            return False
+        sourcePath, sourceMtime, sourceSize, schemaVersion = row
+        currentMtime, currentSize = self._sourceStat()
+        return (
+            sourcePath == str(self.sourcePath)
+            and float(sourceMtime) == currentMtime
+            and int(sourceSize) == currentSize
+            and int(schemaVersion) == self.SCHEMA_VERSION
+        )
+
+    def _build(self):
+        logging.info(f"Building bulk cache for {self.sourcePath.name}...")
+        tmpPath = self.dbPath.with_suffix(self.dbPath.suffix + ".tmp")
+        tmpPath.unlink(missing_ok=True)
+        connection = sqlite3.connect(tmpPath)
+        try:
+            connection.execute("PRAGMA journal_mode=OFF")
+            connection.execute("PRAGMA synchronous=OFF")
+            connection.execute(
+                """
+                CREATE TABLE cards (
+                    id TEXT PRIMARY KEY,
+                    oracle_id TEXT,
+                    name TEXT,
+                    name_lower TEXT,
+                    mtgo_id INTEGER,
+                    set_code TEXT,
+                    set_id TEXT,
+                    set_name TEXT,
+                    lang TEXT,
+                    collector_number TEXT,
+                    released_at TEXT,
+                    data TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE meta (
+                    source_path TEXT,
+                    source_mtime REAL,
+                    source_size INTEGER,
+                    schema_version INTEGER,
+                    record_count INTEGER
+                )
+                """
+            )
+            batch = []
+            recordCount = 0
+            for record in iterBulkRecords(self.sourcePath):
+                cardId = record.get("id")
+                if cardId is None:
+                    continue
+                batch.append((
+                    cardId,
+                    record.get("oracle_id"),
+                    record.get("name", ""),
+                    record.get("name", "").lower(),
+                    record.get("mtgo_id"),
+                    record.get("set"),
+                    record.get("set_id"),
+                    record.get("set_name"),
+                    record.get("lang", "en"),
+                    record.get("collector_number"),
+                    record.get("released_at", ""),
+                    json.dumps(record, ensure_ascii=False, separators=(",", ":")),
+                ))
+                recordCount += 1
+                if len(batch) >= self.BATCH_SIZE:
+                    connection.executemany(
+                        "INSERT OR REPLACE INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                        batch,
+                    )
+                    batch.clear()
+            if batch:
+                connection.executemany(
+                    "INSERT OR REPLACE INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    batch,
+                )
+            connection.execute("CREATE INDEX idx_cards_name ON cards(name_lower)")
+            connection.execute("CREATE INDEX idx_cards_oracle ON cards(oracle_id)")
+            connection.execute("CREATE INDEX idx_cards_mtgo ON cards(mtgo_id)")
+            connection.execute("CREATE INDEX idx_cards_set ON cards(set_code)")
+            mtime, size = self._sourceStat()
+            connection.execute(
+                "INSERT INTO meta VALUES (?,?,?,?,?)",
+                (str(self.sourcePath), mtime, size, self.SCHEMA_VERSION, recordCount),
+            )
+            connection.commit()
+        except Exception:
+            connection.close()
+            tmpPath.unlink(missing_ok=True)
+            raise
+        connection.close()
+        if recordCount == 0:
+            tmpPath.unlink(missing_ok=True)
+            raise RuntimeError(f"Bulk file {self.sourcePath} is empty")
+        os.replace(tmpPath, self.dbPath)
+        self._ready = True
+        self._readySource = self._sourceStat()
+        logging.info(f"Bulk cache built with {recordCount} records")
+
+    def ensureReady(self) -> bool:
+        with self._lock:
+            currentStat = self._sourceStat()
+            if self._ready and self._readySource == currentStat and self.dbPath.is_file():
+                return True
+            if self._isCurrent():
+                self._ready = True
+                self._readySource = currentStat
+                return True
+            self._build()
+            return True
+
+    def _fetchAll(self, query: str, params: tuple = ()) -> list[dict]:
+        with self._lock:
+            self.ensureReady()
+            with self._connect() as connection:
+                rows = connection.execute(query, params).fetchall()
+        return [json.loads(row[0]) for row in rows]
+
+    def _fetchOne(self, query: str, params: tuple = ()) -> dict | None:
+        cards = self._fetchAll(query, params)
+        return cards[0] if cards else None
+
+    def count(self) -> int:
+        with self._lock:
+            self.ensureReady()
+            with self._connect() as connection:
+                row = connection.execute("SELECT COUNT(*) FROM cards").fetchone()
+        return int(row[0]) if row is not None else 0
+
+    def getCardById(self, cardId: str) -> dict | None:
+        return self._fetchOne("SELECT data FROM cards WHERE id=? LIMIT 1", (cardId,))
+
+    def getCardByMTGOId(self, mtgoId: int) -> dict | None:
+        return self._fetchOne("SELECT data FROM cards WHERE mtgo_id=? LIMIT 1", (mtgoId,))
+
+    def getCardsByName(self, name: str) -> list[dict]:
+        return self._fetchAll("SELECT data FROM cards WHERE name_lower=?", (name.lower(),))
+
+    def searchNameSubstring(self, needle: str) -> list[dict]:
+        escaped = needle.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        return self._fetchAll(
+            "SELECT data FROM cards WHERE name_lower LIKE ? ESCAPE '\\'",
+            (f"%{escaped}%",),
+        )
+
+    def getCardsByOracleId(self, oracleId: str) -> list[dict]:
+        if oracleId is None:
+            return []
+        return self._fetchAll("SELECT data FROM cards WHERE oracle_id=?", (oracleId,))
+
+    def iterCards(self):
+        with self._lock:
+            self.ensureReady()
+            with self._connect() as connection:
+                for row in connection.execute("SELECT data FROM cards"):
+                    yield json.loads(row[0])
+
+    def getAnyCard(self) -> dict | None:
+        return self._fetchOne("SELECT data FROM cards LIMIT 1")
+
+    def getRandomCard(self) -> dict | None:
+        return self._fetchOne("SELECT data FROM cards ORDER BY RANDOM() LIMIT 1")
+
+    def getSets(self) -> list[dict]:
+        with self._lock:
+            self.ensureReady()
+            with self._connect() as connection:
+                rows = connection.execute(
+                    """
+                    SELECT set_code, COALESCE(set_id, set_code), set_name, MIN(released_at)
+                    FROM cards
+                    GROUP BY set_code
+                    ORDER BY MIN(released_at)
+                    """
+                ).fetchall()
+        return [
+            {
+                "id": set_id,
+                "code": set_code,
+                "name": set_name or set_code,
+                "released_at": released_at,
+            }
+            for set_code, set_id, set_name, released_at in rows
+        ]
+
+
+_bulkCacheRegistry: dict[tuple[str, str], BulkCache] = {}
+_bulkCacheLock = threading.Lock()
+
+
+def getBulkCache() -> BulkCache:
+    manager = BulkDataManager()
+    sourcePath = manager.getLocalBulkFile()
+    if sourcePath is None:
+        raise RuntimeError("No Scryfall bulk file available")
+    key = (str(manager.folder), manager.bulkType)
+    with _bulkCacheLock:
+        current = _bulkCacheRegistry.get(key)
+        if current is None or current.sourcePath != sourcePath:
+            current = BulkCache(manager.folder, manager.bulkType, sourcePath)
+            _bulkCacheRegistry[key] = current
+    return current
+
+
+def resetBulkCaches():
+    with _bulkCacheLock:
+        _bulkCacheRegistry.clear()

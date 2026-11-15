@@ -20,7 +20,7 @@ Here are the lists of things I'd like to have included in this project :
 | Support for other languages than EN | Card handling done in all available MTG languages, GUI translations not handled (yet)|
 |Organizing cards in decks & collections| Done. Missing drag/drop between collections/decks, missing sideboard/commander support |
 |Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs (Legality WIP)|
-|Import| MTGA, CSV(Urza Gatherer, and all supported on mtggoldfish), MTGO(.dek) |
+|Import| MTGA, CSV (Urza Gatherer, MTG Studio, MTGGoldfish, MTG Manager, Deckbox, Decked Builder, PucaTrade, TCGPlayer, Deckstats), MTGO (.dek), EDHRec URL |
 |Export| Started : export to cardmarket decklist|
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
@@ -29,7 +29,7 @@ Here are the lists of things I'd like to have included in this project :
 
 ## Known issues
 
-- Card data rely on a cache, which is manually stored for now, this cache is not yet updated when a set comes out. Manual solution for now is to clean the cache manually but I plan to implement a cache update system that could be triggered when a new set is out.
+- In online-only mode, card data is cached locally as it is requested. There is no automatic full cache refresh; use **Settings > Scryfall > Clear cache** if cached data becomes stale. Offline bulk mode checks for bulk-data updates on startup.
 - On some instances, card art may not be correct if scrolling through cards quickly. This is caused by a race condition when requesting multiple images on a poor connection to the web. I added a "Ctrl+R" shortcut to force reload currently selected card for now.
 - On some heavy operations (like importing a large collection) GUI may freeze while it loads data. I will implement loading bars / spinners at some point soon to keep the GUI responive on heavy operations.
 - Missing half-mana symbols (un-sets)
@@ -37,6 +37,7 @@ Here are the lists of things I'd like to have included in this project :
 - Partial phyrexian font handling
 - Bug on sorting / removal
 - Handling image with multiple pictures (e.g. Urza's mine) and alternate art
+- Keyrune has no icon for some promo/art-series sets; those show the set code instead
 - Missing button to clear all search terms
 - Add tooltip to view card translations
 - Show english name when browsing other languages
@@ -74,18 +75,34 @@ larger), then download the file. Card records, searches, reprints, set choices,
 and legalities work offline; card images and missing non-English printings still
 use Scryfall online, with rate limiting applied.
 
+On first use, the bulk file is converted to a local SQLite index (about 10
+seconds for `default_cards`). Later lookups are fast and low-memory. The same
+dialog shows the downloaded file and data date, reports disk usage for decks,
+caches, bulk files, and the SQLite index, can check for updates, and has
+**Clear cache** to remove cached cards, images, set icons, set metadata, and the
+SQLite index without deleting the downloaded bulk file.
+
+The card viewer's printing dropdown lists the available printings and variants
+(set, collector number, showcase/promo/foil-only labels) so you can pick the
+exact printing you want.
+
 ## F.A.Q.
 
 - Where are my decks and collection saved ?
-  - (currently) your decks and collections are stored in your homefolder in a mtgorg.db file (which is basically a json file) which contains the most minimal data to store your deck
+  - In `~/.mtgo/mtg_org.db`. It is a minimal local database that stores your decks and collections.
 
 - Where is the cache stored ?
-  - as for above question, the cache is stored in your homefolder, in a mtgorg_cache.db file, feel free to remove this file to clean the cache.
+  - In `~/.mtgo/`:
+    - `mtg_org_cache.db`: cached card records
+    - `card_imgs/`: card images
+    - `sets_icons/`: set icon SVGs
+    - `infos/sets.json`: set metadata
+    - `scryfall_bulk/`: downloaded bulk files and their SQLite indexes
+  - Use **Settings > Scryfall > Clear cache** to clean everything except your decks, collections, and downloaded bulk files.
 
 - Search/Import is slow
-  - contrary to most other card organizers, this app does not store the entire dataset of card, and only stores data as you request it. This has the added benefit of not needing you to download the entire datasets before starting to organize your decks.
-  This can result on slow operations (especially when importing big collections of cards) if your netwok connection is limited.
-  - There are plans to allow for full offline operations, but this is not the main focus for now
+  - In online-only mode, data is fetched and cached as you request it, so large imports depend on your connection and Scryfall rate limits.
+  - In offline bulk mode, the first search after downloading a bulk file builds the SQLite index; after that, lookups are local and fast.
 
 ## Credits
 

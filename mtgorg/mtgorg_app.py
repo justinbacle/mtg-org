@@ -155,7 +155,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
                     if not downloadBulkDataWithProgress(self, manager):
                         logging.warning("Bulk data update failed, keeping the existing file")
         try:
-            scryfall.getBulkData()
+            scryfall.ensureBulkDataReady()
         except Exception as e:
             logging.error(f"Bulk data could not be loaded: {e}")
             answer = QtWidgets.QMessageBox.question(
@@ -166,7 +166,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             if answer == QtWidgets.QMessageBox.StandardButton.Yes and downloadBulkDataWithProgress(self, manager):
                 scryfall.resetBulkDataCache()
                 try:
-                    scryfall.getBulkData()
+                    scryfall.ensureBulkDataReady()
                 except Exception as retryError:
                     logging.error(f"Bulk data still could not be loaded: {retryError}")
                     constants.USE_BULK_FILES = False

@@ -359,12 +359,17 @@ def test_bulk_loads_gzipped_jsonl(bulkFolder):
     assert [card["id"] for card in results] == ["bolt-new", "bolt-old"]
 
 
+def test_bulk_cache_creates_sqlite_file(bulkFolder):
+    assert scryfall.getBulkCardCount() == 4
+    assert (bulkFolder / "default-cards-cache.sqlite3").is_file()
+
+
 def test_bulk_index_reloads_when_file_changes(bulkFolder):
-    assert len(scryfall.getBulkData()) == 4
+    assert scryfall.getBulkCardCount() == 4
     (bulkFolder / "default-cards-20240101000000.json").write_text(
         json.dumps(SAMPLE_CARDS[:1]), encoding="utf-8"
     )
-    assert len(scryfall.getBulkData()) == 1
+    assert scryfall.getBulkCardCount() == 1
 
 
 def test_bulk_manager_download_and_metadata(tmp_path, monkeypatch):
