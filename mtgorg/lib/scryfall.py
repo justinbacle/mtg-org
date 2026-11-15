@@ -2,7 +2,7 @@ import datetime
 import logging
 import re
 from pathlib import Path
-from fuzzywuzzy import fuzz  # install python-Levenshtein for faster results  # noqa F401
+from fuzzywuzzy import fuzz, process
 import aiohttp
 import requests
 import os
@@ -140,7 +140,11 @@ def _filterCards(cards: list, searchDict: dict) -> list:
     types = [cardType.lower() for cardType in searchDict.get("types", []) if cardType]
     oracle = searchDict.get("oracle", "")
     cmcFilter = searchDict.get("cmc")
-    cmcComparator = _parseComparator(cmcFilter[1]) if isinstance(cmcFilter, (list, tuple)) else None
+    cmcComparator = None
+    if isinstance(cmcFilter, (list, tuple)) and len(cmcFilter) >= 2 and str(cmcFilter[1]).strip() != "":
+        cmcComparator = _parseComparator(f"{cmcFilter[0]}{cmcFilter[1]}")
+    elif isinstance(cmcFilter, str):
+        cmcComparator = _parseComparator(cmcFilter)
     powerComparator = _parseComparator(searchDict.get("pow"))
     toughnessComparator = _parseComparator(searchDict.get("tou"))
     loyaltyComparator = _parseComparator(searchDict.get("loy"))
@@ -229,9 +233,11 @@ def _dedupeByOracle(cards: list) -> list:
 
 def searchCards(searchDict: dict, exact: bool = False):
     if constants.USE_BULK_FILES:
+        if searchDict.get("atag") or searchDict.get("otag"):
+            logging.info("Art/oracle tags are not in bulk data; using online Scryfall search")
+            return searchCardsOnline(searchDict, exact)
         return searchCardsLocal(searchDict, exact)
-    else:
-        return searchCardsOnline(searchDict, exact)
+    return searchCardsOnline(searchDict, exact)
 
 
 def searchCardsLocal(searchDict: dict, exact: bool = False):
@@ -245,19 +251,38 @@ def searchCardsLocal(searchDict: dict, exact: bool = False):
 
     if name:
         needle = name.lower()
+        fuzzyScores = None
         candidates = cache.searchNameSubstring(needle)
+        if not candidates:
+            fuzzyScores = {}
+            fuzzyMatches = process.extractBests(
+                needle,
+                cache.getDistinctNames(),
+                scorer=fuzz.WRatio,
+                score_cutoff=80,
+                limit=20,
+            )
+            for matchedName, score in fuzzyMatches:
+                fuzzyScores[matchedName] = score
+                candidates.extend(cache.getCardsByName(matchedName))
         candidates = _filterCards(candidates, searchDict)
         candidates = _sortPrintings(candidates)
-        candidates.sort(
-            key=lambda card: (
-                card.get("name", "").lower().find(needle),
-                len(card.get("name", "")),
+        if fuzzyScores is not None:
+            candidates.sort(
+                key=lambda card: fuzzyScores.get(card.get("name", "").lower(), 0),
+                reverse=True,
             )
-        )
+        else:
+            candidates.sort(
+                key=lambda card: (
+                    card.get("name", "").lower().find(needle),
+                    len(card.get("name", "")),
+                )
+            )
         candidates = _dedupeByOracle(candidates)
         return [_copyBulkCard(card) for card in candidates]
 
-    cards = _filterCards(cache.iterCards(), searchDict)
+    cards = _filterCards(cache.iterCardsFiltered(searchDict), searchDict)
     cards = _sortPrintings(cards)
     cards = _dedupeByOracle(cards)
     return [_copyBulkCard(card) for card in cards]
@@ -290,6 +315,9 @@ def searchCardsOnline(searchDict: dict, exact: bool = False):
         elif k == "oracle":
             if v != "":
                 q += k + ":\"" + v + "\" "
+        elif k == "atag":
+            if v != "":
+                q += "art:" + v + " "
         elif k == "cmc":
             if v[1] != "":
                 q += "mv" + v[0] + v[1] + " "

@@ -188,7 +188,14 @@ def getChartsTheme():
     return theme
 
 
-class ExtendedComboBox(QtWidgets.QComboBox):
+class NoWheelComboBox(QtWidgets.QComboBox):
+    """Combo box that ignores wheel events so scrolling cannot change values."""
+
+    def wheelEvent(self, event):
+        event.ignore()
+
+
+class ExtendedComboBox(NoWheelComboBox):
     """
     from
     https://stackoverflow.com/questions/4827207/how-do-i-filter-the-pyqt-qcombobox-items-based-on-the-text-input

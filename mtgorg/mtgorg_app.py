@@ -12,6 +12,7 @@ from widgets.deckselector import CardStackSelector
 from widgets.dbbrowser import DbBrowser
 from widgets.cardslist import CardsList
 from widgets.settings import SettingsDialog, downloadBulkDataWithProgress, ensureBulkCacheWithProgress
+from widgets.logviewer import ClickableStatusBar, LogHistoryHandler, LogViewerDialog
 
 import connector
 import config
@@ -22,20 +23,31 @@ from lib import bulk, qt, scryfall, utils
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
+    logMessage = QtCore.Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.statusbar = QtWidgets.QStatusBar()
+        self.statusbar = ClickableStatusBar()
+        self.statusbar.setToolTip("Click to view the full log")
+        self.statusbar.clicked.connect(self.on_showLogs)
+        self.logMessage.connect(self.statusbar.showMessage)
+
+        self.logHistory = LogHistoryHandler()
+        self.logHistory.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s", "%H:%M:%S")
+        )
 
         def on_log(record: logging.LogRecord) -> bool:
             timeStr = datetime.datetime.now().strftime("%H:%M:%S")
-            logMsg = f"[{timeStr}] {record.levelname}: {record.msg} ({record.filename}:{record.lineno})"
-            # ? show log level with color with self.statusbar.setStyleSheet
-            self.statusbar.showMessage(logMsg)
+            logMsg = f"[{timeStr}] {record.levelname}: {record.getMessage()} ({record.filename}:{record.lineno})"
+            self.logMessage.emit(logMsg)
             return True
 
-        logging.getLogger().addFilter(on_log)
+        rootLogger = logging.getLogger()
+        rootLogger.setLevel(logging.INFO)
+        rootLogger.addHandler(self.logHistory)
+        rootLogger.addFilter(on_log)
 
         self.setStatusBar(self.statusbar)
 
@@ -84,6 +96,9 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.setupUi()
         self.initShortcuts()
         self.initBulkData()
+
+    def on_showLogs(self):
+        LogViewerDialog(self.logHistory, self).exec()
 
     def initSettings(self):
         if not config.configFileExists():

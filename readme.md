@@ -16,7 +16,7 @@ Here are the lists of things I'd like to have included in this project :
 
 | Feature | Status |
 | --- | --- |
-| Search through MTG database | Done: Name, Colors, Type(s), Set, Rarity, CMC, Oracle text, tagger tags, Format, Power/Toughness/Loyalty|
+| Search through MTG database | Done: Name (with typo fallback in bulk mode), Colors, Type(s), Set, Rarity, CMC, Oracle text, tagger tags, Format, Power/Toughness/Loyalty|
 | Support for other languages than EN | Card handling done in all available MTG languages, GUI translations not handled (yet)|
 |Organizing cards in decks & collections| Done. Missing drag/drop between collections/decks, missing sideboard/commander support |
 |Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs (Legality WIP)|
@@ -31,13 +31,14 @@ Here are the lists of things I'd like to have included in this project :
 
 - In online-only mode, card data is cached locally as it is requested. There is no automatic full cache refresh; use **Settings > Scryfall > Clear cache** if cached data becomes stale. Offline bulk mode checks for bulk-data updates on startup.
 - On some instances, card art may not be correct if scrolling through cards quickly. This is caused by a race condition when requesting multiple images on a poor connection to the web. I added a "Ctrl+R" shortcut to force reload currently selected card for now.
-- On some heavy operations (like importing a large collection) GUI may freeze while it loads data. I will implement loading bars / spinners at some point soon to keep the GUI responive on heavy operations.
+- Card searches run in the background, but some heavy operations (like importing a large collection) can still freeze the GUI while they load data.
 - Missing half-mana symbols (un-sets)
 - Missing 1,000,000 mana symbol (Gleemax)
 - Partial phyrexian font handling
 - Bug on sorting / removal
 - Handling image with multiple pictures (e.g. Urza's mine) and alternate art
 - Keyrune has no icon for some promo/art-series sets; those show the set code instead
+- In bulk mode, art/oracle tag filters fall back to online Scryfall, and the Include Extras checkbox is disabled
 - Missing button to clear all search terms
 - Add tooltip to view card translations
 - Show english name when browsing other languages
@@ -66,6 +67,8 @@ then run the main program from the repository root
   - > py mtgorg/mtgorg_app.py
 - linux/mac (venv)
   - >venv/bin/python mtgorg/mtgorg_app.py
+
+Click the status bar message to open the full session log.
 
 ## Offline mode
 

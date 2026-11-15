@@ -18,10 +18,11 @@ Implemented:
 - Tests for bulk download, indexes, lookups, filters, config, and parser mocks.
 - Opt-in live bulk metadata/download test (`MTGORG_TEST_LIVE_BULK=1`).
 - Progress feedback while the SQLite cache is first built.
+- Fuzzy name fallback for non-exact search when no substring match is found.
+- SQLite prefilters for common search fields, plus background card searching.
 
 Remaining optional work:
 
-- Add fuzzy ranking to non-exact search if needed.
 - Add a `--no-bulk` pytest option (currently tests use mocked Scryfall fixtures).
 
 Measured with current `default_cards`: first SQLite build takes ~10 s, then

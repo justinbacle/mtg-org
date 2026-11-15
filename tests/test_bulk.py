@@ -89,6 +89,47 @@ SAMPLE_CARDS = [
         "legalities": {"modern": "legal", "legacy": "legal"},
         "prices": {"eur": "0.30"},
     },
+    {
+        "id": "cmc-ten",
+        "oracle_id": "oracle-cmc-ten",
+        "name": "Ten Mana Creature",
+        "set": "tst",
+        "set_id": "set-tst",
+        "set_name": "Test Set",
+        "lang": "en",
+        "released_at": "2024-01-01",
+        "mtgo_id": 500,
+        "colors": ["U"],
+        "type_line": "Creature",
+        "oracle_text": "Draw a card.",
+        "power": "9",
+        "toughness": "9",
+        "cmc": 10.0,
+        "rarity": "rare",
+        "games": ["paper"],
+        "legalities": {"modern": "legal", "legacy": "legal"},
+        "prices": {"eur": "1.00"},
+    },
+    {
+        "id": "planeswalker-high",
+        "oracle_id": "oracle-planeswalker-high",
+        "name": "High Loyalty Walker",
+        "set": "tst",
+        "set_id": "set-tst",
+        "set_name": "Test Set",
+        "lang": "en",
+        "released_at": "2024-01-01",
+        "mtgo_id": 600,
+        "colors": ["U"],
+        "type_line": "Legendary Planeswalker",
+        "oracle_text": "Draw a card.",
+        "loyalty": "7",
+        "cmc": 5.0,
+        "rarity": "mythic",
+        "games": ["paper"],
+        "legalities": {"modern": "legal", "legacy": "legal"},
+        "prices": {"eur": "2.00"},
+    },
 ]
 
 
@@ -205,6 +246,90 @@ def test_exact_search_prefers_regular_nonfoil_printing(tmp_path, monkeypatch):
     printings = scryfall.getCardPrintings("regular")
     assert printings[0]["id"] == "regular"
     assert {printing["id"] for printing in printings} == {"regular", "showcase-foil", "promo"}
+
+
+def test_bulk_search_cmc_filter(bulkFolder):
+    results = scryfall.searchCards({"cmc": ("=", "10"), "lang": "en", "game": "paper"})
+    assert [card["id"] for card in results] == ["cmc-ten"]
+
+    results = scryfall.searchCards({"cmc": (">", "5"), "lang": "en", "game": "paper"})
+    assert [card["id"] for card in results] == ["cmc-ten"]
+
+    results = scryfall.searchCards({"cmc": ("<", "2"), "lang": "en", "game": "paper"})
+    assert "cmc-ten" not in [card["id"] for card in results]
+
+
+def test_tag_search_falls_back_to_online(bulkFolder, monkeypatch):
+    calls = []
+
+    def fakeOnline(searchDict, exact=False):
+        calls.append(searchDict)
+        return [{"id": "online-result"}]
+
+    monkeypatch.setattr(scryfall, "searchCardsOnline", fakeOnline)
+    results = scryfall.searchCards({"atag": "inkwell"})
+
+    assert results == [{"id": "online-result"}]
+    assert calls[0]["atag"] == "inkwell"
+
+
+def test_online_search_maps_atag_to_art(monkeypatch):
+    captured = {}
+
+    class FakeSearch:
+        def __init__(self, q, **kwargs):
+            captured["q"] = q
+            self.data = []
+
+    monkeypatch.setattr(scryfall.scrython.cards, "Search", FakeSearch)
+    scryfall.searchCardsOnline({"atag": "inkwell", "otag": "removal", "name": ""})
+
+    assert "art:inkwell" in captured["q"]
+    assert "otag:removal" in captured["q"]
+
+
+def test_bulk_search_power_toughness_loyalty_filters(bulkFolder):
+    results = scryfall.searchCards({"pow": ">8", "lang": "en", "game": "paper"})
+    assert [card["id"] for card in results] == ["cmc-ten"]
+
+    results = scryfall.searchCards({"tou": ">8", "lang": "en", "game": "paper"})
+    assert [card["id"] for card in results] == ["cmc-ten"]
+
+    results = scryfall.searchCards({"pow": "<5", "lang": "en", "game": "paper"})
+    assert "cmc-ten" not in [card["id"] for card in results]
+
+    results = scryfall.searchCards(
+        {"loy": ">5", "types": ["planeswalker"], "lang": "en", "game": "paper"}
+    )
+    assert [card["id"] for card in results] == ["planeswalker-high"]
+
+
+def test_bulk_fuzzy_search_fallback(bulkFolder):
+    results = scryfall.searchCards({"name": "Lightnig Bolt"})
+    assert results
+    assert results[0]["name"] == "Lightning Bolt"
+
+
+def test_bulk_fuzzy_search_survives_search_form_filters(bulkFolder):
+    searchDict = {
+        "name": "Lightnig Bolt",
+        "include_extras": False,
+        "lang": "en",
+        "colors": "",
+        "types": [""],
+        "oracle": "",
+        "cmc": ("=", ""),
+        "rarity": "",
+        "in": "",
+        "price": None,
+        "atag": "",
+        "otag": "",
+        "f": "",
+        "game": "paper",
+    }
+    results = scryfall.searchCards(searchDict)
+    assert results
+    assert results[0]["name"] == "Lightning Bolt"
 
 
 def test_bulk_partial_search_dedupes_by_oracle(bulkFolder):
@@ -363,17 +488,17 @@ def test_bulk_cache_reports_build_progress(bulkFolder, monkeypatch):
     monkeypatch.setattr(bulk.BulkCache, "BATCH_SIZE", 2)
     calls = []
 
-    assert scryfall.ensureBulkDataReady(progress_callback=calls.append) == 4
-    assert calls == [2, 4]
+    assert scryfall.ensureBulkDataReady(progress_callback=calls.append) == 6
+    assert calls == [2, 4, 6]
 
 
 def test_bulk_cache_creates_sqlite_file(bulkFolder):
-    assert scryfall.getBulkCardCount() == 4
+    assert scryfall.getBulkCardCount() == 6
     assert (bulkFolder / "default-cards-cache.sqlite3").is_file()
 
 
 def test_bulk_index_reloads_when_file_changes(bulkFolder):
-    assert scryfall.getBulkCardCount() == 4
+    assert scryfall.getBulkCardCount() == 6
     (bulkFolder / "default-cards-20240101000000.json").write_text(
         json.dumps(SAMPLE_CARDS[:1]), encoding="utf-8"
     )

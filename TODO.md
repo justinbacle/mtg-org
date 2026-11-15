@@ -20,11 +20,25 @@
 - Settings dialog shows cache/database sizes and can clear caches/bulk index.
 - Bulk-mode card images now load/download correctly.
 - First SQLite bulk-index build shows a progress dialog.
+- Non-exact bulk search falls back to fuzzy name matching when substring search
+  finds nothing.
+- Bulk searches are prefetched in SQLite using indexed columns (CMC, power,
+  toughness, loyalty, rarity, type, colors, oracle text, legality, game, price),
+  then filtered in Python. Added explicit loyalty coverage.
+- Search requests and result counts are written to the status log.
+- Art/oracle tag searches fall back to online Scryfall in bulk mode; Include
+  Extras is disabled there because bulk data cannot reproduce Scryfall's extras
+  filtering.
+- Card searches run in a background thread with a status message and wait
+  cursor, so the GUI no longer freezes.
+- Fixed the CMC search operator/value handling.
+- Status bar messages are clickable and open a live session-log viewer.
+- Search dropdowns ignore mouse-wheel changes, and Enter triggers search from
+  every text field (including CMC, power, toughness, and loyalty).
 - Packaging metadata fixed and runtime/dev requirements split.
 
 ## Optional follow-ups
 
-- Add fuzzy ranking for non-exact bulk search if substring ranking is not enough.
 - Add a `--no-bulk` pytest option (tests currently use mocked Scryfall fixtures).
 - Run Pyright in CI (config exists, but it is not wired into workflows).
 - Decide on and add a project licence.

@@ -1,9 +1,29 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 import logging
+import traceback
 
 from lib import scryfall, qt
 from widgets.cardlistwidget import CardSearchListWidget
 import constants
+
+
+class SearchWorker(QtCore.QObject):
+    finished = QtCore.Signal(int, list)
+    failed = QtCore.Signal(int, str)
+
+    def __init__(self, requestId: int, searchDict: dict):
+        super().__init__()
+        self._requestId = requestId
+        self._searchDict = searchDict
+
+    def run(self):
+        try:
+            cards = scryfall.searchCards(self._searchDict)
+        except Exception:
+            logging.exception("Card search failed")
+            self.failed.emit(self._requestId, traceback.format_exc())
+        else:
+            self.finished.emit(self._requestId, cards)
 
 
 class DbBrowser(QtWidgets.QWidget):
@@ -13,6 +33,10 @@ class DbBrowser(QtWidgets.QWidget):
     def __init__(self, parent=None, **kwargs):
         super(DbBrowser, self).__init__(parent=parent, **kwargs)
 
+        self._searchThread: QtCore.QThread | None = None
+        self._searchWorker: SearchWorker | None = None
+        self._searchRequestId = 0
+        self._searchLabel = ""
         self.initUi()
 
     def initUi(self):
@@ -37,9 +61,56 @@ class DbBrowser(QtWidgets.QWidget):
         self.splitter.addWidget(self.dbResultsList)
         self.splitter.setSizes([300, 600])
 
+    @staticmethod
+    def _logSearchRequest(searchDict: dict):
+        logging.info(f"Search request: {searchDict}")
+
     def on_searchRequest(self, searchDict: dict):
-        req = scryfall.searchCards(searchDict)
-        cardList = [(1, card) for card in req]
+        self._logSearchRequest(searchDict)
+        if self._searchThread is not None and self._searchThread.isRunning():
+            logging.info("A search is already running")
+            return
+        self._searchRequestId += 1
+        self._searchLabel = searchDict.get("name") or "selected filters"
+        logging.info(f"Searching for {self._searchLabel}...")
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
+
+        self._searchThread = QtCore.QThread(self)
+        self._searchWorker = SearchWorker(self._searchRequestId, searchDict)
+        self._searchWorker.moveToThread(self._searchThread)
+        self._searchThread.started.connect(self._searchWorker.run)
+        self._searchWorker.finished.connect(self._on_searchFinished)
+        self._searchWorker.failed.connect(self._on_searchFailed)
+        self._searchWorker.finished.connect(self._searchThread.quit)
+        self._searchWorker.failed.connect(self._searchThread.quit)
+        self._searchWorker.finished.connect(self._searchWorker.deleteLater)
+        self._searchWorker.failed.connect(self._searchWorker.deleteLater)
+        self._searchThread.finished.connect(self._on_searchThreadFinished)
+        self._searchThread.start()
+
+    def _on_searchFinished(self, requestId: int, cards: list):
+        if requestId != self._searchRequestId:
+            return
+        self._applySearchResults(cards, self._searchLabel)
+
+    def _on_searchFailed(self, requestId: int, error: str):
+        if requestId != self._searchRequestId:
+            return
+        logging.error(f"Search failed: {error}")
+
+    def _on_searchThreadFinished(self):
+        QtWidgets.QApplication.restoreOverrideCursor()
+        if self._searchThread is not None:
+            self._searchThread.deleteLater()
+        self._searchThread = None
+        self._searchWorker = None
+
+    def _applySearchResults(self, cards: list, searchLabel: str):
+        if not cards:
+            logging.info(f"No cards found for search {searchLabel!r}")
+        else:
+            logging.info(f"Search returned {len(cards)} cards")
+        cardList = [(1, card) for card in cards]
         self.dbResultsList.setCards(cardList)
 
     def on_dbSelectChanged(self):
@@ -65,7 +136,7 @@ class SearchForm(QtWidgets.QWidget):
         self.nameField.returnPressed.connect(self.on_searchAction)
         self.mainLayout.addRow("Name", self.nameField)
 
-        self.langCB = QtWidgets.QComboBox()
+        self.langCB = qt.NoWheelComboBox()
         for langName in constants.LANGS.values():
             self.langCB.addItem(langName)
         self.langCB.setCurrentText(list(constants.LANGS.values())[0])
@@ -74,7 +145,7 @@ class SearchForm(QtWidgets.QWidget):
         self.manaColorSelectorWidget = ManaColorSelectorWidget(parent=self)
         self.mainLayout.addRow("Colors", self.manaColorSelectorWidget)
 
-        self.typeCB = QtWidgets.QComboBox()
+        self.typeCB = qt.NoWheelComboBox()
         self.typeCB.addItem("")
         for cardType in constants.MAIN_CARD_TYPES:
             self.typeCB.addItem(cardType)
@@ -95,16 +166,17 @@ class SearchForm(QtWidgets.QWidget):
         self.cmcWidgetLayout = QtWidgets.QHBoxLayout()
         self.cmcWidgetLayout.setContentsMargins(0, 0, 0, 0)
         self.cmcWidget.setLayout(self.cmcWidgetLayout)
-        self.cmcWidgetCB = QtWidgets.QComboBox()
+        self.cmcWidgetCB = qt.NoWheelComboBox()
         self.cmcWidgetCB.addItems(["=", ">", "<"])
         self.cmcWidgetCB.setMinimumWidth(64)
         self.cmcWidgetLayout.addWidget(self.cmcWidgetCB)
         self.cmcWidgetValue = QtWidgets.QLineEdit()
         self.cmcWidgetValue.setValidator(QtGui.QIntValidator(0, 15))
+        self.cmcWidgetValue.returnPressed.connect(self.on_searchAction)
         self.cmcWidgetLayout.addWidget(self.cmcWidgetValue)
         self.mainLayout.addRow("CMC", self.cmcWidget)
 
-        self.rarityCB = QtWidgets.QComboBox()
+        self.rarityCB = qt.NoWheelComboBox()
         self.rarityCB.addItems(["", "common", "uncommon", "rare", "mythic"])
         self.mainLayout.addRow("Rarity", self.rarityCB)
 
@@ -118,12 +190,13 @@ class SearchForm(QtWidgets.QWidget):
         self.creaturePowerWidgetLayout = QtWidgets.QHBoxLayout()
         self.creaturePowerWidgetLayout.setContentsMargins(0, 0, 0, 0)
         self.creaturePowerWidget.setLayout(self.creaturePowerWidgetLayout)
-        self.creaturePowerWidgetCB = QtWidgets.QComboBox()
+        self.creaturePowerWidgetCB = qt.NoWheelComboBox()
         self.creaturePowerWidgetCB.setMinimumWidth(64)
         self.creaturePowerWidgetCB.addItems(["<", "=", ">"])
         self.creaturePowerWidgetLayout.addWidget(self.creaturePowerWidgetCB)
         self.creaturePowerWidgetLE = QtWidgets.QLineEdit()
         self.creaturePowerWidgetLE.setValidator(QtGui.QIntValidator(0, 20))
+        self.creaturePowerWidgetLE.returnPressed.connect(self.on_searchAction)
         self.creaturePowerWidgetLayout.addWidget(self.creaturePowerWidgetLE)
         self.mainLayout.addRow("Power", self.creaturePowerWidget)
         self.creaturePowerRow = self.mainLayout.rowCount() - 1
@@ -132,12 +205,13 @@ class SearchForm(QtWidgets.QWidget):
         self.creatureToughnessWidgetLayout = QtWidgets.QHBoxLayout()
         self.creatureToughnessWidgetLayout.setContentsMargins(0, 0, 0, 0)
         self.creatureToughnessWidget.setLayout(self.creatureToughnessWidgetLayout)
-        self.creatureToughnessWidgetCB = QtWidgets.QComboBox()
+        self.creatureToughnessWidgetCB = qt.NoWheelComboBox()
         self.creatureToughnessWidgetCB.setMinimumWidth(64)
         self.creatureToughnessWidgetCB.addItems(["<", "=", ">"])
         self.creatureToughnessWidgetLayout.addWidget(self.creatureToughnessWidgetCB)
         self.creatureToughnessWidgetLE = QtWidgets.QLineEdit()
         self.creatureToughnessWidgetLE.setValidator(QtGui.QIntValidator(0, 20))
+        self.creatureToughnessWidgetLE.returnPressed.connect(self.on_searchAction)
         self.creatureToughnessWidgetLayout.addWidget(self.creatureToughnessWidgetLE)
         self.mainLayout.addRow("Toughness", self.creatureToughnessWidget)
         self.creatureToughnessRow = self.mainLayout.rowCount() - 1
@@ -146,12 +220,13 @@ class SearchForm(QtWidgets.QWidget):
         self.planeswalkerLoyaltyWidgetLayout = QtWidgets.QHBoxLayout()
         self.planeswalkerLoyaltyWidgetLayout.setContentsMargins(0, 0, 0, 0)
         self.planeswalkerLoyaltyWidget.setLayout(self.planeswalkerLoyaltyWidgetLayout)
-        self.planeswalkerLoyaltyWidgetCB = QtWidgets.QComboBox()
+        self.planeswalkerLoyaltyWidgetCB = qt.NoWheelComboBox()
         self.planeswalkerLoyaltyWidgetCB.setMinimumWidth(64)
         self.planeswalkerLoyaltyWidgetCB.addItems(["<", "=", ">"])
         self.planeswalkerLoyaltyWidgetLayout.addWidget(self.planeswalkerLoyaltyWidgetCB)
         self.planeswalkerLoyaltyWidgetLE = QtWidgets.QLineEdit()
         self.planeswalkerLoyaltyWidgetLE.setValidator(QtGui.QIntValidator(0, 20))
+        self.planeswalkerLoyaltyWidgetLE.returnPressed.connect(self.on_searchAction)
         self.planeswalkerLoyaltyWidgetLayout.addWidget(self.planeswalkerLoyaltyWidgetLE)
         self.mainLayout.addRow("Loyalty", self.planeswalkerLoyaltyWidget)
         self.planeswalkerLoyaltyRow = self.mainLayout.rowCount() - 1
@@ -160,7 +235,7 @@ class SearchForm(QtWidgets.QWidget):
         self.priceWidgetLayout = QtWidgets.QHBoxLayout()
         self.priceWidgetLayout.setContentsMargins(0, 0, 0, 0)
         self.priceWidget.setLayout(self.priceWidgetLayout)
-        self.priceWidgetCB = QtWidgets.QComboBox()
+        self.priceWidgetCB = qt.NoWheelComboBox()
         self.priceWidgetCB.setMinimumWidth(64)
         self.priceWidgetCB.addItems(["<", ">"])
         self.priceWidgetLayout.addWidget(self.priceWidgetCB)
@@ -195,10 +270,46 @@ class SearchForm(QtWidgets.QWidget):
         self.searchButton.clicked.connect(self.on_searchAction)
         self.mainLayout.addRow(self.searchButton)
 
+        self.updateBulkModeControls()
+        self._searchFields = [
+            self.nameField,
+            self.otherTypeCB,
+            self.oracleTextLE,
+            self.cmcWidgetValue,
+            self.creaturePowerWidgetLE,
+            self.creatureToughnessWidgetLE,
+            self.planeswalkerLoyaltyWidgetLE,
+            self.priceWidgetValue,
+        ]
+        for combo in (self.setSelectorWidget, self.formatLegalWidget, self.atagECB, self.otagECB):
+            if combo.lineEdit() is not None:
+                self._searchFields.append(combo.lineEdit())
+        for field in self._searchFields:
+            field.installEventFilter(self)
+
+    def updateBulkModeControls(self):
+        if constants.USE_BULK_FILES:
+            self.extrasCB.setChecked(False)
+            self.extrasCB.setEnabled(False)
+            self.extrasCB.setToolTip("Extra-card filtering is not available in offline bulk mode")
+        else:
+            self.extrasCB.setEnabled(True)
+            self.extrasCB.setToolTip("")
+
+    def eventFilter(self, obj, event):
+        if (
+            event.type() == QtCore.QEvent.Type.KeyPress
+            and event.key() in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter)
+        ):
+            self.on_searchAction()
+            return True
+        return super().eventFilter(obj, event)
+
         self.refreshDataSources()
         self.on_mainTypeChange()
 
     def refreshDataSources(self):
+        self.updateBulkModeControls()
         currentSet = self.setSelectorWidget.currentText()
         currentFormat = self.formatLegalWidget.currentText()
         self.setSelectorWidget.clear()

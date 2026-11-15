@@ -3,6 +3,7 @@ import gzip
 import json
 import logging
 import os
+import re
 import sqlite3
 import threading
 from contextlib import contextmanager
@@ -256,10 +257,23 @@ class BulkDataManager:
         }
 
 
+def _numericValue(value) -> float | None:
+    try:
+        return float(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _oracleText(record: dict) -> str:
+    if "oracle_text" in record:
+        return record.get("oracle_text", "")
+    return " ".join(face.get("oracle_text", "") for face in record.get("card_faces", []))
+
+
 class BulkCache:
     """Disk-backed card cache built from a bulk file."""
 
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = 3
     BATCH_SIZE = 1000
 
     def __init__(self, folder: str | Path, bulkType: str, sourcePath: str | Path):
@@ -270,6 +284,7 @@ class BulkCache:
         self._lock = threading.RLock()
         self._ready = False
         self._readySource = None
+        self._distinctNames = None
 
     @contextmanager
     def _connect(self):
@@ -326,6 +341,20 @@ class BulkCache:
                     lang TEXT,
                     collector_number TEXT,
                     released_at TEXT,
+                    cmc REAL,
+                    rarity TEXT,
+                    type_line TEXT,
+                    colors TEXT,
+                    oracle_text TEXT,
+                    power TEXT,
+                    toughness TEXT,
+                    loyalty TEXT,
+                    power_num REAL,
+                    toughness_num REAL,
+                    loyalty_num REAL,
+                    games TEXT,
+                    legalities TEXT,
+                    prices TEXT,
                     data TEXT NOT NULL
                 )
                 """
@@ -359,12 +388,26 @@ class BulkCache:
                     record.get("lang", "en"),
                     record.get("collector_number"),
                     record.get("released_at", ""),
+                    record.get("cmc"),
+                    record.get("rarity"),
+                    record.get("type_line", ""),
+                    "".join(sorted(color.lower() for color in record.get("colors", []))),
+                    _oracleText(record).lower(),
+                    record.get("power"),
+                    record.get("toughness"),
+                    record.get("loyalty"),
+                    _numericValue(record.get("power")),
+                    _numericValue(record.get("toughness")),
+                    _numericValue(record.get("loyalty")),
+                    ",".join(record.get("games", [])),
+                    json.dumps(record.get("legalities", {}), separators=(",", ":")),
+                    json.dumps(record.get("prices", {}), separators=(",", ":")),
                     json.dumps(record, ensure_ascii=False, separators=(",", ":")),
                 ))
                 recordCount += 1
                 if len(batch) >= self.BATCH_SIZE:
                     connection.executemany(
-                        "INSERT OR REPLACE INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                        "INSERT OR REPLACE INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         batch,
                     )
                     batch.clear()
@@ -372,13 +415,18 @@ class BulkCache:
                         progress_callback(recordCount)
             if batch:
                 connection.executemany(
-                    "INSERT OR REPLACE INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "INSERT OR REPLACE INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     batch,
                 )
             connection.execute("CREATE INDEX idx_cards_name ON cards(name_lower)")
             connection.execute("CREATE INDEX idx_cards_oracle ON cards(oracle_id)")
             connection.execute("CREATE INDEX idx_cards_mtgo ON cards(mtgo_id)")
             connection.execute("CREATE INDEX idx_cards_set ON cards(set_code)")
+            connection.execute("CREATE INDEX idx_cards_cmc ON cards(cmc)")
+            connection.execute("CREATE INDEX idx_cards_rarity ON cards(rarity)")
+            connection.execute("CREATE INDEX idx_cards_power ON cards(power_num)")
+            connection.execute("CREATE INDEX idx_cards_toughness ON cards(toughness_num)")
+            connection.execute("CREATE INDEX idx_cards_loyalty ON cards(loyalty_num)")
             mtime, size = self._sourceStat()
             connection.execute(
                 "INSERT INTO meta VALUES (?,?,?,?,?)",
@@ -396,6 +444,7 @@ class BulkCache:
         os.replace(tmpPath, self.dbPath)
         self._ready = True
         self._readySource = self._sourceStat()
+        self._distinctNames = None
         logging.info(f"Bulk cache built with {recordCount} records")
 
     def ensureReady(self, progress_callback=None) -> bool:
@@ -437,6 +486,16 @@ class BulkCache:
     def getCardsByName(self, name: str) -> list[dict]:
         return self._fetchAll("SELECT data FROM cards WHERE name_lower=?", (name.lower(),))
 
+    def getDistinctNames(self) -> list[str]:
+        with self._lock:
+            self.ensureReady()
+            if self._distinctNames is None:
+                with self._connect() as connection:
+                    self._distinctNames = [
+                        row[0] for row in connection.execute("SELECT DISTINCT name_lower FROM cards")
+                    ]
+            return self._distinctNames
+
     def searchNameSubstring(self, needle: str) -> list[dict]:
         escaped = needle.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         return self._fetchAll(
@@ -448,6 +507,81 @@ class BulkCache:
         if oracleId is None:
             return []
         return self._fetchAll("SELECT data FROM cards WHERE oracle_id=?", (oracleId,))
+
+    def _filterClauses(self, searchDict: dict) -> tuple[list[str], list]:
+        clauses = []
+        params = []
+        setCode = searchDict.get("set") or searchDict.get("in")
+        if setCode:
+            clauses.append("LOWER(set_code)=?")
+            params.append(str(setCode).lower())
+        lang = searchDict.get("lang")
+        if lang not in (None, "", "any"):
+            clauses.append("lang=?")
+            params.append(lang)
+        rarity = searchDict.get("rarity")
+        if rarity:
+            clauses.append("rarity=?")
+            params.append(rarity)
+        cmcFilter = searchDict.get("cmc")
+        if isinstance(cmcFilter, (list, tuple)) and len(cmcFilter) >= 2 and str(cmcFilter[1]).strip() != "":
+            operator = cmcFilter[0] if cmcFilter[0] in ("<", ">", "=", "<=", ">=") else "="
+            clauses.append(f"cmc {operator} ?")
+            params.append(float(cmcFilter[1]))
+        for filterKey, column in (("pow", "power_num"), ("tou", "toughness_num"), ("loy", "loyalty_num")):
+            filterValue = searchDict.get(filterKey)
+            if filterValue:
+                match = re.fullmatch(r"\s*(<=|>=|=|<|>)\s*(-?\d+(?:\.\d+)?)\s*", str(filterValue))
+                if match is not None:
+                    operator, target = match.groups()
+                    clauses.append(f"{column} {operator} ?")
+                    params.append(float(target))
+        for cardType in searchDict.get("types", []):
+            if cardType:
+                clauses.append("LOWER(type_line) LIKE ?")
+                params.append(f"%{cardType.lower()}%")
+        colorFilter = searchDict.get("colors")
+        if colorFilter:
+            requested = re.findall(r"(?<!-)\bc:([wubrg]+)", colorFilter)
+            excluded = re.findall(r"-c:([wubrg]+)", colorFilter)
+            for group in requested:
+                for color in group:
+                    clauses.append("colors LIKE ?")
+                    params.append(f"%{color}%")
+            for group in excluded:
+                for color in group:
+                    clauses.append("colors NOT LIKE ?")
+                    params.append(f"%{color}%")
+        oracle = searchDict.get("oracle", "")
+        if oracle:
+            clauses.append("LOWER(oracle_text) LIKE ?")
+            params.append(f"%{oracle.lower()}%")
+        formatName = searchDict.get("f")
+        if formatName:
+            clauses.append("json_extract(legalities, ?)='legal'")
+            params.append(f"$.{formatName}")
+        if searchDict.get("game") == "paper":
+            clauses.append("games LIKE ?")
+            params.append("%paper%")
+        priceFilter = searchDict.get("price")
+        if priceFilter:
+            match = re.fullmatch(r"(eur|usd|tix)(<=|>=|=|<|>)(\d+(?:\.\d+)?)", str(priceFilter))
+            if match is not None:
+                currency, operator, target = match.groups()
+                clauses.append(f"CAST(json_extract(prices, ?) AS REAL) {operator} ?")
+                params.extend([f"$.{currency}", float(target)])
+        return clauses, params
+
+    def iterCardsFiltered(self, searchDict: dict):
+        clauses, params = self._filterClauses(searchDict)
+        query = "SELECT data FROM cards"
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+        with self._lock:
+            self.ensureReady()
+            with self._connect() as connection:
+                for row in connection.execute(query, params):
+                    yield json.loads(row[0])
 
     def iterCards(self):
         with self._lock:
