@@ -9,6 +9,7 @@ class CardStackSelector(QtWidgets.QWidget):
     # Signals
     deckSelectionChanged: QtCore.Signal = QtCore.Signal(connector.Deck)
     collectionSelectionChanged: QtCore.Signal = QtCore.Signal(connector.Collection)
+    settingsRequested: QtCore.Signal = QtCore.Signal()
 
     def __init__(self, parent=None, **kwargs):
         super(CardStackSelector, self).__init__(parent=parent, **kwargs)
@@ -75,6 +76,11 @@ class CardStackSelector(QtWidgets.QWidget):
         self.exportPB = QtWidgets.QPushButton("Export...")
         self.exportPB.clicked.connect(self.on_exportPBclicked)
         self.deckImportExportLayout.addWidget(self.exportPB)
+        self.settingsPB = QtWidgets.QPushButton("\u2699")
+        self.settingsPB.setToolTip("Settings (Ctrl+,)")
+        self.settingsPB.setFixedWidth(36)
+        self.settingsPB.clicked.connect(self.settingsRequested.emit)
+        self.deckImportExportLayout.addWidget(self.settingsPB)
         self.decksWidgetLayout.addLayout(self.deckImportExportLayout)
 
     def on_addColl(self):

@@ -54,7 +54,9 @@ def svgPathToPixmap(svg_filename: str, width: int, height: int, color: QtGui.QCo
     return pixmap
 
 
-def fileData(path: str | Path) -> str:
+def fileData(path: str | Path | None) -> str | None:
+    if path is None:
+        return None
     if isinstance(path, Path):
         stream = QtCore.QFile(path.as_posix())
     else:

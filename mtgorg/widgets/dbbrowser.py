@@ -1,4 +1,5 @@
 from PySide6 import QtWidgets, QtCore, QtGui
+import logging
 
 from lib import scryfall, qt
 from widgets.cardlistwidget import CardSearchListWidget
@@ -108,19 +109,9 @@ class SearchForm(QtWidgets.QWidget):
         self.mainLayout.addRow("Rarity", self.rarityCB)
 
         self.setSelectorWidget = qt.ExtendedComboBox()
-        sets = scryfall.getSets()
-        for set in sets:
-            setYear = scryfall.getSetReleaseYear(set["id"])
-            text = f"{set['name']} ({set['code'].upper()}) - {setYear}"
-            self.setSelectorWidget.addItem(text)
-        self.setSelectorWidget.addItem("")
-        self.setSelectorWidget.setCurrentText("")
         self.mainLayout.addRow("Set", self.setSelectorWidget)
 
         self.formatLegalWidget = qt.ExtendedComboBox()
-        self.formatLegalWidget.addItems(scryfall.getFormats())
-        self.formatLegalWidget.addItem("")
-        self.formatLegalWidget.setCurrentText("")
         self.mainLayout.addRow("Legality", self.formatLegalWidget)
 
         self.creaturePowerWidget = QtWidgets.QWidget()
@@ -204,7 +195,29 @@ class SearchForm(QtWidgets.QWidget):
         self.searchButton.clicked.connect(self.on_searchAction)
         self.mainLayout.addRow(self.searchButton)
 
+        self.refreshDataSources()
         self.on_mainTypeChange()
+
+    def refreshDataSources(self):
+        currentSet = self.setSelectorWidget.currentText()
+        currentFormat = self.formatLegalWidget.currentText()
+        self.setSelectorWidget.clear()
+        try:
+            for set in scryfall.getSets():
+                setYear = scryfall.getSetReleaseYear(set["id"])
+                text = f"{set['name']} ({set['code'].upper()}) - {setYear}"
+                self.setSelectorWidget.addItem(text)
+        except Exception as e:
+            logging.error(f"Could not load sets: {e}")
+        self.setSelectorWidget.addItem("")
+        self.setSelectorWidget.setCurrentText(currentSet)
+        self.formatLegalWidget.clear()
+        try:
+            self.formatLegalWidget.addItems(scryfall.getFormats())
+        except Exception as e:
+            logging.error(f"Could not load formats: {e}")
+        self.formatLegalWidget.addItem("")
+        self.formatLegalWidget.setCurrentText(currentFormat)
 
     def on_searchAction(self):
         self.searched.emit(self.getSearchData())

@@ -279,3 +279,36 @@ def updateCard(cardId, updateDict: dict) -> None:
     cardData = card["data"]
     cardData.update(updateDict)
     getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)
+
+
+def _removeCachedFile(path: Path) -> tuple[int, int, str | None]:
+    try:
+        size = path.stat().st_size
+        path.unlink()
+        return 1, size, None
+    except OSError as e:
+        logging.error(f"Could not remove cache file {path}: {e}")
+        return 0, 0, str(e)
+
+
+def clearCache() -> dict:
+    """Delete cached card data, images, set icons, and set metadata."""
+    filesRemoved = 0
+    bytesRemoved = 0
+    errors = []
+
+    targets = [constants.DEFAULT_CACHE_DB_LOCATION, constants.DEFAULT_INFOS_LOCATION / "sets.json"]
+    for folder in (constants.DEFAULT_CARDIMAGES_LOCATION, constants.DEFAULT_SET_ICONS_LOCATION):
+        if folder.is_dir():
+            targets.extend(path for path in folder.iterdir() if path.is_file())
+
+    for target in targets:
+        if not target.is_file():
+            continue
+        removed, size, error = _removeCachedFile(target)
+        filesRemoved += removed
+        bytesRemoved += size
+        if error is not None:
+            errors.append(error)
+
+    return {"files": filesRemoved, "bytes": bytesRemoved, "errors": errors}

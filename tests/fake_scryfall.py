@@ -110,6 +110,11 @@ def getCardReprints(cardId: str) -> list[str]:
     return sorted({card["set"] for card in _cardsById(cardId)})
 
 
+def getCardPrintings(cardId: str) -> list[dict]:
+    matches = _cardsById(cardId)
+    return [dict(card) for card in matches] if matches else []
+
+
 def getCardByMTGOId(mtgoId: int) -> dict | None:
     cardId = MTGO_IDS.get(mtgoId)
     if cardId is None:

@@ -8,6 +8,8 @@ import pytest
 
 from tests import fake_scryfall
 
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 # The app derives all of its cache/DB paths from the user's home directory at
 # import time. Point tests at a throwaway home so they never touch the real
 # ~/.mtgo cache and each run starts from a known state.
@@ -19,14 +21,29 @@ atexit.register(shutil.rmtree, _TEST_HOME, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)
-def _fakeScryfall(monkeypatch):
-    """Replace live Scryfall calls unless MTGORG_TEST_ONLINE=1 is set."""
-    if os.environ.get("MTGORG_TEST_ONLINE") == "1":
+def _fakeScryfall(request, monkeypatch):
+    """Replace live Scryfall calls unless the test asks for the real ones."""
+    if os.environ.get("MTGORG_TEST_ONLINE") == "1" or request.node.get_closest_marker("real_scryfall"):
         yield
         return
 
     from lib import scryfall
 
-    for name in ("searchCards", "getSets", "getCardById", "getCardReprints", "getCardByMTGOId"):
+    for name in (
+        "searchCards",
+        "getSets",
+        "getCardById",
+        "getCardReprints",
+        "getCardPrintings",
+        "getCardByMTGOId",
+    ):
         monkeypatch.setattr(scryfall, name, getattr(fake_scryfall, name))
     yield
+
+
+@pytest.fixture(scope="session")
+def qtApp():
+    from PySide6 import QtWidgets
+
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    yield app

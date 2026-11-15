@@ -11,12 +11,13 @@ from widgets.cardviewer import CardViewer
 from widgets.deckselector import CardStackSelector
 from widgets.dbbrowser import DbBrowser
 from widgets.cardslist import CardsList
+from widgets.settings import SettingsDialog, downloadBulkDataWithProgress
 
 import connector
 import config
 import constants
 
-from lib import qt, utils
+from lib import bulk, qt, scryfall, utils
 
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
@@ -66,8 +67,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
             qt.selectPalette(self.app)
 
         # Update resources
-        self.initSettings()
         self.initUserFolders()
+        self.initSettings()
         self.updateResources()
 
         # Set Font
@@ -81,10 +82,30 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
 
         # Load frontend
         self.setupUi()
+        self.initShortcuts()
+        self.initBulkData()
 
     def initSettings(self):
         if not config.configFileExists():
             config.createConfigFile()
+        config.loadScryfallSettings()
+
+    def initShortcuts(self):
+        settingsAction = QtGui.QAction(self)
+        settingsAction.setShortcut(QtGui.QKeySequence("Ctrl+,"))
+        settingsAction.triggered.connect(self.on_settingsRequested)
+        self.addAction(settingsAction)
+
+    def on_settingsRequested(self):
+        dialog = SettingsDialog(self)
+        if dialog.exec():
+            self.refreshDataSources()
+
+    def refreshDataSources(self):
+        try:
+            self.dbBrowser.searchForm.refreshDataSources()
+        except Exception as e:
+            logging.error(f"Could not refresh search data sources: {e}")
 
     def initUserFolders(self):
         userFolders = [
@@ -98,6 +119,61 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         for userFolder in userFolders:
             if not userFolder.is_dir():
                 os.makedirs(userFolder)
+
+    def initBulkData(self):
+        if not constants.USE_BULK_FILES:
+            return
+        manager = bulk.BulkDataManager()
+        if manager.getLocalBulkFile() is None:
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "Scryfall bulk data",
+                "Offline bulk data is enabled but no file is downloaded.\n"
+                "Download it now (about 80 MB compressed for English, more for all languages)?",
+            )
+            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+                logging.warning("Bulk data unavailable, using online-only mode for this session")
+                constants.USE_BULK_FILES = False
+                return
+            if not downloadBulkDataWithProgress(self, manager):
+                logging.warning("Bulk data download failed, using online-only mode for this session")
+                constants.USE_BULK_FILES = False
+                return
+        elif constants.BULK_AUTO_UPDATE:
+            try:
+                updateAvailable = manager.needsUpdate()
+            except Exception as e:
+                logging.warning(f"Could not check for bulk data updates: {e}")
+                updateAvailable = False
+            if updateAvailable:
+                answer = QtWidgets.QMessageBox.question(
+                    self,
+                    "Scryfall bulk data",
+                    "A newer bulk-data file is available. Download it now?",
+                )
+                if answer == QtWidgets.QMessageBox.StandardButton.Yes:
+                    if not downloadBulkDataWithProgress(self, manager):
+                        logging.warning("Bulk data update failed, keeping the existing file")
+        try:
+            scryfall.getBulkData()
+        except Exception as e:
+            logging.error(f"Bulk data could not be loaded: {e}")
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "Scryfall bulk data",
+                "The local bulk file could not be loaded. Re-download it now?",
+            )
+            if answer == QtWidgets.QMessageBox.StandardButton.Yes and downloadBulkDataWithProgress(self, manager):
+                scryfall.resetBulkDataCache()
+                try:
+                    scryfall.getBulkData()
+                except Exception as retryError:
+                    logging.error(f"Bulk data still could not be loaded: {retryError}")
+                    constants.USE_BULK_FILES = False
+                    logging.warning("Using online-only mode for this session")
+            else:
+                constants.USE_BULK_FILES = False
+                logging.warning("Using online-only mode for this session")
 
     def updateResources(self, force: bool = False):
         _configTimeStr = utils.getFromDict(config.readConfig(), ["WEBDATA", "resources_date"])
@@ -118,6 +194,17 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         if force or not KEYRUNE_EQU_FILE.is_file():
             utils.updateKeyRuneSymbols()
             _updated = True
+        else:
+            try:
+                keyRuneMtime = KEYRUNE_EQU_FILE.stat().st_mtime
+                setCodes = [setData["code"] for setData in scryfall.getSets()]
+                missing = utils.updateKeyRuneIfMissing(setCodes)
+                if KEYRUNE_EQU_FILE.stat().st_mtime > keyRuneMtime:
+                    _updated = True
+                if missing:
+                    logging.info(f"Keyrune still has no icon for: {', '.join(missing[:10])}")
+            except Exception as e:
+                logging.warning(f"Could not check for missing Keyrune icons: {e}")
         # Proxygliyph (better npdmtg)
         PROXYGLIYPH_FONT_FILEPATH = constants.DEFAULT_FONTS_LOCATION / "Proxyglyph.ttf"
         if force or not PROXYGLIYPH_FONT_FILEPATH.is_file():
@@ -166,6 +253,7 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.deckSelector.setMaximumWidth(300)
         self.deckSelector.deckSelectionChanged.connect(self.on_cardStackChange)
         self.deckSelector.collectionSelectionChanged.connect(self.on_cardStackChange)
+        self.deckSelector.settingsRequested.connect(self.on_settingsRequested)
         self.splitter.addWidget(self.deckSelector)
 
     def on_decklistCardSelected(self, cardId: str):

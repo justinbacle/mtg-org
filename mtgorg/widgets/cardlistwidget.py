@@ -105,19 +105,27 @@ class CardSearchListWidget(QtWidgets.QTableWidget):
                     text = utils.setManaText(text)
                 # Set(s) handling
                 if column == "sets" and "sets" in cardData.keys():
-                    font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        qt.findAttrInParents(self, "keyruneFontId")
-                    ))
-                    font.setPointSize(14)
-                    item.setFont(font)
-                    text = utils.setSetsText(text)
+                    iconText = utils.setSetsText(text)
+                    if iconText:
+                        font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                            qt.findAttrInParents(self, "keyruneFontId")
+                        ))
+                        font.setPointSize(14)
+                        item.setFont(font)
+                        text = iconText
+                    else:
+                        text = " ".join(str(setCode).upper() for setCode in text)
                 if column == "set" and "set" in cardData.keys():
-                    font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
-                        qt.findAttrInParents(self, "keyruneFontId")
-                    ))
-                    font.setPointSize(14)
-                    item.setFont(font)
-                    text = utils.setSetsText([text])
+                    iconText = utils.setSetsText([text])
+                    if iconText:
+                        font = QtGui.QFont(QtGui.QFontDatabase.applicationFontFamilies(
+                            qt.findAttrInParents(self, "keyruneFontId")
+                        ))
+                        font.setPointSize(14)
+                        item.setFont(font)
+                        text = iconText
+                    else:
+                        text = str(text).upper()
                 if column == "price":
                     text = utils.getFromDict(cardData, ["prices", constants.CURRENCY[0]])
                     _foil_key = constants.CURRENCY[0] + "_foil"

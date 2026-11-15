@@ -25,7 +25,7 @@ Here are the lists of things I'd like to have included in this project :
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
 |Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK |
-|Offline mode| WIP, added basic support for bulk files|
+|Offline mode| Done: opt-in Scryfall bulk data (card data offline, images online)|
 
 ## Known issues
 
@@ -65,6 +65,14 @@ then run the main program
   - > py mtgorg/mtgorg_app.py
 - linux/mac (venv)
   - >venv/bin/python mtgorg/mtgorg_app.py
+
+## Offline mode
+
+Open **Settings > Scryfall...** to enable offline bulk data. Choose between
+`default_cards` (English printings, smaller) and `all_cards` (all languages,
+larger), then download the file. Card records, searches, reprints, set choices,
+and legalities work offline; card images and missing non-English printings still
+use Scryfall online, with rate limiting applied.
 
 ## F.A.Q.
 

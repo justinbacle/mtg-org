@@ -27,8 +27,15 @@ CARDS_TABLE_NAME = "Cards"
 TIME_FORMAT_STR = "%Y-%m-%d %H:%M:%S"
 
 # ------------------------------- Local/Online ------------------------------- #
-USE_BULK_FILES = False  # TODO let use choose from gui
-# FIXME imports test require False (or full cards list) to work
+BULK_DATA_TYPES = {
+    "english": "default_cards",
+    "all": "all_cards",
+}
+USE_BULK_FILES = False  # Overridden from settings.ini at startup
+BULK_LANGUAGE_MODE = "english"
+BULK_AUTO_UPDATE = True
+BULK_METADATA_FILENAME = "bulk_info.json"
+BULK_INFO_CACHE_SECONDS = 3600
 
 # ------------------------------------ MTG ----------------------------------- #
 RARITIES = {

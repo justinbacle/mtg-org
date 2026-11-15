@@ -2,22 +2,18 @@
 
 ## Done
 
-- Scryfall rate limiting: direct HTTP requests now share scrython's per-endpoint
-  global limiters (2 req/s for search/named/random/collection, 10 req/s for other
-  endpoints). Non-200 responses are logged instead of surfacing as `KeyError`.
+- Scryfall rate limiting: direct HTTP requests share scrython's per-endpoint
+  global limiters, and non-200 responses are logged instead of raising `KeyError`.
 - Import tests no longer hit Scryfall or the real `~/.mtgo` cache. Deterministic
-  fixtures live in `tests/fake_scryfall.py`; set `MTGORG_TEST_ONLINE=1` to run
-  against the live API.
-- `test_EDHREC_import` uses a local HTML fixture because live EDHRec deck URLs
-  expire/404.
-- `test_MTGA_import` and `test_CSV_import_MTGManager` pass reliably.
-- `pytest`: 12/12 pass; flake8 clean.
+  fixtures live in `tests/fake_scryfall.py`; set `MTGORG_TEST_ONLINE=1` for live runs.
+- EDHREC parsing test uses a local HTML fixture.
+- Offline bulk-data support (see `BULK_PLAN.md`): manager, indexes, offline
+  search/lookups, config keys, Settings > Scryfall dialog, startup prompt/fallback.
+- Bulk download, index, lookup, filter, and config tests added.
 
-## Next: offline bulk data
+## Optional follow-ups
 
-See `BULK_PLAN.md`. The highest-value next step is phases 1-2:
-
-1. `BulkDataManager` with metadata, atomic download, update check, cleanup.
-2. In-memory indexes for bulk data and refactored local lookups.
-
-After that, integrate the setting into the GUI and add bulk-mode tests.
+- Add an opt-in live bulk-download integration test.
+- Measure `all_cards` memory usage; consider `orjson` or `ijson`.
+- Add fuzzy ranking for non-exact bulk search if substring ranking is not enough.
+- Add a `--no-bulk` pytest option (tests currently use mocked Scryfall fixtures).

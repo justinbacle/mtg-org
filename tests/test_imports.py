@@ -159,6 +159,18 @@ def test_CSV_import_MTGManager():
     assert importer.deckList == MTG_MANAGER_DECKLIST
 
 
+def test_CSV_import_skips_cards_without_scryfall_match(monkeypatch):
+    monkeypatch.setattr(
+        importexport.scryfall,
+        "getSets",
+        lambda force=False: [{"code": "wwk", "name": "Worldwake"}, {"code": "c14", "name": "Commander 2014"}],
+    )
+    monkeypatch.setattr(importexport.scryfall, "searchCards", lambda *args, **kwargs: [])
+    importer = importexport.CSV_importer()
+    importer.loadInput(MTG_MANAGER_CSV)
+    assert importer.deckList == []
+
+
 MTGA_TXT = """# R_Blast
 4 Lightning Bolt
 2 Shock

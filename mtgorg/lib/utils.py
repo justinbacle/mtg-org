@@ -1,4 +1,5 @@
 import os
+import datetime
 import requests
 import functools
 import logging
@@ -62,19 +63,20 @@ def _getUrlRateLimiter(url: str) -> RateLimiter:
     return _default_url_rate_limiter
 
 
-def getUrlData(url, headers=None):
+def getUrlData(url, headers=None, logErrors=True):
     if url is None:
         return None
     _getUrlRateLimiter(url).wait()
     r = requests.get(url, headers=headers if headers is not None else DEFAULT_HEADERS)
     if r.status_code != 200:
-        logging.warning(f"Request to {url} failed with {r.status_code}: {r.text[:200]}")
+        if logErrors:
+            logging.warning(f"Request to {url} failed with {r.status_code}: {r.text[:200]}")
         return None
     return r.text
 
 
-def getUrlJsonData(url, headers=None):
-    text = getUrlData(url, headers=headers)
+def getUrlJsonData(url, headers=None, logErrors=True):
+    text = getUrlData(url, headers=headers, logErrors=logErrors)
     if text is None:
         return None
     jsonData = json.loads(text)
@@ -102,7 +104,7 @@ def saveJson(dataDict: dict, jsonPath: str | Path):
 
 
 def downloadFileFromUrl(url: str, location: Path):
-    r = requests.get(url, headers=DEFAULT_HEADERS)
+    r = requests.get(url, headers=DEFAULT_HEADERS, timeout=30)
     open(location.as_posix(), 'wb').write(r.content)
 
 
@@ -219,6 +221,8 @@ def setManaText(inputStr) -> str:
 def setSetsText(sets: list):
     KEYRUNE_EQU_PATH = constants.DEFAULT_FONTS_LOCATION / "keyrune.json"
     KEYRUNE_SYMBOLS = loadJson(KEYRUNE_EQU_PATH)
+    if KEYRUNE_SYMBOLS is None:
+        return ""
     setsStr = ""
     for set in sets:
         if getFromDict(KEYRUNE_SYMBOLS, [set]) is not None:
@@ -226,9 +230,30 @@ def setSetsText(sets: list):
     return setsStr
 
 
+KEYRUNE_CHEATSHEET_URL = "https://raw.githubusercontent.com/andrewgioia/keyrune/master/docs/cheatsheet.html"
+KEYRUNE_FONT_URL = "https://github.com/andrewgioia/keyrune/raw/master/fonts/keyrune.ttf"
+KEYRUNE_REFRESH_MAX_AGE = datetime.timedelta(days=1)
+
+
+def getKeyRuneSymbols() -> dict:
+    return loadJson(constants.DEFAULT_FONTS_LOCATION / "keyrune.json") or {}
+
+
+def findMissingKeyRuneSets(setCodes: list[str]) -> list[str]:
+    symbols = getKeyRuneSymbols()
+    return sorted({code for code in setCodes if code and code not in symbols})
+
+
+def keyRuneUpdateDue(maxAge: datetime.timedelta = KEYRUNE_REFRESH_MAX_AGE) -> bool:
+    keyRunePath = constants.DEFAULT_FONTS_LOCATION / "keyrune.json"
+    if not keyRunePath.is_file():
+        return True
+    age = datetime.datetime.now() - datetime.datetime.fromtimestamp(keyRunePath.stat().st_mtime)
+    return age > maxAge
+
+
 def updateKeyRuneSymbols():
-    cheatSheetUrl = "https://raw.githubusercontent.com/andrewgioia/keyrune/master/docs/cheatsheet.html"
-    cheatSheetHtml = requests.get(cheatSheetUrl).text
+    cheatSheetHtml = requests.get(KEYRUNE_CHEATSHEET_URL, timeout=30).text
     soup = BeautifulSoup(cheatSheetHtml, 'html.parser')
     # equ. data liik like: <span class="utf"><i>&#xe60b;</i> ss-10e <code>&amp;#xe60b;</code></span>
     equDict = {}
@@ -239,6 +264,25 @@ def updateKeyRuneSymbols():
             equDict.update({set: keyRuneCode})
     with open(constants.DEFAULT_FONTS_LOCATION / "keyrune.json", "w") as outfile:
         outfile.write(json.dumps(equDict, indent=4))
+
+
+def updateKeyRuneIfMissing(setCodes: list[str]) -> list[str]:
+    missing = findMissingKeyRuneSets(setCodes)
+    if not missing or not keyRuneUpdateDue():
+        return missing
+    logging.info(f"Keyrune has no icon for {', '.join(missing[:10])}; checking for an update")
+    try:
+        updateKeyRuneSymbols()
+    except Exception as e:
+        logging.warning(f"Could not update Keyrune symbols: {e}")
+        return missing
+    updatedMissing = findMissingKeyRuneSets(setCodes)
+    if set(updatedMissing) != set(missing):
+        try:
+            downloadFileFromUrl(KEYRUNE_FONT_URL, constants.DEFAULT_FONTS_LOCATION / "keyrune.ttf")
+        except Exception as e:
+            logging.warning(f"Could not update Keyrune font: {e}")
+    return findMissingKeyRuneSets(setCodes)
 
 
 def updateManaFontSymbols():

@@ -1,5 +1,29 @@
 # Plan: Proper Scryfall Bulk Data Support
 
+## Status
+
+Implemented:
+
+- Language modes: `english` -> `default_cards`, `all` -> `all_cards`.
+- `BulkDataManager` with metadata, atomic `.tmp` download, validation, update
+  checks, cleanup, and `/bulk-data` rate limiting. Supports legacy JSON and the
+  current gzipped JSONL format (`jsonl_download_uri`).
+- In-memory, mtime-aware bulk cache with indexes for name, id, `mtgo_id`,
+  `oracle_id`, and set code.
+- Offline search (exact and ranked substring), shared filters, `getCardById`,
+  `getCardByMTGOId`, reprints, reprint IDs, sets, formats, and random cards.
+- Online fallback for non-English printings unavailable in `default_cards`.
+- Config keys and a Settings > Scryfall dialog with download progress.
+- Startup prompt/download flow with online-only fallback and corrupt-file retry.
+- Tests for bulk download, indexes, lookups, filters, config, and parser mocks.
+
+Remaining optional work:
+
+- Run an opt-in live download integration test in CI.
+- Measure `all_cards` memory usage and consider `orjson`/`ijson`.
+- Add fuzzy ranking to non-exact search if needed.
+- Add a `--no-bulk` pytest option (currently tests use mocked Scryfall fixtures).
+
 ## Context
 
 The MTG Organizer app already has a partial bulk-data implementation:

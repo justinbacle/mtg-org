@@ -410,30 +410,33 @@ class CSV_importer(importer):
                 else:  # if no quantity is given, assume one of each
                     self.deckList.append([1, card[scryFallIdDictKey]])
             elif nameKey is not None and setKey is not None:
-                if card[setKey].lower() in [_["code"] for _ in scryfall.getSets()]:
-                    foundCards = scryfall.searchCards({"name": card[nameKey], "set": card[setKey]}, exact=True)
+                foundCards = []
+                foundCard = None
+                setCodeToMatch = None
+                setName = card[setKey]
+                if setName.lower() in [_["code"] for _ in scryfall.getSets()]:
+                    setCodeToMatch = setName.lower()
+                    foundCards = scryfall.searchCards({"name": card[nameKey], "set": setName}, exact=True)
                     if len(foundCards) == 0:
                         logging.error(f"could not load {card}, switching to accepting other sets")
                         foundCards = scryfall.searchCards({"name": card[nameKey]}, exact=True)
-                        foundCard = foundCards[0]
-                    else:
-                        foundCard = [_ for _ in foundCards if _["set"].lower() == card[setKey].lower()][0]
                 else:
-                    possibleSets = [_["code"] for _ in scryfall.getSets() if _["name"] == card[setKey]]
+                    possibleSets = [_["code"] for _ in scryfall.getSets() if _["name"] == setName]
                     if len(possibleSets) == 0:
-                        if autoSet:
-                            foundCards = scryfall.searchCards({"name": card[nameKey]}, exact=True)
-                        else:
+                        if not autoSet:
                             # TODO handle non auto sets
                             logging.warning(f"could not find {card=} in the given set")
-                            foundCards = scryfall.searchCards({"name": card[nameKey]}, exact=True)
+                        foundCards = scryfall.searchCards({"name": card[nameKey]}, exact=True)
                     else:
-                        set = possibleSets[0]
-                        foundCards = scryfall.searchCards({"name": card[nameKey], "set": set}, exact=True)
-                        foundCard = [_ for _ in foundCards if _["set"].lower() == set.lower()][0]
-                    if len(foundCards) == 0:
-                        logging.error(f"could not load {card}")
-                        foundCard = None
+                        setCodeToMatch = possibleSets[0].lower()
+                        foundCards = scryfall.searchCards({"name": card[nameKey], "set": possibleSets[0]}, exact=True)
+                if foundCards:
+                    foundCard = next(
+                        (found for found in foundCards if found["set"].lower() == setCodeToMatch),
+                        foundCards[0],
+                    )
+                else:
+                    logging.error(f"could not load {card}")
                 if foundCard is not None:
                     if countDictKey is not None:
                         self.deckList.append([card[countDictKey], foundCard["id"]])
@@ -455,8 +458,11 @@ class MTGO_DEK_importer(importer):
         for card in xmlRoot.findall("Cards"):
             qty = int(card.attrib["Quantity"])
             mtgoId = card.attrib["CatID"]
-            card = scryfall.getCardByMTGOId(int(mtgoId))
+            cardData = scryfall.getCardByMTGOId(int(mtgoId))
+            if cardData is None:
+                logging.error(f"Could not find card for MTGO id {mtgoId}")
+                continue
             self.deckList.append(
-                [qty, card["id"]]
+                [qty, cardData["id"]]
             )
         return True, ""  # TODO grab errors

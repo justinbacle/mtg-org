@@ -29,27 +29,14 @@ class CardDisplayWorker(QtCore.QObject):
 
             setIconSvgData = qt.fileData(scryfall.getSetSvg(card["set_id"]))
 
-            if "sets" not in card:
-                card["sets"] = scryfall.getCardReprints(card["id"])
-
-            sets = []
-            for setCode in card["sets"]:
-                setRecord = scryfall.getSetByCode(setCode)
-                if setRecord is None:
-                    logging.debug(f"Skipping unknown set code '{setCode}' in reprint list")
-                    continue
-                setName = setRecord["name"]
-                releaseDate = setRecord.get("released_at")
-                setYear = releaseDate.split("-")[0] if releaseDate else None
-                sets.append((setName, setYear, setCode))
-            sets.sort(key=lambda s: (s[1] is None, s[1]))
+            printings = scryfall.getCardPrintings(card["id"])
 
             self.dataReady.emit({
                 "card": card,
                 "cardFace": self._cardFace,
                 "forceRefresh": self._forceRefresh,
                 "setIconSvgData": setIconSvgData,
-                "sets": sets,
+                "printings": printings,
             })
         except Exception:
             logging.exception(f"CardDisplayWorker error while loading {self._cardId=}")
@@ -69,28 +56,6 @@ class RandomCardFetchWorker(QtCore.QObject):
             self.failed.emit(str(e))
 
 
-class SetChangeWorker(QtCore.QObject):
-    ready = QtCore.Signal(list)
-    failed = QtCore.Signal(str)
-
-    def __init__(self, cardId: str, setCode: str, lang: str):
-        super().__init__()
-        self._cardId = cardId
-        self._setCode = setCode
-        self._lang = lang
-
-    def run(self):
-        try:
-            ids = scryfall.getCardReprintId(self._cardId, self._setCode, lang=self._lang)
-            self.ready.emit(ids)
-        except Exception:
-            logging.exception(
-                f"SetChangeWorker error while changing "
-                f"{self._cardId=} to {self._setCode=} ({self._lang=})"
-            )
-            self.failed.emit(traceback.format_exc())
-
-
 class CardViewer(QtWidgets.QWidget):
     # To Build
     replaceInDeckRequested: QtCore.Signal = QtCore.Signal(str, str)  # (old_card_id, new_card_id)
@@ -100,8 +65,6 @@ class CardViewer(QtWidgets.QWidget):
         self._deck_card_id: str | None = None
         self._display_thread: QtCore.QThread | None = None
         self._display_worker: CardDisplayWorker | None = None
-        self._setchange_thread: QtCore.QThread | None = None
-        self._setchange_worker: SetChangeWorker | None = None
         self._graveyard_threads: list[QtCore.QThread] = []
         self.setupUi()
         if constants.IMG_DOWNLOAD_METHOD == "qt":
@@ -110,6 +73,8 @@ class CardViewer(QtWidgets.QWidget):
 
     def setupUi(self):
         self.mainLayout = QtWidgets.QGridLayout(self)
+        self.mainLayout.setColumnStretch(0, 1)
+        self.mainLayout.setColumnStretch(1, 0)
 
         line = utils.counter()
 
@@ -123,16 +88,35 @@ class CardViewer(QtWidgets.QWidget):
         # Card Name + Mana
         self.nameLabel = QtWidgets.QLabel("")
         self.nameLabel.setStyleSheet("font-size: 16pt;")
+        self.nameLabel.setWordWrap(True)
+        self.nameLabel.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Ignored,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
         self.mainLayout.addWidget(self.nameLabel, line.val(), 0)
         self.manacostLabel = QtWidgets.QLabel()
+        self.manacostLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
         self.mainLayout.addWidget(self.manacostLabel, line.postinc(), 1)
 
         # Set icon + Name + Year
         self.setIconSvg = QtSvgWidgets.QSvgWidget()
         self.setIconSvg.setMaximumHeight(36)
-        self.mainLayout.addWidget(self.setIconSvg, line.val(), 0)
-        self.setSelect = QtWidgets.QComboBox()
-        self.mainLayout.addWidget(self.setSelect, line.postinc(), 1)
+        self.printingSelect = QtWidgets.QComboBox()
+        self.printingSelect.setSizeAdjustPolicy(
+            QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.printingSelect.setMinimumContentsLength(24)
+        self.printingSelect.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        self.printingSelect.currentIndexChanged.connect(self.on_printingChange)
+        self.setInfoWidget = QtWidgets.QWidget()
+        self.setInfoLayout = QtWidgets.QHBoxLayout(self.setInfoWidget)
+        self.setInfoLayout.setContentsMargins(0, 0, 0, 0)
+        self.setInfoLayout.addWidget(self.setIconSvg)
+        self.setInfoLayout.addWidget(self.printingSelect, 1)
+        self.mainLayout.addWidget(self.setInfoWidget, line.postinc(), 0, 1, 2)
 
         # Face Selector
         self.cardFaceChooser = QtWidgets.QPushButton("See other face \u21B7")
@@ -214,8 +198,8 @@ class CardViewer(QtWidgets.QWidget):
         self._random_thread.start()
 
     def saveCardImg(self, image, cardId):
-        logging.info(f"saved image for {cardId=}")
         saveCardImg(image, cardId)
+        logging.info(f"saved image for {cardId=}")
         self.displayPixmapCard(image)
 
     def displayPixmapCard(self, image):
@@ -282,14 +266,19 @@ class CardViewer(QtWidgets.QWidget):
         self._graveyard_threads.append(thread)
 
     def _cleanup_graveyard(self):
-        self._graveyard_threads = [
-            thr for thr in self._graveyard_threads if thr is not None and thr.isRunning()
-        ]
+        aliveThreads = []
+        for thread in self._graveyard_threads:
+            try:
+                if thread is not None and thread.isRunning():
+                    aliveThreads.append(thread)
+            except RuntimeError:
+                pass
+        self._graveyard_threads = aliveThreads
 
     def _on_display_data_ready(self, data: dict):
         card = data["card"]
         cardFace = data["cardFace"]
-        sets = data["sets"]
+        printings = data["printings"]
         setIconSvgData = data["setIconSvgData"]
 
         self.card = card
@@ -328,18 +317,15 @@ class CardViewer(QtWidgets.QWidget):
             self.setIconSvg.load(QtCore.QByteArray(setIconSvgData.encode("utf-8")))
             self.setIconSvg.renderer().setAspectRatioMode(QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
-        self.setSelect.blockSignals(True)
-        self.setSelect.clear()
-
-        selectedText = ""
-        for setName, setYear, setCode in sets:
-            setText = f"{setName} ({setCode.upper()}) - {setYear}"
-            self.setSelect.addItem(setText, setCode)
-            if self.card["set"] == setCode:
-                selectedText = setText
-        self.setSelect.setCurrentText(selectedText)
-        self.setSelect.blockSignals(False)
-        self.setSelect.currentIndexChanged.connect(self.on_setChange)
+        self.printingSelect.blockSignals(True)
+        self.printingSelect.clear()
+        selectedIndex = 0
+        for index, printing in enumerate(printings):
+            self.printingSelect.addItem(getPrintingLabel(printing), printing["id"])
+            if printing["id"] == cardId:
+                selectedIndex = index
+        self.printingSelect.setCurrentIndex(selectedIndex)
+        self.printingSelect.blockSignals(False)
 
         self.cardFaceChooser.setVisible(False)
         self.cardFace = cardFace
@@ -353,15 +339,14 @@ class CardViewer(QtWidgets.QWidget):
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", cardFace, "image_uris", constants.IMG_SIZE])
 
-        if constants.USE_BULK_FILES and not isCardImageCached(cardId):
-            pass
-        elif isCardImageCached(cardId) and not _hasManyFaces or constants.IMG_DOWNLOAD_METHOD == "direct":
+        imageAction = getCardImageAction(cardId, imageUri, _hasManyFaces)
+        if imageAction == "load":
             # TODO handle cache for multi face cards
             cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
             image = QtGui.QImage()
             image.load(cardImgPath.as_posix())
             self.displayPixmapCard(image)
-        elif constants.IMG_DOWNLOAD_METHOD == "qt":
+        elif imageAction == "download":
             if self.cardImgGraphicsView.scene() is not None:
                 if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
                     self.cardImgGraphicsView.scene().clear()
@@ -417,34 +402,13 @@ class CardViewer(QtWidgets.QWidget):
     def on_cardflip(self):
         self.display(self.card["id"], cardFace=(self.cardFace+1) % 2)
 
-    def on_setChange(self):
-        selectedSet = self.setSelect.itemData(self.setSelect.currentIndex())
-
-        # Keep the previous thread alive until it finishes so Qt doesn't destroy it early.
-        if self._setchange_thread is not None and self._setchange_thread.isRunning():
-            self._bury_thread(self._setchange_thread)
-            self._cleanup_graveyard()
-
-        self._setchange_thread = QtCore.QThread()
-        self._setchange_worker = SetChangeWorker(self.card["id"], selectedSet, self.card["lang"])
-        self._setchange_worker.moveToThread(self._setchange_thread)
-        self._setchange_thread.started.connect(self._setchange_worker.run)
-        self._setchange_worker.ready.connect(self._on_set_change_ids_ready)
-        self._setchange_worker.failed.connect(self._on_display_failed)
-        self._setchange_worker.ready.connect(self._setchange_thread.quit)
-        self._setchange_worker.failed.connect(self._setchange_thread.quit)
-        self._setchange_worker.ready.connect(self._setchange_worker.deleteLater)
-        self._setchange_worker.failed.connect(self._setchange_worker.deleteLater)
-
-        self._setchange_thread.start()
-
-    def _on_set_change_ids_ready(self, ids: list):
-        if len(ids) == 0:
-            logging.warning("No cards found for selected set")
+    def on_printingChange(self):
+        if not hasattr(self, "card"):
             return
-        if len(ids) > 1:
-            logging.info(f"Multiple reprint ids returned ({len(ids)}), using first: {ids[0]}")
-        self.display(ids[0])
+        selectedCardId = self.printingSelect.itemData(self.printingSelect.currentIndex())
+        if selectedCardId is None or selectedCardId == self.card["id"]:
+            return
+        self.display(selectedCardId)
 
 
 class ImageDownloader(QtCore.QObject):
@@ -468,9 +432,48 @@ class ImageDownloader(QtCore.QObject):
         self.finished.emit(image, self.cardId)
 
 
+def getPrintingLabel(card: dict) -> str:
+    frameEffects = set(card.get("frame_effects") or [])
+    labels = []
+    for effect, label in (
+        ("showcase", "showcase"),
+        ("extendedart", "extended art"),
+        ("borderless", "borderless"),
+        ("inverted", "inverted"),
+        ("etched", "etched"),
+        ("fracturefoil", "fracture foil"),
+    ):
+        if effect in frameEffects:
+            labels.append(label)
+    promoTypes = card.get("promo_types") or []
+    if promoTypes:
+        labels.append("promo: " + ", ".join(promoTypes))
+    finishes = card.get("finishes") or []
+    if finishes == ["foil"]:
+        labels.append("foil only")
+    if card.get("lang") not in (None, "en"):
+        labels.append(str(card.get("lang")).upper())
+    if not labels:
+        labels.append("regular")
+
+    setName = card.get("set_name", card.get("set", "").upper())
+    setCode = card.get("set", "").upper()
+    collectorNumber = card.get("collector_number", "")
+    return f"{setName} ({setCode}) #{collectorNumber} - {', '.join(labels)}"
+
+
 def isCardImageCached(cardId) -> bool:
     cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
     return cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)
+
+
+def getCardImageAction(cardId, imageUri, hasManyFaces: bool = False) -> str:
+    """Return 'load', 'download', or 'none' for the card image display path."""
+    if isCardImageCached(cardId) and not hasManyFaces:
+        return "load"
+    if imageUri is not None and constants.IMG_DOWNLOAD_METHOD == "qt":
+        return "download"
+    return "none"
 
 
 def getCardImageFromUrl(url, cardId) -> str:
