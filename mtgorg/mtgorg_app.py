@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import threading
 from pathlib import Path
 import datetime
 
@@ -18,12 +19,13 @@ import connector
 import config
 import constants
 
-from lib import bulk, qt, scryfall, utils
+from lib import bulk, datarefresh, qt, scryfall, utils
 
 
 class MTGORG_GUI(QtWidgets.QMainWindow):
     app = QtWidgets.QApplication(['', '--no-sandbox'])
     logMessage = QtCore.Signal(str)
+    setRefreshFinished = QtCore.Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -32,6 +34,8 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.statusbar.setToolTip("Click to view the full log")
         self.statusbar.clicked.connect(self.on_showLogs)
         self.logMessage.connect(self.statusbar.showMessage)
+        self.setRefreshFinished.connect(self.onSetRefreshFinished)
+        self._setRefreshRunning = False
 
         self.logHistory = LogHistoryHandler()
         self.logHistory.setFormatter(
@@ -96,6 +100,35 @@ class MTGORG_GUI(QtWidgets.QMainWindow):
         self.setupUi()
         self.initShortcuts()
         self.initBulkData()
+
+        QtCore.QTimer.singleShot(0, self.startSetRefreshCheck)
+        self.setRefreshTimer = QtCore.QTimer(self)
+        self.setRefreshTimer.setInterval(7 * 24 * 60 * 60 * 1000)
+        self.setRefreshTimer.timeout.connect(self.startSetRefreshCheck)
+        self.setRefreshTimer.start()
+
+    def startSetRefreshCheck(self):
+        """Check for a new Scryfall set without blocking the UI."""
+        if constants.USE_BULK_FILES or self._setRefreshRunning:
+            return
+        self._setRefreshRunning = True
+        threading.Thread(target=self._checkForNewSets, daemon=True).start()
+
+    def _checkForNewSets(self):
+        updated = False
+        try:
+            updated = datarefresh.checkForUpdates().updated
+            if not updated:
+                logging.info("Scryfall set data is up to date")
+        except Exception as e:
+            logging.warning(f"Could not check for new Scryfall sets: {e}")
+        finally:
+            self._setRefreshRunning = False
+            self.setRefreshFinished.emit(updated)
+
+    def onSetRefreshFinished(self, updated: bool):
+        if updated:
+            self.refreshDataSources()
 
     def on_showLogs(self):
         LogViewerDialog(self.logHistory, self).exec()

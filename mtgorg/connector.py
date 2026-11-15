@@ -5,7 +5,7 @@ import threading
 from tinydb import TinyDB, Query
 from pathlib import Path
 
-from lib import system
+from lib import cachestate, system
 
 import constants
 
@@ -399,9 +399,13 @@ def replaceCardInDeck(deckName: str, oldCardId: str, newCardId: str, section: st
 # ----------------------------------- CACHE ---------------------------------- #
 
 
+def _cardQuery(cardId):
+    return (Query().id == cardId) & (Query().generation == cachestate.getCardGeneration())
+
+
 def getCard(cardId) -> dict | None:
     with _cacheLock:
-        card = getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)
+        card = getCacheDB().table(constants.CARDS_TABLE_NAME).search(_cardQuery(cardId))
         if len(card) == 0:
             card = None
         elif len(card) == 1:
@@ -414,12 +418,11 @@ def getCard(cardId) -> dict | None:
 
 def saveCard(cardId, cardData) -> None:
     with _cacheLock:
-        if len(getCacheDB().table(constants.CARDS_TABLE_NAME).search(Query().id == cardId)) == 0:
-            getCacheDB().table(constants.CARDS_TABLE_NAME).insert(
-                {"data": cardData, "id": cardId}
-            )
+        table = getCacheDB().table(constants.CARDS_TABLE_NAME)
+        if len(table.search(_cardQuery(cardId))) == 0:
+            table.insert({"data": cardData, "id": cardId, "generation": cachestate.getCardGeneration()})
         else:
-            getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)
+            table.update({"data": cardData}, _cardQuery(cardId))
 
 
 def updateCard(cardId, updateDict: dict) -> None:
@@ -430,7 +433,16 @@ def updateCard(cardId, updateDict: dict) -> None:
             return
         cardData = card["data"]
         cardData.update(updateDict)
-        getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, Query().id == cardId)
+        getCacheDB().table(constants.CARDS_TABLE_NAME).update({"data": cardData}, _cardQuery(cardId))
+
+
+def pruneOldCards() -> None:
+    """Remove cached cards from previous generations."""
+    with _cacheLock:
+        generation = cachestate.getCardGeneration()
+        getCacheDB().table(constants.CARDS_TABLE_NAME).remove(
+            lambda card: card.get("generation") != generation
+        )
 
 
 def _removeCachedFile(path: Path) -> tuple[int, int, str | None]:
@@ -450,7 +462,11 @@ def clearCache() -> dict:
     bytesRemoved = 0
     errors = []
 
-    targets = [constants.DEFAULT_CACHE_DB_LOCATION, constants.DEFAULT_INFOS_LOCATION / "sets.json"]
+    targets = [
+        constants.DEFAULT_CACHE_DB_LOCATION,
+        constants.DEFAULT_INFOS_LOCATION / "sets.json",
+        cachestate.statePath(),
+    ]
     for folder in (constants.DEFAULT_CARDIMAGES_LOCATION, constants.DEFAULT_SET_ICONS_LOCATION):
         if folder.is_dir():
             targets.extend(path for path in folder.iterdir() if path.is_file())

@@ -1,6 +1,7 @@
 import constants
 import connector
 import widgets.settings as settings
+from lib import cachestate
 from PySide6 import QtWidgets
 
 
@@ -51,8 +52,7 @@ def test_settings_clear_cache_button(qtApp, monkeypatch):
         "clearCache",
         lambda: calls.append(True) or {"files": 2, "bytes": 2048, "errors": []},
     )
-    monkeypatch.setattr(settings.scryfall, "resetSetsCache", lambda: None)
-    monkeypatch.setattr(settings.scryfall, "resetFormatsCache", lambda: None)
+    monkeypatch.setattr(settings.scryfall, "resetDataCaches", lambda: None)
     monkeypatch.setattr(
         QtWidgets.QMessageBox,
         "question",
@@ -155,3 +155,22 @@ def test_corrupt_card_cache_is_backed_up_and_recreated(tmp_path, monkeypatch):
     assert cachePath.is_file()
     assert (tmp_path / "mtg_org_cache.db.corrupt").is_file()
     connector.resetCacheDB()
+
+
+def test_card_cache_generation_hides_old_entries(tmp_path, monkeypatch):
+    monkeypatch.setattr(constants, "DEFAULT_INFOS_LOCATION", tmp_path)
+    monkeypatch.setattr(constants, "DEFAULT_CACHE_DB_LOCATION", tmp_path / "cache.db")
+    connector.resetCacheDB()
+    try:
+        connector.saveCard("card-1", {"id": "card-1", "value": 1})
+        assert connector.getCard("card-1")["data"]["value"] == 1
+
+        cachestate.bumpCardGeneration("fingerprint")
+        assert connector.getCard("card-1") is None
+
+        connector.saveCard("card-1", {"id": "card-1", "value": 2})
+        assert connector.getCard("card-1")["data"]["value"] == 2
+        connector.pruneOldCards()
+        assert connector.getCard("card-1")["data"]["value"] == 2
+    finally:
+        connector.resetCacheDB()

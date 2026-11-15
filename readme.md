@@ -30,7 +30,7 @@ Here are the lists of things I'd like to have included in this project :
 
 ## Known issues
 
-- In online-only mode, card data is cached locally as it is requested. There is no automatic full cache refresh; use **Settings > Scryfall > Clear cache** if cached data becomes stale. Offline bulk mode checks for bulk-data updates on startup.
+- In online-only mode, card data is cached locally as it is requested. The app checks for new sets at launch and weekly; when one is found it refreshes set metadata and starts a new card-cache generation. Use **Settings > Scryfall > Clear cache** for a full reset. Offline bulk mode checks for bulk-data updates on startup.
 - On some instances, card art may not be correct if scrolling through cards quickly. This is caused by a race condition when requesting multiple images on a poor connection to the web. I added a "Ctrl+R" shortcut to force reload currently selected card for now.
 - Card searches run in the background, but some heavy operations (like importing a large collection) can still freeze the GUI while they load data.
 - Phyrexian mana uses a single generic font glyph; per-color phyrexian rendering needs custom text drawing

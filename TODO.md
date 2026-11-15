@@ -68,6 +68,9 @@
   two-card combo detection with manual-intent guidance.
 - Decks support a Companion section, including MTGA/MTGO import detection,
   export support, colour-identity checks, and companion validation.
+- Online mode checks for released sets at launch and weekly, then refreshes
+  `sets.json`, advances the card-cache generation, resets formats, and updates
+  Keyrune while keeping images.
 
 ## Backlog
 
@@ -101,8 +104,6 @@
 - [ ] Support Include Extras in bulk mode.
 - [ ] Test and measure the `all_cards` mode end-to-end.
 - [ ] Optionally compress the bulk SQLite index.
-- [ ] Add automatic refresh for the online sets/card cache when a new set is
-  released (currently manual via Clear cache).
 
 ### Bigger features
 

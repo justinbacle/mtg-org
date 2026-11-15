@@ -233,9 +233,7 @@ class SettingsDialog(QtWidgets.QDialog):
         if answer != QtWidgets.QMessageBox.StandardButton.Yes:
             return
         stats = connector.clearCache()
-        scryfall.resetBulkDataCache()
-        scryfall.resetSetsCache()
-        scryfall.resetFormatsCache()
+        scryfall.resetDataCaches()
         self.updateStorageStats()
         if stats["errors"]:
             QtWidgets.QMessageBox.warning(
@@ -255,9 +253,7 @@ class SettingsDialog(QtWidgets.QDialog):
         manager = self.manager()
         if not downloadBulkDataWithProgress(self, manager):
             return
-        scryfall.resetBulkDataCache()
-        scryfall.resetSetsCache()
-        scryfall.resetFormatsCache()
+        scryfall.resetDataCaches()
         if not ensureBulkCacheWithProgress(self):
             QtWidgets.QMessageBox.critical(self, "Bulk index failed", "Could not prepare the offline card index.")
             return
@@ -287,8 +283,6 @@ class SettingsDialog(QtWidgets.QDialog):
         if constants.USE_BULK_FILES and manager.getLocalBulkFile() is None:
             logging.warning("Bulk data missing, using online-only mode for this session")
             constants.USE_BULK_FILES = False
-        scryfall.resetBulkDataCache()
-        scryfall.resetSetsCache()
-        scryfall.resetFormatsCache()
+        scryfall.resetDataCaches()
         self.updateStorageStats()
         super().accept()

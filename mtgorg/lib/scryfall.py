@@ -64,6 +64,12 @@ def resetFormatsCache():
     _formats_memory_cache = None
 
 
+def resetDataCaches():
+    resetBulkDataCache()
+    resetSetsCache()
+    resetFormatsCache()
+
+
 def _getBulkCache() -> bulk.BulkCache:
     return bulk.getBulkCache()
 
@@ -546,35 +552,19 @@ def getRandomCard() -> dict:
 
 
 def getSetData(setId, dataKey):
-    allSets = getSets()
-    possibleSets = [_ for _ in allSets if _["id"] == setId]
-    if len(possibleSets) == 1:
-        return possibleSets[0].get(dataKey)
-    else:
-        logging.error("Set ID could not be found. Maybe set cache is not up to date. Updating...")
-        allSets = getSets(force=True)
-        possibleSets = [_ for _ in allSets if _["id"] == setId]
-        if len(possibleSets) == 1:
-            return possibleSets[0].get(dataKey)
-        else:
-            logging.error(f"Could not find set for {setId=}")
-            return None
+    match = next((s for s in getSets() if s.get("id") == setId), None)
+    if match is None:
+        logging.error(f"Could not find set for {setId=}")
+        return None
+    return match.get(dataKey)
 
 
 def getSetDataByCode(setCode, dataKey):
-    allSets = getSets()
-    possibleSets = [_ for _ in allSets if _["code"] == setCode]
-    if len(possibleSets) == 1:
-        return possibleSets[0].get(dataKey)
-    else:
-        logging.error("Set code could not be found. Maybe set cache is not up to date. Updating...")
-        allSets = getSets(force=True)
-        possibleSets = [_ for _ in allSets if _["code"] == setCode]
-        if len(possibleSets) == 1:
-            return possibleSets[0].get(dataKey)
-        else:
-            logging.error(f"Could not find set for {setCode=}")
-            return None
+    match = next((s for s in getSets() if s.get("code") == setCode), None)
+    if match is None:
+        logging.error(f"Could not find set for {setCode=}")
+        return None
+    return match.get(dataKey)
 
 
 def getSetSymbol(setId):
@@ -635,49 +625,20 @@ def _getSetsFromBulk() -> list:
     return _bulkSetsCache
 
 
-def getSets(force: bool = False) -> list:
+def getSets() -> list:
+    """Return local set metadata; network refresh is handled by datarefresh."""
     if constants.USE_BULK_FILES:
         return _getSetsFromBulk()
     global _sets_memory_cache
-    if not force and _sets_memory_cache is not None:
-        return _sets_memory_cache
-    setsJsonPath = Path(constants.DEFAULT_INFOS_LOCATION) / "sets.json"
-    setsData = None
-    if force or not setsJsonPath.is_file():
-        setsData = getOnlineSetData()
-        utils.saveJson(setsData, setsJsonPath)
-    else:
-        setsData = utils.loadJson(setsJsonPath)
-    if setsJsonPath.is_file() and setsData is not None:
-        savedTime = datetime.datetime.strptime(setsData["_date"], constants.TIME_FORMAT_STR)
-        if datetime.datetime.now() - savedTime > datetime.timedelta(days=29):
-            logging.warning("Sets data are a month old, trying to update")
-            try:
-                setsData = getOnlineSetData()
-            except Exception as e:
-                logging.error(e)
-            else:
-                utils.saveJson(setsData, setsJsonPath)
-        else:
-            if setsData is not None:
-                setsData = utils.loadJson(setsJsonPath)
-    if setsData is None:
-        return []
-    _sets_memory_cache = setsData["sets"]
-    assert _sets_memory_cache is not None
+    if _sets_memory_cache is None:
+        setsData = utils.loadJson(Path(constants.DEFAULT_INFOS_LOCATION) / "sets.json") or {}
+        _sets_memory_cache = setsData.get("sets") or []
     return _sets_memory_cache
 
 
 def getSetByCode(setCode: str) -> dict | None:
     """Return the full set record for a given set code, or None if not found."""
-    allSets = getSets()
-    matches = [s for s in allSets if s["code"] == setCode]
-    if matches:
-        return matches[0]
-    # Try refreshing once
-    allSets = getSets(force=True)
-    matches = [s for s in allSets if s["code"] == setCode]
-    return matches[0] if matches else None
+    return next((s for s in getSets() if s.get("code") == setCode), None)
 
 
 def downloadBulkData(bulkType: str | None = None, progress_callback=None) -> Path:
