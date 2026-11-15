@@ -66,6 +66,7 @@ def test_export_dialog_defaults(qtApp, monkeypatch):
     assert dialog.exportTypeSelector_cardmarketRB.isChecked()
     assert dialog.includeCommanderCB.isChecked()
     assert dialog.includeSideboardCB.isChecked()
+    assert not dialog.sectionsGB.isHidden()
 
     dialog.includeSideboardCB.setChecked(False)
     text = dialog.buildExportText()
@@ -164,3 +165,30 @@ def test_export_dialog_includes_companion_checkbox(qtApp, monkeypatch):
     dialog = importexport.exportDialog(COMPANION_SECTIONS)
     assert dialog.includeCompanionCB.isChecked()
     assert dialog.includeCompanionCB.isVisible() or not dialog.includeCompanionCB.isHidden()
+
+
+def test_mtgo_export_dialog_documents_commander_zone_limitation(qtApp, monkeypatch):
+    monkeypatch.setattr(importexport.scryfall, "getCardById", lookup)
+    dialog = importexport.exportDialog(SECTIONS)
+
+    dialog.exportTypeSelector_mtgoRB.setChecked(True)
+    assert not dialog.mtgoWarningLabel.isHidden()
+    assert "no commander zone" in dialog.mtgoWarningLabel.text()
+
+    dialog.exportTypeSelector_mtgaRB.setChecked(True)
+    assert dialog.mtgoWarningLabel.isHidden()
+    dialog.close()
+
+
+def test_mtgo_export_dialog_documents_companion_zone_limitation(qtApp, monkeypatch):
+    monkeypatch.setattr(importexport.scryfall, "getCardById", lookup)
+    dialog = importexport.exportDialog(COMPANION_SECTIONS)
+
+    dialog.exportTypeSelector_mtgoRB.setChecked(True)
+    text = dialog.mtgoWarningLabel.text()
+    assert "no commander zone" in text
+    assert "no companion zone" in text
+
+    dialog.includeCompanionCB.setChecked(False)
+    assert "no companion zone" not in dialog.mtgoWarningLabel.text()
+    dialog.close()

@@ -22,7 +22,7 @@ Here are the lists of things I'd like to have included in this project :
 |Add deck visualizations and tools| total cards/prices, mana curve, color/type graphs, and per-card format legality |
 |Commander brackets| Manual Bracket 1–5 with heuristic minimum based on Game Changers, extra turns, mass land denial, tutors, and curated combo detection |
 |Import| MTGA, CSV (Urza Gatherer, MTG Studio, MTGGoldfish, MTG Manager, Deckbox, Decked Builder, PucaTrade, TCGPlayer, Deckstats), MTGO (.dek), EDHRec URL |
-|Export| Cardmarket wants-list text, MTG Arena text, MTGO `.dek`, and plain text with sections |
+|Export| Cardmarket wants-list text, MTG Arena text, MTGO `.dek` (zone limits noted in the export dialog), and plain text with sections |
 |Scan from webcam| Would be nice to have|
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
 |Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK |

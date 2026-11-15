@@ -195,11 +195,17 @@ class exportDialog(QtWidgets.QDialog):
         self.sectionsLayout.addWidget(self.includeCompanionCB)
         self.sectionsLayout.addWidget(self.includeSideboardCB)
         self.sectionsGB.setVisible(
-            self.includeCommanderCB.isVisible()
-            or self.includeCompanionCB.isVisible()
-            or self.includeSideboardCB.isVisible()
+            any(self.sections.get(key) for key in ("commander", "companion", "sideboard"))
         )
         self.mainLayout.addWidget(self.sectionsGB)
+
+        self.mtgoWarningLabel = QtWidgets.QLabel()
+        self.mtgoWarningLabel.setWordWrap(True)
+        self.mtgoWarningLabel.setVisible(False)
+        self.mainLayout.addWidget(self.mtgoWarningLabel)
+        self.includeCommanderCB.toggled.connect(self.updateMTGOWarning)
+        self.includeCompanionCB.toggled.connect(self.updateMTGOWarning)
+        self.updateMTGOWarning()
 
         # Options
         self.exportOptionsGB = QtWidgets.QGroupBox("Options")
@@ -224,11 +230,31 @@ class exportDialog(QtWidgets.QDialog):
         self.mainLayout.addWidget(self.okButton)
 
     def on_typeSelectToggle(self):
+        if not hasattr(self, "exportOptions_discardSetCB"):
+            return
         discardSetCapable = (
             self.exportTypeSelector_cardmarketRB.isChecked()
             or self.exportTypeSelector_plainRB.isChecked()
         )
         self.exportOptions_discardSetCB.setEnabled(discardSetCapable)
+        self.updateMTGOWarning()
+
+    def updateMTGOWarning(self):
+        if not hasattr(self, "mtgoWarningLabel"):
+            return
+        notes = []
+        if self.includeCommanderCB.isChecked() and self.sections.get("commander"):
+            notes.append(
+                "MTGO .dek has no commander zone; commander cards will be exported in the main deck."
+            )
+        if self.includeCompanionCB.isChecked() and self.sections.get("companion"):
+            notes.append(
+                "MTGO .dek has no companion zone; companion cards will be exported to the sideboard."
+            )
+        self.mtgoWarningLabel.setText("\n".join(notes))
+        self.mtgoWarningLabel.setVisible(
+            self.exportTypeSelector_mtgoRB.isChecked() and bool(notes)
+        )
 
     def buildExportText(self) -> str:
         includeCommander = self.includeCommanderCB.isChecked()

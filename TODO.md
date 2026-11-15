@@ -46,7 +46,8 @@
 - Cards can be added to Main, Commander, or Sideboard from the viewer's
   right-click Add menu, and moved between sections with the row context menu.
 - Export formats: Cardmarket (flat), MTG Arena text, MTGO `.dek`, and plain text
-  with sections. Commander/sideboard inclusion is optional.
+  with sections. Commander/sideboard inclusion is optional. The export dialog
+  notes that MTGO `.dek` has no commander/companion zones.
 - Search results are capped by a configurable limit (default 100), with a
   truncation notice when more cards match.
 - Table columns are capped and elided instead of expanding for long names/types.
@@ -90,7 +91,6 @@
 - [ ] Refine Limited sideboard rules and other format edge cases.
 - [ ] Infer the commander from EDHRec imports when possible.
 - [ ] Support sideboard/commander import from CSV formats that provide it.
-- [ ] Document the MTGO `.dek` commander-zone limitation in the export UI.
 
 ### Images / fonts
 
