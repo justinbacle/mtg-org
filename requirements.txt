@@ -1,17 +1,12 @@
 beautifulsoup4
-cache_to_disk
 dotmap
 fuzzywuzzy
 lxml
-PyInstaller
-pyinstaller-hooks-contrib
 pyperclip
 pyside6
-pytest
 python-Levenshtein
 qt_material
 requests
 scrython
 tinydb
-tqdm
 aiohttp
