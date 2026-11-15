@@ -19,7 +19,8 @@ Here are the lists of things I'd like to have included in this project :
 | Search through MTG database | Done: Name (with typo fallback in bulk mode), Colors, Type(s), Set, Rarity, CMC, Oracle text, tagger tags, Format, Power/Toughness/Loyalty|
 | Support for other languages than EN | Card handling done in all available MTG languages, GUI translations not handled (yet)|
 |Organizing cards in decks & collections| Done: format-aware main deck, sideboard, and commander sections in one grouped table, with basic validation. Missing drag/drop between collections/decks |
-|Add deck visualizations and tools| total card/prices/legality, mana curve, color/type graphs (Legality WIP)|
+|Add deck visualizations and tools| total cards/prices, mana curve, color/type graphs, and per-card format legality |
+|Commander brackets| Manual Bracket 1–5 with heuristic minimum based on Game Changers, extra turns, and mass land denial |
 |Import| MTGA, CSV (Urza Gatherer, MTG Studio, MTGGoldfish, MTG Manager, Deckbox, Decked Builder, PucaTrade, TCGPlayer, Deckstats), MTGO (.dek), EDHRec URL |
 |Export| Cardmarket wants-list text, MTG Arena text, MTGO `.dek`, and plain text with sections |
 |Scan from webcam| Would be nice to have|

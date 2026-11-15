@@ -2,11 +2,12 @@ from PySide6 import QtWidgets, QtCore
 
 import connector
 import constants
-from lib import deckrules, importexport
+from lib import deckrules, importexport, qt
 
 
 class DeckDialog(QtWidgets.QDialog):
-    def __init__(self, parent=None, name: str = "", formatKey: str = None):
+    def __init__(self, parent=None, name: str = "", formatKey: str = None,
+                 bracket: int | None = None, deck: dict | None = None):
         super().__init__(parent)
         self.setWindowTitle("Deck")
         self.mainLayout = QtWidgets.QFormLayout()
@@ -22,6 +23,25 @@ class DeckDialog(QtWidgets.QDialog):
         self.formatCB.setCurrentIndex(max(self.formatCB.findData(formatKey), 0))
         self.mainLayout.addRow("Format", self.formatCB)
 
+        self.bracketCB = qt.NoWheelComboBox()
+        self.bracketCB.addItem("Not set", None)
+        for bracketValue, label in deckrules.COMMANDER_BRACKET_LABELS.items():
+            self.bracketCB.addItem(f"{bracketValue} — {label}", bracketValue)
+        bracketIndex = self.bracketCB.findData(bracket)
+        self.bracketCB.setCurrentIndex(bracketIndex if bracketIndex >= 0 else 0)
+        self.bracketRow = self.mainLayout.rowCount()
+        self.mainLayout.addRow("Commander bracket", self.bracketCB)
+
+        self.deck = deck
+        self.estimateLabel = QtWidgets.QLabel("")
+        self.estimateLabel.setWordWrap(True)
+        self.estimateLabel.setStyleSheet("color: #b8bcc2;")
+        self.estimateRow = self.mainLayout.rowCount()
+        self.mainLayout.addRow("Suggestion", self.estimateLabel)
+        self.formatCB.currentIndexChanged.connect(self.updateBracketVisibility)
+        self.bracketCB.currentIndexChanged.connect(self.updateBracketEstimate)
+        self.updateBracketVisibility()
+
         self.buttonBox = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel
         )
@@ -29,8 +49,43 @@ class DeckDialog(QtWidgets.QDialog):
         self.buttonBox.rejected.connect(self.reject)
         self.mainLayout.addRow(self.buttonBox)
 
-    def values(self) -> tuple[str, str]:
-        return self.nameLE.text().strip(), self.formatCB.currentData()
+    def updateBracketVisibility(self):
+        isCommander = self.formatCB.currentData() == "commander"
+        self.mainLayout.setRowVisible(self.bracketRow, isCommander)
+        self.mainLayout.setRowVisible(self.estimateRow, isCommander)
+        if not isCommander:
+            self.bracketCB.setCurrentIndex(0)
+        self.updateBracketEstimate()
+
+    def updateBracketEstimate(self):
+        if self.formatCB.currentData() != "commander":
+            return
+        if self.deck is None:
+            self.estimateLabel.setText("Add cards to see a suggested bracket.")
+            return
+        analysisDeck = dict(self.deck, format="commander")
+        analysis = deckrules.analyzeCommanderBracket(analysisDeck)
+        if analysis is None:
+            self.estimateLabel.setText("")
+            return
+        floor = analysis["floor"]
+        label = deckrules.COMMANDER_BRACKET_LABELS.get(floor, "")
+        selected = self.bracketCB.currentData()
+        text = (
+            f"Suggested minimum: Bracket {floor} ({label})\n"
+            f"Game Changers: {len(analysis['gameChangers'])} · "
+            f"Extra turns: {len(analysis['extraTurns'])} · "
+            f"Mass land denial: {len(analysis['massLandDenial'])} · "
+            f"Tutors: {len(analysis['tutors'])}"
+        )
+        if selected is not None and selected < floor:
+            text += f"\nSelected bracket {selected} is below the suggested minimum."
+        self.estimateLabel.setText(text)
+
+    def values(self) -> tuple[str, str, int | None]:
+        formatKey = self.formatCB.currentData()
+        bracket = self.bracketCB.currentData() if formatKey == "commander" else None
+        return self.nameLE.text().strip(), formatKey, bracket
 
 
 class CardStackSelector(QtWidgets.QWidget):
@@ -167,9 +222,9 @@ class CardStackSelector(QtWidgets.QWidget):
     def on_addDeck(self):
         dialog = DeckDialog(self)
         if dialog.exec():
-            deckName, formatKey = dialog.values()
+            deckName, formatKey, bracket = dialog.values()
             if deckName:
-                connector.createDeck(deckName, format=formatKey)
+                connector.createDeck(deckName, format=formatKey, bracket=bracket)
                 self.initData()
 
     def on_removeDeck(self):
@@ -184,14 +239,21 @@ class CardStackSelector(QtWidgets.QWidget):
         deck = connector.getDeck(oldName)
         if deck is None:
             return
-        dialog = DeckDialog(self, name=oldName, formatKey=deck.get("format", constants.DEFAULT_DECK_FORMAT))
+        dialog = DeckDialog(
+            self,
+            name=oldName,
+            formatKey=deck.get("format", constants.DEFAULT_DECK_FORMAT),
+            bracket=deck.get("bracket"),
+            deck=deck,
+        )
         if dialog.exec():
-            newName, formatKey = dialog.values()
+            newName, formatKey, bracket = dialog.values()
             if not newName:
                 return
             if newName != oldName:
                 connector.renameDeck(previousDeckName=oldName, newDeckName=newName)
             connector.setDeckFormat(newName, formatKey)
+            connector.setDeckBracket(newName, bracket)
             self.initData()
 
     def getSelected(self):

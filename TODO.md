@@ -59,6 +59,12 @@
 - Search and Clear buttons stay pinned below the scrollable search fields.
 - Sorting is preserved across add/remove/quantity updates and each deck section
   sorts independently. Invalid quantity edits are reverted.
+- Deck validation now checks the 4-copy rule, singleton by oracle identity,
+  commander colour identity, partner/background pairs, and per-card format legality.
+- The info panel shows a per-format legality table with deck-level issues and
+  per-card status/reason rows.
+- Commander decks store a manual Bracket 1–5 and show a heuristic minimum based
+  on Game Changers, extra turns, mass land denial, and tutor counts.
 
 ## Backlog
 
@@ -74,8 +80,8 @@
 
 - [ ] Add drag/drop between decks/collections and between deck sections
   (deferred; right-click move is the current workflow).
-- [ ] Validate partners/backgrounds, companions, colour identity, and per-card
-  format legality.
+- [ ] Add companion-zone support and companion validation.
+- [ ] Improve bracket heuristics with combo detection and intent-aware guidance.
 - [ ] Refine Limited sideboard rules and other format edge cases.
 - [ ] Infer the commander from EDHRec imports when possible.
 - [ ] Support sideboard/commander import from CSV formats that provide it.
@@ -102,7 +108,6 @@
 - [ ] Webcam card scanning.
 - [ ] Cloud/Drive synchronization.
 - [ ] GUI translations.
-- [ ] Finish the format-legality UI.
 - [ ] Add more export destinations/formats as needed.
 
 ### Infrastructure

@@ -72,3 +72,22 @@ def test_move_card_between_sections():
         assert deck["commander"] == [[2, "card-a"]]
     finally:
         connector.removeDeck(name)
+
+
+def test_deck_bracket_metadata():
+    name = "Deck Bracket Test"
+    connector.createDeck(name, format="commander", bracket=3)
+    try:
+        assert connector.getDeckBracket(name) == 3
+
+        connector.setDeckBracket(name, 5)
+        assert connector.getDeckBracket(name) == 5
+
+        connector.setDeckBracket(name, 9)
+        assert connector.getDeckBracket(name) == 5
+
+        connector.setDeckFormat(name, "modern")
+        connector.setDeckBracket(name, 3)
+        assert connector.getDeckBracket(name) is None
+    finally:
+        connector.removeDeck(name)

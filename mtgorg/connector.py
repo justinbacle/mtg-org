@@ -190,17 +190,25 @@ def _getDeckSection(deck: dict, section: str) -> list:
 
 
 def createDeck(deckName, cardList: list | None = None, sideboard: list | None = None,
-               commander: list | None = None, format: str = constants.DEFAULT_DECK_FORMAT):
+               commander: list | None = None, format: str = constants.DEFAULT_DECK_FORMAT,
+               bracket: int | None = None):
     cardList = cardList if cardList is not None else []
     sideboard = sideboard if sideboard is not None else []
     commander = commander if commander is not None else []
     if format not in constants.DECK_FORMATS:
         format = constants.DEFAULT_DECK_FORMAT
+    if bracket is not None:
+        bracket = int(bracket)
+        if bracket < 1 or bracket > 5:
+            bracket = None
+    if format != "commander":
+        bracket = None
     if getDeck(deckName) is None:
         getDB().table(constants.DECKS_TABLE_NAME).insert(
             {
                 "name": deckName,
                 "format": format,
+                "bracket": bracket,
                 "cardList": cardList,
                 "sideboard": sideboard,
                 "commander": commander,
@@ -208,6 +216,31 @@ def createDeck(deckName, cardList: list | None = None, sideboard: list | None = 
         )
     else:
         logging.error(f"Deck with {deckName=} already exists")
+
+
+def getDeckBracket(deckName) -> int | None:
+    deck = getDeck(deckName)
+    if deck is None:
+        return None
+    return deck.get("bracket")
+
+
+def setDeckBracket(deckName, bracket: int | None):
+    deck = getDeck(deckName)
+    if deck is None:
+        logging.error(f"Deck {deckName=} not found")
+        return
+    if bracket is not None:
+        bracket = int(bracket)
+        if bracket < 1 or bracket > 5:
+            logging.error(f"Invalid commander bracket {bracket=}")
+            return
+    if deck.get("format") != "commander":
+        bracket = None
+    deck["bracket"] = bracket
+    getDB().table(constants.DECKS_TABLE_NAME).update(
+        deck, Query().name == deckName
+    )
 
 
 def getDeckFormat(deckName) -> str:
