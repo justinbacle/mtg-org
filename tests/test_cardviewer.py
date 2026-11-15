@@ -5,29 +5,29 @@ from widgets import cardviewer
 
 
 def test_cached_single_face_image_is_loaded(monkeypatch):
-    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId: True)
+    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId, faceIndex=0: True)
     monkeypatch.setattr(constants, "IMG_DOWNLOAD_METHOD", "qt")
     monkeypatch.setattr(constants, "USE_BULK_FILES", True)
-    assert cardviewer.getCardImageAction("card-id", "https://img", hasManyFaces=False) == "load"
+    assert cardviewer.getCardImageAction("card-id", "https://img") == "load"
 
 
 def test_bulk_mode_downloads_missing_image(monkeypatch):
-    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId: False)
+    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId, faceIndex=0: False)
     monkeypatch.setattr(constants, "IMG_DOWNLOAD_METHOD", "qt")
     monkeypatch.setattr(constants, "USE_BULK_FILES", True)
-    assert cardviewer.getCardImageAction("card-id", "https://img", hasManyFaces=False) == "download"
+    assert cardviewer.getCardImageAction("card-id", "https://img") == "download"
 
 
 def test_missing_image_uri_does_nothing(monkeypatch):
-    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId: False)
+    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId, faceIndex=0: False)
     monkeypatch.setattr(constants, "IMG_DOWNLOAD_METHOD", "qt")
-    assert cardviewer.getCardImageAction("card-id", None, hasManyFaces=False) == "none"
+    assert cardviewer.getCardImageAction("card-id", None) == "none"
 
 
 def test_direct_mode_does_not_load_a_missing_file(monkeypatch):
-    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId: False)
+    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId, faceIndex=0: False)
     monkeypatch.setattr(constants, "IMG_DOWNLOAD_METHOD", "direct")
-    assert cardviewer.getCardImageAction("card-id", "https://img", hasManyFaces=False) == "none"
+    assert cardviewer.getCardImageAction("card-id", "https://img") == "none"
 
 
 def test_printing_selector_is_connected_once(qtApp, monkeypatch):
@@ -39,8 +39,8 @@ def test_printing_selector_is_connected_once(qtApp, monkeypatch):
 
     viewer = CountingViewer()
     viewer.setManaFont = lambda: None
-    viewer.downloadCardImg = lambda imageUri, cardId: None
-    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId: False)
+    viewer.downloadCardImg = lambda *args: None
+    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId, faceIndex=0: False)
 
     data = {
         "card": {
@@ -94,17 +94,21 @@ def test_image_downloader_decodes_local_image(qtApp, tmp_path):
     result = {}
     loop = QtCore.QEventLoop()
 
-    def onFinished(downloadedImage, cardId):
+    def onFinished(downloadedImage, cardId, faceIndex, requestId):
         result["image"] = downloadedImage
         result["cardId"] = cardId
+        result["faceIndex"] = faceIndex
+        result["requestId"] = requestId
         loop.quit()
 
     downloader.finished.connect(onFinished)
     QtCore.QTimer.singleShot(5000, loop.quit)
-    downloader.start_download(QtCore.QUrl.fromLocalFile(imagePath.as_posix()), "card-id")
+    downloader.start_download(QtCore.QUrl.fromLocalFile(imagePath.as_posix()), "card-id", 1, 7)
     loop.exec()
 
     assert result["cardId"] == "card-id"
+    assert result["faceIndex"] == 1
+    assert result["requestId"] == 7
     assert not result["image"].isNull()
     assert result["image"].width() == 4
 
@@ -135,8 +139,8 @@ def test_printing_label_describes_variants():
 def test_viewer_minimum_width_independent_of_text(qtApp, monkeypatch):
     viewer = cardviewer.CardViewer()
     viewer.setManaFont = lambda: None
-    viewer.downloadCardImg = lambda imageUri, cardId: None
-    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId: False)
+    viewer.downloadCardImg = lambda *args: None
+    monkeypatch.setattr(cardviewer, "isCardImageCached", lambda cardId, faceIndex=0: False)
 
     def displayData(name, cardId, printings):
         return {
@@ -210,3 +214,43 @@ def test_add_to_section_passes_target_section(qtApp, monkeypatch):
     viewer.addToSection("sideboard")
 
     assert calls == [({"id": "card-1", "name": "Test Card"}, "sideboard")]
+
+
+def test_multi_face_images_use_separate_cache_paths(tmp_path, monkeypatch):
+    monkeypatch.setattr(constants, "DEFAULT_CARDIMAGES_LOCATION", tmp_path)
+    image = QtGui.QImage(8, 8, QtGui.QImage.Format.Format_RGB32)
+    image.fill(QtGui.QColor("red"))
+
+    cardviewer.saveCardImg(image, "card-id", 0)
+    cardviewer.saveCardImg(image, "card-id", 1)
+
+    assert cardviewer.isCardImageCached("card-id", 0)
+    assert cardviewer.isCardImageCached("card-id", 1)
+    assert cardviewer.cardImagePath("card-id", 0) != cardviewer.cardImagePath("card-id", 1)
+
+
+def test_stale_display_data_is_ignored(qtApp):
+    viewer = cardviewer.CardViewer()
+    viewer.nameLabel.setText("Current card")
+    viewer._displayRequestId = 2
+
+    viewer._on_display_data_ready({"requestId": 1})
+
+    assert viewer.nameLabel.text() == "Current card"
+
+
+def test_stale_image_download_is_saved_but_not_displayed(qtApp, tmp_path, monkeypatch):
+    monkeypatch.setattr(constants, "DEFAULT_CARDIMAGES_LOCATION", tmp_path)
+    viewer = cardviewer.CardViewer()
+    viewer._displayRequestId = 2
+    displayed = []
+    viewer.displayPixmapCard = displayed.append
+    image = QtGui.QImage(8, 8, QtGui.QImage.Format.Format_RGB32)
+    image.fill(QtGui.QColor("red"))
+
+    viewer.saveCardImg(image, "card-id", 0, 1)
+    assert displayed == []
+    assert cardviewer.isCardImageCached("card-id", 0)
+
+    viewer.saveCardImg(image, "card-id", 0, 2)
+    assert displayed == [image]

@@ -48,6 +48,8 @@
 - Export formats: Cardmarket (flat), MTG Arena text, MTGO `.dek`, and plain text
   with sections. Commander/sideboard inclusion is optional. The export dialog
   notes that MTGO `.dek` has no commander/companion zones.
+- Card-art requests ignore stale metadata/image results, and multi-face images
+  cache per face.
 - Search results are capped by a configurable limit (default 100), with a
   truncation notice when more cards match.
 - Table columns are capped and elided instead of expanding for long names/types.
@@ -94,8 +96,6 @@
 
 ### Images / fonts
 
-- [ ] Fix the card-art race when scrolling quickly.
-- [ ] Handle multi-face and alternate-art image caching.
 - [ ] Improve Phyrexian rendering beyond the font's single generic glyph.
 - [ ] Optionally use Scryfall SVG icons for sets Keyrune does not support.
 

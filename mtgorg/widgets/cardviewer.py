@@ -15,11 +15,13 @@ class CardDisplayWorker(QtCore.QObject):
     dataReady = QtCore.Signal(dict)
     failed = QtCore.Signal(str)
 
-    def __init__(self, cardId: str, cardFace: int = 0, forceRefresh: bool = False):
+    def __init__(self, cardId: str, cardFace: int = 0, forceRefresh: bool = False,
+                 requestId: int = 0):
         super().__init__()
         self._cardId = cardId
         self._cardFace = cardFace
         self._forceRefresh = forceRefresh
+        self._requestId = requestId
 
     def run(self):
         try:
@@ -36,6 +38,7 @@ class CardDisplayWorker(QtCore.QObject):
                 "card": card,
                 "cardFace": self._cardFace,
                 "forceRefresh": self._forceRefresh,
+                "requestId": self._requestId,
                 "setIconSvgData": setIconSvgData,
                 "printings": printings,
             })
@@ -64,6 +67,7 @@ class CardViewer(QtWidgets.QWidget):
     def __init__(self, parent=None, **kwargs):
         super(CardViewer, self).__init__(parent=parent, **kwargs)
         self._deck_card_id: str | None = None
+        self._displayRequestId = 0
         self._display_thread: QtCore.QThread | None = None
         self._display_worker: CardDisplayWorker | None = None
         self._graveyard_threads: list[QtCore.QThread] = []
@@ -227,10 +231,11 @@ class CardViewer(QtWidgets.QWidget):
         self._random_thread.finished.connect(self._random_thread.deleteLater)
         self._random_thread.start()
 
-    def saveCardImg(self, image, cardId):
-        saveCardImg(image, cardId)
-        logging.info(f"saved image for {cardId=}")
-        self.displayPixmapCard(image)
+    def saveCardImg(self, image, cardId, faceIndex=0, requestId=0):
+        saveCardImg(image, cardId, faceIndex)
+        logging.info(f"saved image for {cardId=} face={faceIndex}")
+        if requestId == self._displayRequestId:
+            self.displayPixmapCard(image)
 
     def displayPixmapCard(self, image):
         # display
@@ -271,6 +276,8 @@ class CardViewer(QtWidgets.QWidget):
 
     def display(self, cardId: str, cardFace: int = 0, forceRefresh: bool = False):
         self.nameLabel.setText("Loading...")
+        self._displayRequestId += 1
+        requestId = self._displayRequestId
 
         # Keep the previous thread alive until it finishes so Qt doesn't destroy it early.
         if self._display_thread is not None and self._display_thread.isRunning():
@@ -278,7 +285,7 @@ class CardViewer(QtWidgets.QWidget):
             self._cleanup_graveyard()
 
         self._display_thread = QtCore.QThread()
-        self._display_worker = CardDisplayWorker(cardId, cardFace, forceRefresh)
+        self._display_worker = CardDisplayWorker(cardId, cardFace, forceRefresh, requestId)
         self._display_worker.moveToThread(self._display_thread)
         self._display_thread.started.connect(self._display_worker.run)
         self._display_worker.dataReady.connect(self._on_display_data_ready)
@@ -306,6 +313,9 @@ class CardViewer(QtWidgets.QWidget):
         self._graveyard_threads = aliveThreads
 
     def _on_display_data_ready(self, data: dict):
+        requestId = data.get("requestId")
+        if requestId is not None and requestId != self._displayRequestId:
+            return
         card = data["card"]
         cardFace = data["cardFace"]
         printings = data["printings"]
@@ -355,28 +365,24 @@ class CardViewer(QtWidgets.QWidget):
 
         self.cardFaceChooser.setVisible(False)
         self.cardFace = cardFace
-        _hasManyFaces = False
         if utils.getFromDict(self.card, ["image_uris"], None) is not None:
             imageUri = utils.getFromDict(self.card, ["image_uris", constants.IMG_SIZE])
         else:
             if len(self.card["card_faces"]) > 1:
-                _hasManyFaces = True
                 self.cardFaceChooser.setVisible(True)
             imageUri = utils.getFromDict(
                 self.card, ["card_faces", cardFace, "image_uris", constants.IMG_SIZE])
 
-        imageAction = getCardImageAction(cardId, imageUri, _hasManyFaces)
+        imageAction = getCardImageAction(cardId, imageUri, cardFace)
         if imageAction == "load":
-            # TODO handle cache for multi face cards
-            cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
             image = QtGui.QImage()
-            image.load(cardImgPath.as_posix())
+            image.load(cardImagePath(cardId, cardFace).as_posix())
             self.displayPixmapCard(image)
         elif imageAction == "download":
             if self.cardImgGraphicsView.scene() is not None:
                 if any(isinstance(_, QtWidgets.QGraphicsPixmapItem) for _ in self.cardImgGraphicsView.scene().items()):
                     self.cardImgGraphicsView.scene().clear()
-            self.downloadCardImg(imageUri, cardId)
+            self.downloadCardImg(imageUri, cardId, cardFace)
 
         # Oracle text
         text = self.card["type_line"] + "\n"
@@ -421,9 +427,9 @@ class CardViewer(QtWidgets.QWidget):
             self.applyToDeckPB.setVisible(False)
             self.replaceInDeckRequested.emit(old_id, self.card["id"])
 
-    def downloadCardImg(self, imageUri, cardId):
+    def downloadCardImg(self, imageUri, cardId, faceIndex=0):
         url = QtCore.QUrl.fromUserInput(imageUri)
-        self.imgDownloader.start_download(url, cardId)
+        self.imgDownloader.start_download(url, cardId, faceIndex, self._displayRequestId)
 
     def on_cardflip(self):
         self.display(self.card["id"], cardFace=(self.cardFace+1) % 2)
@@ -438,24 +444,31 @@ class CardViewer(QtWidgets.QWidget):
 
 
 class ImageDownloader(QtCore.QObject):
-    finished = QtCore.Signal(QtGui.QImage, str)
+    finished = QtCore.Signal(QtGui.QImage, str, int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.manager = QtNetwork.QNetworkAccessManager()
         self.manager.finished.connect(self.handle_finished)
 
-    def start_download(self, url, cardId):
-        self.cardId = cardId
-        self.manager.get(QtNetwork.QNetworkRequest(url))
+    def start_download(self, url, cardId, faceIndex=0, requestId=0):
+        reply = self.manager.get(QtNetwork.QNetworkRequest(url))
+        reply.setProperty("cardId", cardId)
+        reply.setProperty("faceIndex", faceIndex)
+        reply.setProperty("requestId", requestId)
 
     def handle_finished(self, reply):
         if reply.error() != QtNetwork.QNetworkReply.NetworkError.NoError:
-            print("error: ", reply.errorString())
+            logging.warning(f"Image download failed: {reply.errorString()}")
             return
         image = QtGui.QImage()
         image.loadFromData(reply.readAll())
-        self.finished.emit(image, self.cardId)
+        self.finished.emit(
+            image,
+            reply.property("cardId"),
+            int(reply.property("faceIndex") or 0),
+            int(reply.property("requestId") or 0),
+        )
 
 
 def getPrintingLabel(card: dict) -> str:
@@ -488,28 +501,33 @@ def getPrintingLabel(card: dict) -> str:
     return f"{setName} ({setCode}) #{collectorNumber} - {', '.join(labels)}"
 
 
-def isCardImageCached(cardId) -> bool:
-    cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
+def cardImagePath(cardId: str, faceIndex: int = 0):
+    suffix = f"-face{faceIndex}" if faceIndex else ""
+    return constants.DEFAULT_CARDIMAGES_LOCATION / f"{cardId}{suffix}"
+
+
+def isCardImageCached(cardId, faceIndex: int = 0) -> bool:
+    cardImgPath = cardImagePath(cardId, faceIndex)
     return cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)
 
 
-def getCardImageAction(cardId, imageUri, hasManyFaces: bool = False) -> str:
+def getCardImageAction(cardId, imageUri, faceIndex: int = 0) -> str:
     """Return 'load', 'download', or 'none' for the card image display path."""
-    if isCardImageCached(cardId) and not hasManyFaces:
+    if isCardImageCached(cardId, faceIndex):
         return "load"
     if imageUri is not None and constants.IMG_DOWNLOAD_METHOD == "qt":
         return "download"
     return "none"
 
 
-def getCardImageFromUrl(url, cardId) -> str:
-    cardImgPath = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
+def getCardImageFromUrl(url, cardId, faceIndex: int = 0) -> str:
+    cardImgPath = cardImagePath(cardId, faceIndex)
     if not (cardImgPath.is_file() and os.access(cardImgPath, os.R_OK)):
         urllib.request.urlretrieve(url, cardImgPath)
     return cardImgPath
 
 
-def saveCardImg(image: QtGui.QImage, cardId: str):
-    path = constants.DEFAULT_CARDIMAGES_LOCATION / cardId
+def saveCardImg(image: QtGui.QImage, cardId: str, faceIndex: int = 0):
+    path = cardImagePath(cardId, faceIndex)
     writer = QtGui.QImageWriter(path.as_posix(), b"jpg")
     writer.write(image)

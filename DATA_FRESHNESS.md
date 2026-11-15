@@ -41,7 +41,7 @@ flowchart TD
 ## Gaps
 
 - Card prices and legalities have no TTL.
-- Card images have no automatic refresh; multi-face caching is incomplete.
+- Card images have no automatic refresh.
 - Bulk updates are prompted only at startup.
 - Offline bulk mode skips the online set check.
 - Scryfall set-icon failures have no fallback; Keyrune falls back to the set code in the table.
