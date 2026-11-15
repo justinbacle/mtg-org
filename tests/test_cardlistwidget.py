@@ -180,3 +180,57 @@ def test_move_card_to_section(qtApp, monkeypatch):
     widget.moveCardToSection(0, "sideboard")
 
     assert calls == [("Test Deck", "card-1", "main", "sideboard")]
+
+
+def test_sort_sections_by_name_and_price(tmp_path, monkeypatch, qtApp):
+    fonts = tmp_path / "fonts"
+    fonts.mkdir()
+    (fonts / "keyrune.json").write_text(json.dumps({"tst": "&#xe602;"}))
+    monkeypatch.setattr(constants, "DEFAULT_FONTS_LOCATION", fonts)
+    parent = QtWidgets.QWidget()
+    parent.keyruneFontId = 0
+    parent.proxyglyphFontId = 0
+    parent.phyrexianFontId = 0
+    widget = CardStackListWidget(parent)
+    widget.testParent = parent
+    widget.showSectionHeaders = False
+
+    def card(cardId, name, price):
+        return {
+            "id": cardId,
+            "name": name,
+            "mana_cost": "{1}",
+            "type_line": "Instant",
+            "set": "tst",
+            "rarity": "common",
+            "prices": {"eur": price},
+        }
+
+    widget.sectionCardStacks = {
+        "main": [(1, card("b", "Beta", "5")), (1, card("a", "Alpha", "1"))],
+    }
+    widget.visibleSections = ["main"]
+
+    widget.sortSections("name")
+    assert [entry[1]["name"] for entry in widget.sectionCardStacks["main"]] == ["Alpha", "Beta"]
+
+    widget.sortSections("prices")
+    assert [entry[1]["name"] for entry in widget.sectionCardStacks["main"]] == ["Alpha", "Beta"]
+
+
+def test_invalid_qty_edit_is_reverted(qtApp):
+    parent = QtWidgets.QWidget()
+    widget = CardStackListWidget(parent)
+    widget.testParent = parent
+    widget.setRowCount(1)
+    item = QtWidgets.QTableWidgetItem("2")
+    item.setData(
+        QtCore.Qt.ItemDataRole.UserRole,
+        {"data": {"qty": 2}, "column": "qty"},
+    )
+    widget.setItem(0, 0, item)
+    item.setText("")
+
+    widget.on_itemChanged(item)
+
+    assert item.text() == "2"

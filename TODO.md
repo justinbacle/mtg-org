@@ -57,6 +57,8 @@
   files are backed up and recreated automatically.
 - Added a Clear button that resets every search field and clears results.
 - Search and Clear buttons stay pinned below the scrollable search fields.
+- Sorting is preserved across add/remove/quantity updates and each deck section
+  sorts independently. Invalid quantity edits are reverted.
 
 ## Backlog
 
@@ -64,7 +66,6 @@
 
 - [ ] Add tooltips to view card translations.
 - [ ] Verify/complete English-name display for non-English cards.
-- [ ] Fix the known sorting / removal bug.
 - [ ] Move large imports to a background thread with progress.
 - [ ] Add a save-to-file export destination.
 - [ ] Consider virtualized result tables if users need very large result sets.

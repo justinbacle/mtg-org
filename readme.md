@@ -35,7 +35,6 @@ Here are the lists of things I'd like to have included in this project :
 - Missing half-mana symbols (un-sets)
 - Missing 1,000,000 mana symbol (Gleemax)
 - Partial phyrexian font handling
-- Bug on sorting / removal
 - Handling image with multiple pictures (e.g. Urza's mine) and alternate art
 - Keyrune has no icon for some promo/art-series sets; those show the set code instead
 - In bulk mode, art/oracle tag filters fall back to online Scryfall, and the Include Extras checkbox is disabled

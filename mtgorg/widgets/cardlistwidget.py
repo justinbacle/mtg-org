@@ -226,6 +226,7 @@ class CardStackListWidget(CardSearchListWidget):
         self.rowSections: dict[int, str] = {}
         self.sectionHeaderRows: dict[str, int] = {}
         self.cardStack: list = []
+        self.sortKey: str | None = None
         self._loadRequestId = 0
         self._loaderThread: QtCore.QThread | None = None
         self.setAcceptDrops(False)
@@ -290,7 +291,14 @@ class CardStackListWidget(CardSearchListWidget):
         if item.data(QtCore.Qt.ItemDataRole.UserRole)["column"] != "qty":
             return
         previousQty = item.data(QtCore.Qt.ItemDataRole.UserRole)["data"]["qty"]
-        newQty = int(item.text())
+        try:
+            newQty = int(item.text())
+        except ValueError:
+            item.setText(str(previousQty))
+            return
+        if newQty < 0:
+            item.setText(str(previousQty))
+            return
         if previousQty != newQty:
             if previousQty > newQty:
                 self.removeQty(previousQty - newQty)
@@ -325,12 +333,38 @@ class CardStackListWidget(CardSearchListWidget):
             return
         self.sectionCardStacks = sections
         self.cardStack = sections.get("main", [])
+        self._sortSectionLists()
         self.renderSections()
         _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
         if _loadingBar is not None:
             _loadingBar.setVisible(False)
         if self.updateStats:
             self._updateStatsPanel(self.cardStack)
+
+    def _sortSectionLists(self):
+        if self.sortKey is None:
+            return
+        for cards in self.sectionCardStacks.values():
+            if not cards:
+                continue
+            if self.sortKey == "prices":
+                cards.sort(
+                    key=lambda entry: float(
+                        utils.getFromDict(
+                            entry[1], ["prices", constants.CURRENCY[0]], 0
+                        ) if utils.getFromDict(
+                            entry[1], ["prices", constants.CURRENCY[0]], 0
+                        ) is not None else 0
+                    )
+                )
+            else:
+                cards.sort(key=lambda entry: entry[1].get(self.sortKey, ""))
+
+    def sortSections(self, key: str | None = None):
+        if key is not None:
+            self.sortKey = key
+        self._sortSectionLists()
+        self.renderSections()
 
     def renderSections(self):
         self.setRowCount(0)

@@ -135,22 +135,7 @@ class CardsList(QtWidgets.QWidget):
             key = self.sortBy
         else:
             self.sortBy = key
-        for cardsList in self.cardsList.sectionCardStacks.values():
-            if not cardsList:
-                continue
-            if key == "prices":
-                cardsList.sort(
-                    key=lambda x: float(
-                        utils.getFromDict(
-                            x[1], [key, constants.CURRENCY[0]], 0
-                        ) if utils.getFromDict(
-                            x[1], [key, constants.CURRENCY[0]], 0
-                        ) is not None else 0
-                    )
-                )
-            elif key is not None:
-                cardsList.sort(key=lambda x: x[1][key])
-        self.cardsList.renderSections()
+        self.cardsList.sortSections(key)
 
     def on_sortByType(self):
         self.sort("type_line")
