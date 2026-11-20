@@ -346,13 +346,20 @@ class InfoWidget(QtWidgets.QWidget):
         self.formatLegalityWidget = FormatLegalityWidget(self)
         self.legalityTabIndex = self.tabs.addTab(self.formatLegalityWidget, "Legality")
         self._lastValues = None
+        self._fittingTabHeight = False
+        self._fitTabTimer = QtCore.QTimer(self)
+        self._fitTabTimer.setSingleShot(True)
+        self._fitTabTimer.setInterval(80)
+        self._fitTabTimer.timeout.connect(self._fitTabHeight)
         self.tabs.currentChanged.connect(self._onTabChanged)
         self.applyTheme()
 
     def _onTabChanged(self, _index: int):
-        QtCore.QTimer.singleShot(0, self._fitTabHeight)
+        self._fitTabTimer.start(0)
 
     def _fitTabHeight(self):
+        if self._fittingTabHeight:
+            return
         current = self.tabs.currentWidget()
         if current is None:
             return
@@ -360,12 +367,19 @@ class InfoWidget(QtWidgets.QWidget):
         layout = current.layout()
         if layout is not None:
             height = max(height, layout.sizeHint().height())
-        self.tabs.setFixedHeight(max(height, 120))
-        self.updateGeometry()
+        height = max(height, 120)
+        if self.tabs.height() == height:
+            return
+        self._fittingTabHeight = True
+        try:
+            self.tabs.setFixedHeight(height)
+            self.updateGeometry()
+        finally:
+            self._fittingTabHeight = False
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._fitTabHeight()
+        self._fitTabTimer.start()
 
     def applyTheme(self):
         for chart in (self.manaChart, self.colorPieChart, self.typePieChart):

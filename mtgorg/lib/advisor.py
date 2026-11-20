@@ -68,6 +68,10 @@ CURVE_TARGETS = {
 }
 
 
+def _qtyLabel(quantity: int, label: str) -> str:
+    return f"{quantity} {label}{'' if quantity == 1 else 's'}"
+
+
 def _finding(severity: str, text: str, source: str = SOURCE,
              sourceLabel: str = SOURCE_LABEL) -> dict:
     return {"severity": severity, "text": text, "source": source, "sourceLabel": sourceLabel}
@@ -89,6 +93,33 @@ def _landCount(entries: list, cardLookup) -> int:
 def _isTappedLand(card: dict) -> bool:
     text = str(card.get("oracle_text", "")).lower()
     return "enters the battlefield tapped" in text or "enters tapped" in text
+
+
+def _manaSourceGroups(entries: list, cardLookup) -> dict[str, list[tuple[int, str]]]:
+    groups = {"signets": [], "talismans": [], "solRing": [], "otherRocks": [], "dorks": []}
+    if not oracletags.hasCache():
+        return groups
+    rockTags = {"mana rock", "utility mana rock", "mana rock with set's mechanic"}
+    dorkTags = {"mana dork", "mana dork egg"}
+    for qty, cardId in entries:
+        card = cardLookup(cardId)
+        if card is None:
+            continue
+        name = str(card.get("name"))
+        lower = name.lower()
+        cardTags = set(oracletags.getCachedTags(card.get("oracle_id")))
+        if cardTags & rockTags:
+            if "signet" in lower:
+                groups["signets"].append((qty, name))
+            elif "talisman" in lower:
+                groups["talismans"].append((qty, name))
+            elif lower == "sol ring":
+                groups["solRing"].append((qty, name))
+            else:
+                groups["otherRocks"].append((qty, name))
+        elif cardTags & dorkTags:
+            groups["dorks"].append((qty, name))
+    return groups
 
 
 def _landSources(entries: list, cardLookup) -> tuple[dict[str, int], dict[str, int]]:
@@ -140,6 +171,42 @@ def _sourceRequirement(card: dict) -> dict[str, tuple[int, str, bool]]:
     return required
 
 
+def _combinedRequirement(card: dict) -> tuple[int, str, set[str]] | None:
+    cost = str(card.get("mana_cost") or "")
+    if not cost or "//" in cost:
+        return None
+    pips: dict[str, int] = {}
+    generic = 0
+    for token in re.findall(r"\{([^}]+)\}", cost):
+        if token in "WUBRG":
+            pips[token] = pips.get(token, 0) + 1
+        elif token.isdigit():
+            generic += int(token)
+        elif token in ("X", "Y", "Z", "S", "C"):
+            continue
+        else:
+            return None
+    if len(pips) < 2:
+        return None
+    totalPips = sum(pips.values())
+    key = f"{generic}{'C' * totalPips}" if generic or totalPips > 1 else "C"
+    required = SOURCE_REQUIREMENTS_99.get(key)
+    if required is None:
+        return None
+    return required + 1, cost, set(pips)
+
+
+def _combinedSourceCount(entries: list, cardLookup, colors: set[str]) -> int:
+    count = 0
+    for qty, cardId in entries:
+        card = cardLookup(cardId)
+        if card is None or "Land" not in str(card.get("type_line", "")):
+            continue
+        if set(card.get("produced_mana") or []) & colors:
+            count += qty
+    return count
+
+
 def analyzeCommander(deck: dict, cardLookup) -> list[dict]:
     """Return sourced Advisor findings for a Commander deck."""
     if deck.get("format") != "commander":
@@ -156,6 +223,7 @@ def analyzeCommander(deck: dict, cardLookup) -> list[dict]:
     commanderCards = [lookup(entry[1]) for entry in _commanderCards(deck)]
     commanderCards = [card for card in commanderCards if card is not None]
     lands = _landCount(mainEntries, lookup)
+    manaGroups = _manaSourceGroups(mainEntries, lookup)
     findings.append(_finding(
         "info",
         f"Land count: {lands}. The model's target depends on your commander's mana value.",
@@ -175,10 +243,20 @@ def analyzeCommander(deck: dict, cardLookup) -> list[dict]:
             mv = int(mv)
             target = LAND_TARGETS[mv]
             rocks = "Sol Ring + 0 Signets" if target["rocks"] == 0 else f"Sol Ring + {target['rocks']} Signets"
+            if oracletags.hasCache():
+                actual = (
+                    f"You currently run {_qtyLabel(lands, 'land')}, "
+                    f"{_qtyLabel(sum(qty for qty, _name in manaGroups['signets']), 'Signet')}, "
+                    f"{_qtyLabel(sum(qty for qty, _name in manaGroups['talismans']), 'Talisman')}, "
+                    f"{_qtyLabel(sum(qty for qty, _name in manaGroups['otherRocks']), 'other rock')}, "
+                    f"{_qtyLabel(sum(qty for qty, _name in manaGroups['solRing']), 'Sol Ring')}."
+                )
+            else:
+                actual = f"You currently run {lands} lands."
             findings.append(_finding(
                 "info" if lands >= target["lands"] else "warning",
                 f"Commander with mana value {mv}: model target is {target['lands']} lands with {rocks}. "
-                f"You currently run {lands} lands.",
+                f"{actual}",
             ))
             targetCurve = "/".join(str(value) for value in CURVE_TARGETS[mv])
             findings.append(_finding(
@@ -242,6 +320,32 @@ def analyzeCommander(deck: dict, cardLookup) -> list[dict]:
                 SOURCE_SOURCES_LABEL,
             ) | {"details": details})
 
+    combined: dict[tuple[str, ...], list[tuple[int, str, str]]] = {}
+    for card in spellCards:
+        requirement = _combinedRequirement(card)
+        if requirement is None:
+            continue
+        required, cost, colors = requirement
+        key = tuple(sorted(colors))
+        combined.setdefault(key, []).append((required, str(card.get("name")), cost))
+    combinedRows = []
+    combinedShort = False
+    for colors, entries in sorted(combined.items()):
+        entries.sort(key=lambda item: (-item[0], item[1]))
+        required, _, _ = entries[0]
+        available = _combinedSourceCount(mainEntries, lookup, set(colors))
+        if available < required:
+            combinedShort = True
+        detail = " · ".join(f"{name} {cost} — {value}" for value, name, cost in entries[:5])
+        combinedRows.append(f"{''.join(colors)}: {available} / {required} ({detail})")
+    if combinedRows:
+        findings.append(_finding(
+            "warning" if combinedShort else "info",
+            "Combined-colour sources:",
+            SOURCE_SOURCES,
+            SOURCE_SOURCES_LABEL,
+        ) | {"details": combinedRows})
+
     tapped = 0
     for qty, cardId in mainEntries:
         card = lookup(cardId)
@@ -256,6 +360,30 @@ def analyzeCommander(deck: dict, cardLookup) -> list[dict]:
         ))
 
     if oracletags.hasCache():
+        if any(manaGroups.values()):
+            rows = []
+            for label, entries in (
+                ("Signets", manaGroups["signets"]),
+                ("Talismans", manaGroups["talismans"]),
+                ("Sol Ring", manaGroups["solRing"]),
+                ("Other mana rocks", manaGroups["otherRocks"]),
+                ("Mana dorks", manaGroups["dorks"]),
+            ):
+                names = [name for _qty, name in entries]
+                quantity = sum(qty for qty, _name in entries)
+                extra = f" +{len(names) - 3} more" if len(names) > 3 else ""
+                rows.append({
+                    "category": label,
+                    "count": quantity,
+                    "cards": ", ".join(names[:3]) + extra if names else "—",
+                })
+            findings.append(_finding(
+                "info",
+                "Nonland mana sources:",
+                SOURCE_TAGS,
+                SOURCE_TAGS_LABEL,
+            ) | {"coverage": rows})
+
         coverage = {}
         for category, tags in TAG_CATEGORIES.items():
             names = []
