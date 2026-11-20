@@ -29,7 +29,7 @@ Here are the lists of things I'd like to have included in this project :
 |Themes| Fusion and Material follow system light/dark; System (KDE) on KDE. Switching applies immediately |
 |First launch| Setup wizard for online/bulk mode, appearance, and update checks |
 |Update checks| Checks GitHub Releases once per day and links to the download page |
-|Commander advisor| Land-count, mana-curve, and coloured-source guidance based on Frank Karsten's published analyses |
+|Commander advisor| Land target, mana curve, per-colour and combined sources, top demanding cards, tapped lands, rocks/Signets, and functional oracle-tag coverage, with source links |
 |Oracle tags| Card viewer shows Scryfall Tagger oracle tags for the selected card |
 |Offline mode| Done: opt-in Scryfall bulk data (card data offline, images online)|
 
@@ -41,8 +41,6 @@ Here are the lists of things I'd like to have included in this project :
 - Keyrune has no icon for some promo/art-series sets; those show the set code instead
 - On KDE, the native Breeze widget style needs a PySide6 build matching the system Qt version; otherwise the KDE option falls back to Fusion with the KDE palette
 - In bulk mode, art/oracle tag filters fall back to online Scryfall, and the Include Extras checkbox is disabled
-- Add tooltip to view card translations
-- Show english name when browsing other languages
 
 ## Requirements
 
@@ -61,10 +59,12 @@ your platform; no Python installation is needed.
 
 Clone this repo, then when in the folder, install dependencies
 
-- windows (with system python or venv activated)
-  - > py -m pip install -r requirements.txt
-- linux/mac (with a venv already set)
-  - >venv/bin/python -m pip install -r requirements.txt
+- windows
+  - > py -m venv venv
+  - > venv\Scripts\python -m pip install -r requirements.txt
+- linux/mac
+  - > python3 -m venv venv
+  - > venv/bin/python -m pip install -r requirements.txt
 
 For development and tests, use `requirements-dev.txt` instead.
 
@@ -87,6 +87,10 @@ more cards match, a notice above the results tells you the list was truncated.
 **Settings > Appearance** switches between Fusion, System (KDE) on KDE,
 and Material. Fusion and Material follow the system light/dark preference; KDE
 uses its own palette. **Settings > Updates** controls automatic release checks.
+
+The Commander Advisor is informational. Its thresholds and source requirements
+are cited from Frank Karsten's published analyses; functional coverage counts
+come from Scryfall Tagger oracle tags and do not invent numeric targets.
 
 ## Deck sections
 
