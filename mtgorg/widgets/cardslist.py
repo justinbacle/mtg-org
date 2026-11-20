@@ -1,7 +1,10 @@
 from PySide6 import QtWidgets, QtCore, QtCharts, QtGui
 
+import html
+import re
+
 from widgets.cardlistwidget import CardStackListWidget
-from lib import utils, qt
+from lib import advisor, scryfall, utils, qt
 
 import connector
 import constants
@@ -57,6 +60,11 @@ class CardsList(QtWidgets.QWidget):
 
         self.cardsListLayout.addWidget(self.cardsListButtonBox)
 
+        self.deckLoadingLabel = QtWidgets.QLabel("Loading deck...")
+        self.deckLoadingLabel.setStyleSheet(f"color: {qt.mutedTextColor().name()};")
+        self.deckLoadingLabel.setVisible(False)
+        self.cardsListLayout.addWidget(self.deckLoadingLabel)
+
         self.deckLoadingBar = QtWidgets.QProgressBar()
         self.deckLoadingBar.setRange(0, 1)
         self.deckLoadingBar.setValue(0)
@@ -64,11 +72,15 @@ class CardsList(QtWidgets.QWidget):
         self.deckLoadingBar.setTextVisible(False)
         self.deckLoadingBar.setVisible(False)
         self.cardsListLayout.addWidget(self.deckLoadingBar)
+        self._deckLoadingTimer = QtCore.QTimer(self)
+        self._deckLoadingTimer.setInterval(70)
+        self._deckLoadingTimer.timeout.connect(self._tickDeckLoading)
 
         self.cardsList = CardStackListWidget(parent=self)
         self.cardsList.itemSelectionChanged.connect(self.on_dbSelectChanged)
         self.cardsList.itemChanged.connect(self.cardsList.on_itemChanged)
         self.cardsList.cardListChanged.connect(self.refreshValidation)
+        self.cardsList.sectionsLoaded.connect(self.onCardsLoaded)
         self.cardsListLayout.addWidget(self.cardsList, 1)
         self.splitter.addWidget(self.cardsListWidget)
 
@@ -102,16 +114,46 @@ class CardsList(QtWidgets.QWidget):
             allowed = {"main"}
             sections = {"main": cardStack["cardList"]}
         showSectionHeaders = stackType == "deck"
+        self.deckLoadingLabel.setVisible(True)
+        self.deckLoadingBar.setRange(0, 100)
+        self.deckLoadingBar.setValue(0)
+        self.deckLoadingBar.setVisible(True)
+        self._deckLoadingTimer.start()
+        QtWidgets.QApplication.processEvents()
         self.cardsList.setSections(sections, allowed, showSectionHeaders=showSectionHeaders)
-        self.refreshValidation()
+
+    def _tickDeckLoading(self):
+        self.deckLoadingBar.setValue((self.deckLoadingBar.value() + 7) % 100)
+
+    def _stopDeckLoading(self):
+        self._deckLoadingTimer.stop()
+        self.deckLoadingLabel.setVisible(False)
+        self.deckLoadingBar.setVisible(False)
+
+    def onCardsLoaded(self):
+        try:
+            self.refreshValidation()
+        finally:
+            self._stopDeckLoading()
+
+    def _loadedCardLookup(self, cardId: str):
+        for entries in self.cardsList.sectionCardStacks.values():
+            for _qty, card in entries:
+                if card.get("id") == cardId:
+                    return card
+        return scryfall.getCardById(cardId)
 
     def refreshValidation(self):
         if self.stackType == "deck" and self.stackName is not None:
             deck = connector.getDeck(self.stackName)
             if deck is not None:
-                self.infoPanel.setValidationDetails(deckrules.validateDeckDetails(deck))
+                self.infoPanel.setValidationDetails(deckrules.validateDeckDetails(deck, self._loadedCardLookup))
+                self.infoPanel.setAdvisorFindings(advisor.analyzeCommander(deck, self._loadedCardLookup))
+                self.infoPanel.setAdvisorCurveTarget(advisor.commanderCurveTarget(deck, self._loadedCardLookup))
                 return
         self.infoPanel.setValidationDetails(None)
+        self.infoPanel.setAdvisorFindings([])
+        self.infoPanel.setAdvisorCurveTarget(None)
 
     def replaceCardInAnySection(self, oldCardId: str, newCardId: str):
         if self.stackName is None:
@@ -202,6 +244,18 @@ class DeckStatsWidget(QtWidgets.QWidget):
         )
 
 
+class DynamicTabWidget(QtWidgets.QTabWidget):
+    """Size the tab widget to its current page, not the tallest page."""
+
+    def sizeHint(self):
+        current = self.currentWidget()
+        return current.sizeHint() if current is not None else super().sizeHint()
+
+    def minimumSizeHint(self):
+        current = self.currentWidget()
+        return current.minimumSizeHint() if current is not None else super().minimumSizeHint()
+
+
 class InfoWidget(QtWidgets.QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -213,17 +267,26 @@ class InfoWidget(QtWidgets.QWidget):
         self.deckStatsWidget = DeckStatsWidget()
         self.mainLayout.addWidget(self.deckStatsWidget)
 
-        # Format legality
-        self.formatLegalityWidget = FormatLegalityWidget(self)
-        self.mainLayout.addWidget(self.formatLegalityWidget)
+        self.tabs = DynamicTabWidget()
+        self.tabs.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
+        self.mainLayout.addWidget(self.tabs)
+        self.mainLayout.addStretch(1)
+        self.statsTab = QtWidgets.QWidget()
+        self.statsLayout = QtWidgets.QVBoxLayout(self.statsTab)
+        self.statsLayout.setContentsMargins(0, 0, 0, 0)
+        self.tabs.addTab(self.statsTab, "Stats")
 
         # Mana cost
         # Data series
         self.manaBarSeries = QtCharts.QBarSeries()
-        self.manaDataSet = QtCharts.QBarSet("Mana Cost")
+        self.manaDataSet = QtCharts.QBarSet("Deck")
         self.manaDataSet.append([0, 0, 0, 0, 0, 0, 0])
+        self.recommendedDataSet = QtCharts.QBarSet("Recommended")
+        self.recommendedDataSet.append([0, 0, 0, 0, 0, 0, 0])
+        self.recommendedDataSet.setColor(QtGui.QColor(130, 136, 145, 180))
         self.manaBarSeries.append(self.manaDataSet)
-        self.manaBarSeries.append(self.manaDataSet)
+        self.manaBarSeries.append(self.recommendedDataSet)
+        self._recommendedValues = [0] * 7
         self.manaChart = QtCharts.QChart()
         self.manaChart.setTitle("Mana repartition")
         self.manaChart.addSeries(self.manaBarSeries)
@@ -244,7 +307,7 @@ class InfoWidget(QtWidgets.QWidget):
         self.manaChartView = QtCharts.QChartView(self.manaChart)
         self.manaChartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         self.manaChartView.setMinimumSize(GRAPH_MIN_SIZE[0], GRAPH_MIN_SIZE[1])
-        self.mainLayout.addWidget(self.manaChartView)
+        self.statsLayout.addWidget(self.manaChartView)
 
         # Color repartition
         self.colorPieChart = QtCharts.QChart()
@@ -261,7 +324,7 @@ class InfoWidget(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.MinimumExpanding,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
-        self.mainLayout.addWidget(self.colorPieChartView)
+        self.statsLayout.addWidget(self.colorPieChartView)
 
         # Card type repartition
         self.typePieChart = QtCharts.QChart()
@@ -274,9 +337,35 @@ class InfoWidget(QtWidgets.QWidget):
         self.typePieChartView = QtCharts.QChartView(self.typePieChart)
         self.typePieChartView.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         self.typePieChartView.setMinimumSize(GRAPH_MIN_SIZE[0], int(GRAPH_MIN_SIZE[1] * 1.2))
-        self.mainLayout.addWidget(self.typePieChartView)
+        self.statsLayout.addWidget(self.typePieChartView)
+
+        self.advisorWidget = AdvisorWidget()
+        self.advisorTabIndex = self.tabs.addTab(self.advisorWidget, "Advisor")
+        self.tabs.setTabVisible(self.advisorTabIndex, False)
+
+        self.formatLegalityWidget = FormatLegalityWidget(self)
+        self.legalityTabIndex = self.tabs.addTab(self.formatLegalityWidget, "Legality")
         self._lastValues = None
+        self.tabs.currentChanged.connect(self._onTabChanged)
         self.applyTheme()
+
+    def _onTabChanged(self, _index: int):
+        QtCore.QTimer.singleShot(0, self._fitTabHeight)
+
+    def _fitTabHeight(self):
+        current = self.tabs.currentWidget()
+        if current is None:
+            return
+        height = current.sizeHint().height()
+        layout = current.layout()
+        if layout is not None:
+            height = max(height, layout.sizeHint().height())
+        self.tabs.setFixedHeight(max(height, 120))
+        self.updateGeometry()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._fitTabHeight()
 
     def applyTheme(self):
         for chart in (self.manaChart, self.colorPieChart, self.typePieChart):
@@ -288,6 +377,30 @@ class InfoWidget(QtWidgets.QWidget):
 
     def setValidationDetails(self, details: dict | None):
         self.formatLegalityWidget.setDetails(details)
+        self.tabs.setTabVisible(self.legalityTabIndex, details is not None)
+        if details is None and self.tabs.currentIndex() == self.legalityTabIndex:
+            self.tabs.setCurrentIndex(0)
+
+    def setAdvisorFindings(self, findings: list[dict]):
+        self.advisorWidget.setFindings(findings)
+        self.tabs.setTabText(self.advisorTabIndex, f"Advisor ({len(findings)})")
+        self.tabs.setTabVisible(self.advisorTabIndex, bool(findings))
+        if not findings and self.tabs.currentIndex() == self.advisorTabIndex:
+            self.tabs.setCurrentIndex(0)
+
+    def setAdvisorCurveTarget(self, target: list[int] | None):
+        if target:
+            values = [0, *target[:5], target[5]]
+            self.manaChart.legend().setVisible(True)
+            self.manaChart.legend().setAlignment(QtCore.Qt.AlignmentFlag.AlignBottom)
+        else:
+            values = [0] * 7
+            self.manaChart.legend().setVisible(False)
+        self._recommendedValues = values
+        for index, value in enumerate(values):
+            self.recommendedDataSet.replace(index, value)
+        if self._lastValues is not None:
+            self.manaAxisY.setMax(max(self._lastValues["manaValues"] + values))
 
     def updateValues(self, updateDict: dict):
         self._lastValues = updateDict
@@ -297,7 +410,7 @@ class InfoWidget(QtWidgets.QWidget):
         # Mana values graph
         for j, value in enumerate(updateDict["manaValues"]):
             self.manaDataSet.replace(j, value)
-        self.manaAxisY.setMax(max(updateDict["manaValues"]))
+        self.manaAxisY.setMax(max(updateDict["manaValues"] + self._recommendedValues))
         # colorPie
         self.colorPieSeries.clear()
         for color, qty in updateDict["colorPie"].items():
@@ -317,6 +430,80 @@ class InfoWidget(QtWidgets.QWidget):
             _slice.setLabelVisible()
             _slice.setLabelColor(labelColor)
             self.typePieSeries.append(_slice)
+
+
+class AdvisorWidget(QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.mainLayout = QtWidgets.QVBoxLayout(self)
+        self.mainLayout.setContentsMargins(8, 8, 8, 8)
+        self.mainLayout.setSpacing(6)
+        self.findingsLayout = QtWidgets.QVBoxLayout()
+        self.findingsLayout.setSpacing(4)
+        self.mainLayout.addLayout(self.findingsLayout)
+        self.mainLayout.addStretch()
+
+    def clear(self):
+        while self.findingsLayout.count():
+            item = self.findingsLayout.takeAt(0)
+            if item.widget() is not None:
+                widget = item.widget()
+                widget.hide()
+                widget.setParent(None)
+                widget.deleteLater()
+
+    def _renderManaText(self, text: str) -> str:
+        parts = re.split(r"(\{[^}]+\}(?:\s*\{[^}]+\})*)", text)
+        rendered = []
+        for part in parts:
+            if part.startswith("{"):
+                rendered.append(
+                    f"<span style=\"font-family: 'Proxyglyph'; font-size: 14pt;\">"
+                    f"{html.escape(utils.setManaText(part))}</span>"
+                )
+            elif part:
+                rendered.append(html.escape(part))
+        return "".join(rendered)
+
+    def _formatFinding(self, finding: dict) -> str:
+        labels = {"warning": "Warning", "tip": "Tip", "info": "Info"}
+        text = f"<b>{labels.get(finding['severity'], 'Info')}:</b> {self._renderManaText(finding['text'])}"
+        for detail in finding.get("details", []):
+            text += f"<br>&nbsp;&nbsp;{self._renderManaText(detail)}"
+        coverage = finding.get("coverage", [])
+        if coverage:
+            text += "<br><table cellspacing='0' cellpadding='2'>"
+            for row in coverage:
+                text += (
+                    "<tr>"
+                    f"<td><b>{html.escape(row['category'])}</b></td>"
+                    f"<td align='right'>&nbsp;{row['count']}</td>"
+                    f"<td>&nbsp;&nbsp;{html.escape(row['cards'])}</td>"
+                    "</tr>"
+                )
+            text += "</table>"
+        text += f"<br><a href=\"{finding['source']}\">({finding['sourceLabel']})</a>"
+        return text
+
+    def setFindings(self, findings: list[dict]):
+        self.clear()
+        if not findings:
+            return
+        for finding in findings:
+            card = QtWidgets.QFrame()
+            card.setObjectName("advisorCard")
+            card.setStyleSheet(
+                "#advisorCard { background-color: palette(base); "
+                "border: 1px solid palette(mid); border-radius: 6px; }"
+            )
+            cardLayout = QtWidgets.QVBoxLayout(card)
+            cardLayout.setContentsMargins(10, 8, 10, 8)
+            label = QtWidgets.QLabel(self._formatFinding(finding))
+            label.setWordWrap(True)
+            label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
+            label.setOpenExternalLinks(True)
+            cardLayout.addWidget(label)
+            self.findingsLayout.addWidget(card)
 
 
 class FormatLegalityWidget(QtWidgets.QWidget):
@@ -385,7 +572,6 @@ class FormatLegalityWidget(QtWidgets.QWidget):
         self.table.setRowCount(0)
         if details is None:
             self.bracketLabel.setVisible(False)
-            self.setVisible(False)
             return
         bracket = details.get("bracket")
         if bracket is None:
@@ -422,5 +608,4 @@ class FormatLegalityWidget(QtWidgets.QWidget):
                 self._addRow("Deck", "✗", message, False)
             for issue in cards:
                 self._addRow(issue["card"], issue["status"], issue["reason"], False)
-        self.setVisible(True)
         self.table.resizeRowsToContents()

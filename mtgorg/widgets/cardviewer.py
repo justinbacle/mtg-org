@@ -5,9 +5,18 @@ import urllib
 import urllib.request
 import os
 
-from lib import deckrules, scryfall, utils, qt
+from lib import deckrules, oracletags, scryfall, utils, qt
 import connector
 import constants
+
+
+class ClickableLabel(QtWidgets.QLabel):
+    clicked = QtCore.Signal()
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
 
 
 class CardDisplayWorker(QtCore.QObject):
@@ -33,6 +42,7 @@ class CardDisplayWorker(QtCore.QObject):
             setIconSvgData = qt.fileData(scryfall.getSetSvg(card["set_id"]))
 
             printings = scryfall.getCardPrintings(card["id"])
+            oracleTags = oracletags.getTags(card.get("oracle_id"))
 
             self.dataReady.emit({
                 "card": card,
@@ -40,6 +50,7 @@ class CardDisplayWorker(QtCore.QObject):
                 "forceRefresh": self._forceRefresh,
                 "requestId": self._requestId,
                 "setIconSvgData": setIconSvgData,
+                "oracleTags": oracleTags,
                 "printings": printings,
             })
         except Exception:
@@ -158,6 +169,17 @@ class CardViewer(QtWidgets.QWidget):
         self.cardOracleTextLabel.setReadOnly(True)
         self.cardOracleTextLabel.setMaximumHeight(160)
         self.mainLayout.addWidget(self.cardOracleTextLabel, line.postinc(), 0, 1, 2)
+
+        self.oracleTagsLabel = ClickableLabel()
+        self.oracleTagsLabel.setWordWrap(True)
+        self.oracleTagsLabel.setStyleSheet(f"color: {qt.mutedTextColor().name()}; font-size: 9pt;")
+        self.oracleTagsLabel.setMaximumHeight(40)
+        self.oracleTagsLabel.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.oracleTagsLabel.setVisible(False)
+        self.oracleTagsLabel.clicked.connect(self.on_oracleTagsClicked)
+        self._oracleTags = []
+        self._oracleTagsExpanded = False
+        self.mainLayout.addWidget(self.oracleTagsLabel, line.postinc(), 0, 1, 2)
 
         # Card Link
         self.scryfallUriLabel = QtWidgets.QLabel("uri")
@@ -394,6 +416,10 @@ class CardViewer(QtWidgets.QWidget):
             text += self.card["card_faces"][cardFace]["oracle_text"] + "\n"
         self.cardOracleTextLabel.setText(text)
 
+        self._oracleTags = data.get("oracleTags") or []
+        self._oracleTagsExpanded = False
+        self._updateOracleTags()
+
         try:
             self.scryfallUriLabel.setText(f"<a href=\"{self.card['related_uris']['gatherer']}\">Gatherer Link</a>")
         except KeyError:
@@ -415,6 +441,26 @@ class CardViewer(QtWidgets.QWidget):
             self.applyToDeckPB.setVisible(True)
         else:
             self.applyToDeckPB.setVisible(False)
+
+    def on_oracleTagsClicked(self):
+        if len(self._oracleTags) > 4:
+            self._oracleTagsExpanded = not self._oracleTagsExpanded
+            self._updateOracleTags()
+
+    def _updateOracleTags(self):
+        tags = self._oracleTags
+        if not tags:
+            self.oracleTagsLabel.setVisible(False)
+            return
+        extra = tags[4:]
+        expandText = f" +{len(extra)} more (click to show)"
+        collapseUseful = bool(extra) and len(", ".join(extra)) > len(expandText)
+        shown = tags if self._oracleTagsExpanded or not collapseUseful else tags[:4]
+        suffix = "" if self._oracleTagsExpanded or not collapseUseful else expandText
+        self.oracleTagsLabel.setText("Oracle tags: " + ", ".join(shown) + suffix)
+        self.oracleTagsLabel.setToolTip("Oracle tags: " + ", ".join(tags))
+        self.oracleTagsLabel.setMaximumHeight(180 if self._oracleTagsExpanded else 40)
+        self.oracleTagsLabel.setVisible(True)
 
     def _on_display_failed(self, error: str):
         logging.error("Failed to display card:\n%s", error)

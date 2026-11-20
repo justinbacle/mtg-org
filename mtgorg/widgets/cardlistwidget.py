@@ -22,6 +22,15 @@ class CardLoaderWorker(QtCore.QObject):
 
 
 COLUMNS = ["name", "mana_cost", "type_line", "set", "rarity", "price"]
+SUPERTYPES = {"Basic", "Legendary", "Snow", "World", "Ongoing", "Host", "Elite"}
+
+
+def cardTypeCategory(typeLine: str) -> str:
+    prefix = typeLine.split("—")[0].strip()
+    words = [word for word in prefix.split() if word not in SUPERTYPES]
+    return " ".join(words) or prefix
+
+
 USER_COLUMNS = ["qty", "name", "mana_cost", "type_line", "set", "rarity", "price"]
 
 SECTION_ORDER = ("commander", "companion", "main", "sideboard")
@@ -215,6 +224,7 @@ class SectionsLoaderWorker(QtCore.QObject):
 
 class CardStackListWidget(CardSearchListWidget):
     cardListChanged = QtCore.Signal()
+    sectionsLoaded = QtCore.Signal()
 
     # similar to the cardListWidget but whith specific data about qties, user comments, etc...
     def __init__(self, parent=None, columns=USER_COLUMNS, updateStats: bool = True) -> None:
@@ -310,10 +320,6 @@ class CardStackListWidget(CardSearchListWidget):
         self.showSectionHeaders = showSectionHeaders
         self._loadRequestId += 1
         requestId = self._loadRequestId
-        _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
-        if _loadingBar is not None:
-            _loadingBar.setRange(0, 0)
-            _loadingBar.setVisible(True)
 
         self._loaderThread = QtCore.QThread(self)
         self._loaderWorker = SectionsLoaderWorker(requestId, sections)
@@ -335,11 +341,9 @@ class CardStackListWidget(CardSearchListWidget):
         self.cardStack = sections.get("main", [])
         self._sortSectionLists()
         self.renderSections()
-        _loadingBar = qt.findAttrInParents(self, 'deckLoadingBar')
-        if _loadingBar is not None:
-            _loadingBar.setVisible(False)
         if self.updateStats:
             self._updateStatsPanel(self.cardStack)
+        self.sectionsLoaded.emit()
 
     def _sortSectionLists(self):
         if self.sortKey is None:
@@ -494,6 +498,7 @@ class CardStackListWidget(CardSearchListWidget):
     def updateCardListInfos(self):
         if self.updateStats:
             self._updateStatsPanel(self.cardStack)
+        self.sectionsLoaded.emit()
         self.resizeColumnsToContents()
 
     def _updateStatsPanel(self, cardsList: list) -> None:
@@ -535,10 +540,7 @@ class CardStackListWidget(CardSearchListWidget):
                 totalPrice += qty * float(cardPrice)
             # typePie
             if isNotToken:
-                if "—" in card["type_line"]:
-                    cardType = card["type_line"].split("—")[0].rstrip()
-                else:
-                    cardType = card["type_line"]
+                cardType = cardTypeCategory(card["type_line"])
                 if cardType in typePie.keys():
                     typePie[cardType] += qty
                 else:

@@ -81,6 +81,10 @@
 - First-launch onboarding covers card-data mode, appearance, and update checks.
 - Automatic update checks use GitHub Releases once per day, with links to the
   release page and a per-version skip option.
+- Commander Advisor shows sourced land-count, mana-curve, and coloured-source
+  findings from Frank Karsten's published analyses.
+- Type repartition ignores supertypes, and the card viewer shows Scryfall Tagger
+  oracle tags.
 
 ## Backlog
 

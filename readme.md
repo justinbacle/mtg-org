@@ -27,6 +27,10 @@ Here are the lists of things I'd like to have included in this project :
 |Synchronization / Connection to other DBs|Local TinyDB for now, can be synchronized with a "drive" solution|
 |Multiplatform Windows/Linux/Mac| Windows, Linux & Mac OK, with automated release builds |
 |Themes| Fusion and Material follow system light/dark; System (KDE) on KDE. Switching applies immediately |
+|First launch| Setup wizard for online/bulk mode, appearance, and update checks |
+|Update checks| Checks GitHub Releases once per day and links to the download page |
+|Commander advisor| Land-count, mana-curve, and coloured-source guidance based on Frank Karsten's published analyses |
+|Oracle tags| Card viewer shows Scryfall Tagger oracle tags for the selected card |
 |Offline mode| Done: opt-in Scryfall bulk data (card data offline, images online)|
 
 ## Known issues
@@ -124,7 +128,8 @@ exact printing you want.
     - `sets_icons/`: set icon SVGs
     - `infos/sets.json`: set metadata
     - `infos/data_version.json`: cache generation and set fingerprint
-    - `scryfall_bulk/`: downloaded bulk files and their SQLite indexes
+    - `infos/oracle_tags.json`: cached Scryfall oracle-tag index
+    - `scryfall_bulk/`: downloaded bulk files, oracle tags, and SQLite indexes
   - Use **Settings > Scryfall > Clear cache** to clean everything except your decks, collections, and downloaded bulk files. See `DATA_FRESHNESS.md` for refresh details.
 
 - Search/Import is slow
@@ -138,6 +143,7 @@ exact printing you want.
 - MrTeferi : [Proxyshop](https://github.com/MrTeferi/Proxyshop) : proxygliyph font mana symbols (Mozilla public license 2.0)
 - qt_material : Material themes for Qt applications
 - NandaScott : [Scrython](https://github.com/NandaScott/Scrython) : Python wrapper for scryfall requests (MIT License)
+- Frank Karsten : [Commander mana curve and land-count analysis](https://www.tcgplayer.com/content/article/What-s-an-Optimal-Mana-Curve-and-Land-Ramp-Count-for-Commander/e22caad1-b04b-4f8a-951b-a41e9f08da14/) and [coloured-source analysis](https://www.tcgplayer.com/content/article/How-Many-Sources-Do-You-Need-to-Consistently-Cast-Your-Spells-A-2022-Update/dc23a7d2-0a16-4c0b-ad36-586fcca03ad8/)
 - WotC, card creators, artists, and MTG community for everything MTG.
 
 ## Licence

@@ -2,7 +2,7 @@ import json
 
 import constants
 from PySide6 import QtCore, QtGui, QtWidgets
-from widgets.cardlistwidget import COLUMN_MAX_WIDTHS, CardSearchListWidget, CardStackListWidget
+from widgets.cardlistwidget import COLUMN_MAX_WIDTHS, CardSearchListWidget, CardStackListWidget, cardTypeCategory
 
 
 def makeWidget(qtApp):
@@ -234,3 +234,9 @@ def test_invalid_qty_edit_is_reverted(qtApp):
     widget.on_itemChanged(item)
 
     assert item.text() == "2"
+
+
+def test_card_type_category_ignores_supertypes():
+    assert cardTypeCategory("Legendary Creature — Elder Sphinx") == "Creature"
+    assert cardTypeCategory("Basic Land — Island") == "Land"
+    assert cardTypeCategory("Legendary Artifact Creature — Golem") == "Artifact Creature"

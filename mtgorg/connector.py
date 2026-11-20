@@ -465,6 +465,7 @@ def clearCache() -> dict:
     targets = [
         constants.DEFAULT_CACHE_DB_LOCATION,
         constants.DEFAULT_INFOS_LOCATION / "sets.json",
+        constants.DEFAULT_INFOS_LOCATION / "oracle_tags.json",
         cachestate.statePath(),
     ]
     for folder in (constants.DEFAULT_CARDIMAGES_LOCATION, constants.DEFAULT_SET_ICONS_LOCATION):
@@ -472,6 +473,7 @@ def clearCache() -> dict:
             targets.extend(path for path in folder.iterdir() if path.is_file())
     if constants.DEFAULT_BULK_FOLDER_LOCATION.is_dir():
         targets.extend(constants.DEFAULT_BULK_FOLDER_LOCATION.glob("*-cache.sqlite3*"))
+        targets.extend(constants.DEFAULT_BULK_FOLDER_LOCATION.glob("oracle-tags*.jsonl.gz*"))
 
     for target in targets:
         if not target.is_file():

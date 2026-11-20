@@ -275,7 +275,8 @@ def analyzeCommanderBracket(deck: dict, cardCache: dict | None = None) -> dict |
     }
 
 
-def validateDeckDetails(deck: dict) -> dict:
+def validateDeckDetails(deck: dict, cardLookup=None) -> dict:
+    cardLookup = cardLookup or scryfall.getCardById
     formatKey = deck.get("format", constants.DEFAULT_DECK_FORMAT)
     info = getFormatInfo(formatKey)
     main = deck.get("cardList") or []
@@ -289,7 +290,7 @@ def validateDeckDetails(deck: dict) -> dict:
 
     def getCard(cardId: str) -> dict | None:
         if cardId not in cardCache:
-            cardCache[cardId] = scryfall.getCardById(cardId)
+            cardCache[cardId] = cardLookup(cardId)
         return cardCache[cardId]
 
     sideboardCount = _count(sideboard)
