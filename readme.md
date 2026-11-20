@@ -51,9 +51,15 @@ Here are the lists of things I'd like to have included in this project :
 
 ### Releases
 
-Every push to `master` builds Linux, Windows, and macOS packages with GitHub
-Actions and publishes them under **GitHub Releases**. Download the archive for
-your platform; no Python installation is needed.
+Push a version tag to build Linux, Windows, and macOS packages and publish them
+under **GitHub Releases**:
+
+```bash
+git tag v0.1.5
+git push origin v0.1.5
+```
+
+Download the archive for your platform; no Python installation is needed.
 
 ### From source
 
